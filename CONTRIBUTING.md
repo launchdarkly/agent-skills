@@ -18,7 +18,7 @@ skills/your-skill-name/
 └── SKILL.md
 ```
 
-2. Copy the template from `template/SKILL.md` and fill it in.
+2. Copy the template from `template/SKILL.md.template`, rename it to `SKILL.md`, and fill it in.
 3. Add any references under a `references/` directory.
 4. Update the skill list in `README.md`.
 5. Regenerate the catalog: `python3 scripts/generate_catalog.py`.

@@ -25,7 +25,7 @@ This skill guides contributors through adding a new skill to the LaunchDarkly ag
    - Ensure `<skill-name>` is lowercase with hyphens, and matches the `name` field exactly.
 
 2. **Create `SKILL.md`**
-   - Copy `template/SKILL.md` into the new skill directory.
+   - Copy `template/SKILL.md.template` into the new skill directory and rename it to `SKILL.md`.
    - Fill in required frontmatter: `name`, `description`.
    - Keep `SKILL.md` under 500 lines and move deep details to `references/`.
 
