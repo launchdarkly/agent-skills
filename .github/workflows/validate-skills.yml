@@ -1,0 +1,21 @@
+name: Validate Skills
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Validate SKILL.md files
+        run: python3 scripts/validate_skills.py
+      - name: Run validation tests
+        run: python3 -m unittest discover -s tests
+      - name: Check skills.json catalog
+        run: python3 scripts/generate_catalog.py --check
