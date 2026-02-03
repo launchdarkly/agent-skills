@@ -1,0 +1,66 @@
+name: Release Skills
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag (e.g., v1.0.0)"
+        required: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create skill zips
+        run: |
+          mkdir -p dist/skills
+
+          find skills -name "SKILL.md" | while read skill_file; do
+            skill_dir=$(dirname "$skill_file")
+            skill_name=$(basename "$skill_dir")
+
+            zip_name="${skill_name}.zip"
+            (cd "$skill_dir/.." && zip -r "../../dist/skills/$zip_name" "$skill_name")
+
+            echo "Created: dist/skills/$zip_name"
+          done
+
+      - name: Generate release notes
+        run: |
+          echo "## Skills" >> release_notes.md
+          echo "" >> release_notes.md
+          for zip in dist/skills/*.zip; do
+            name=$(basename "$zip" .zip)
+            echo "- \`$name\`" >> release_notes.md
+          done
+          echo "" >> release_notes.md
+          echo "See README for install options." >> release_notes.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Release ${{ steps.version.outputs.version }}
+          body_path: release_notes.md
+          files: |
+            dist/skills/*.zip
+          draft: false
+          prerelease: false
