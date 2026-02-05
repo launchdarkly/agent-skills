@@ -1,6 +1,27 @@
 {
   "skills": [
     {
+      "name": "aiconfig-ai-metrics",
+      "description": "Track AI metrics automatically with LaunchDarkly SDK. Monitor tokens, duration, costs, and quality for AI Configs with simple SDK integration.",
+      "path": "skills/ai-configs/aiconfig-ai-metrics",
+      "version": "0.3.0",
+      "compatibility": "Requires LaunchDarkly SDK with AI Config support (Python, Node.js, Go, .NET, Ruby)."
+    },
+    {
+      "name": "aiconfig-custom-metrics",
+      "description": "Create, track, retrieve, update, and delete custom business metrics in LaunchDarkly. Full lifecycle management via API and SDK.",
+      "path": "skills/ai-configs/aiconfig-custom-metrics",
+      "version": "0.3.0",
+      "compatibility": "Requires LaunchDarkly SDK and API token for metric management."
+    },
+    {
+      "name": "aiconfig-online-evals",
+      "description": "Use Online Evaluations (LLM-as-a-judge) to automatically score AI Config responses for accuracy, relevance, and toxicity.",
+      "path": "skills/ai-configs/aiconfig-online-evals",
+      "version": "0.5.0",
+      "compatibility": "Works with AI Configs in completion mode only. Requires judges configured via LaunchDarkly UI."
+    },
+    {
       "name": "create-skill",
       "description": "Add a new skill to the LaunchDarkly agent-skills repo. Use when creating a new SKILL.md, updating the skills catalog, and aligning with repo conventions.",
       "path": "skills/skill-authoring/create-skill",

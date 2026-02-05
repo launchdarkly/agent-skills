@@ -8,9 +8,24 @@ Agent Skills are modular, text-based playbooks that teach an agent how to perfor
 
 ## Available Skills
 
+### Feature Flags
+
 | Skill | Description |
 |-------|-------------|
 | `feature-flags/launchdarkly-flag-cleanup` | Safely remove flags from code using LaunchDarkly as the source of truth |
+
+### AI Configs
+
+| Skill | Description |
+|-------|-------------|
+| `ai-configs/aiconfig-ai-metrics` | Track automatic AI metrics (tokens, latency, cost) |
+| `ai-configs/aiconfig-custom-metrics` | Track custom business metrics |
+| `ai-configs/aiconfig-online-evals` | LLM-as-a-judge quality monitoring |
+
+### Skill Authoring
+
+| Skill | Description |
+|-------|-------------|
 | `skill-authoring/create-skill` | Add a new skill to the LaunchDarkly agent-skills repo following conventions |
 
 ## Quick Start (Local)
