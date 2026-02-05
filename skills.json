@@ -1,6 +1,34 @@
 {
   "skills": [
     {
+      "name": "aiconfig-create",
+      "description": "Create a new LaunchDarkly AI Config with variations, model configurations, and targeting. Use this skill to programmatically create AI Configs for agent or completion mode.",
+      "path": "skills/ai-configs/aiconfig-create",
+      "version": "0.1.0",
+      "compatibility": "Requires LaunchDarkly API access token with ai-configs:write permission."
+    },
+    {
+      "name": "aiconfig-tools",
+      "description": "Create, manage, and attach tools (functions) to LaunchDarkly AI Configs. Tools enable AI agents to interact with external systems, APIs, and databases.",
+      "path": "skills/ai-configs/aiconfig-tools",
+      "version": "0.1.0",
+      "compatibility": "Requires LaunchDarkly API token with `/*:ai-tool/*` permission."
+    },
+    {
+      "name": "aiconfig-update",
+      "description": "Update and delete LaunchDarkly AI Configs. Learn how to modify existing AI Configs and manage their lifecycle.",
+      "path": "skills/ai-configs/aiconfig-update",
+      "version": "0.1.0",
+      "compatibility": "Requires LaunchDarkly project with AI Configs enabled and API access token."
+    },
+    {
+      "name": "aiconfig-variations",
+      "description": "Manage AI Config variations - add, update, retrieve, and delete variations from existing configs. Test different models, prompts, parameters, and tools within a single AI Config.",
+      "path": "skills/ai-configs/aiconfig-variations",
+      "version": "0.1.0",
+      "compatibility": "Requires LaunchDarkly API access token with ai-configs:write permission."
+    },
+    {
       "name": "create-skill",
       "description": "Add a new skill to the LaunchDarkly agent-skills repo. Use when creating a new SKILL.md, updating the skills catalog, and aligning with repo conventions.",
       "path": "skills/skill-authoring/create-skill",
