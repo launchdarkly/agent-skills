@@ -1,6 +1,20 @@
 {
   "skills": [
     {
+      "name": "aiconfig-segments",
+      "description": "Create and manage segments for AI Config targeting. Segments let you group contexts (users, organizations, devices) to target them as a unit in your AI Config rules.",
+      "path": "skills/ai-configs/aiconfig-segments",
+      "version": "0.1.0",
+      "compatibility": "Requires LaunchDarkly API access token with segments:write permission."
+    },
+    {
+      "name": "aiconfig-targeting",
+      "description": "Configure LaunchDarkly AI Config targeting rules via API to control which users receive specific variations. Enable A/B tests, percentage splits, segment targeting, and multi-context rules.",
+      "path": "skills/ai-configs/aiconfig-targeting",
+      "version": "0.2.0",
+      "compatibility": "Requires LaunchDarkly API access token with write permissions."
+    },
+    {
       "name": "create-skill",
       "description": "Add a new skill to the LaunchDarkly agent-skills repo. Use when creating a new SKILL.md, updating the skills catalog, and aligning with repo conventions.",
       "path": "skills/skill-authoring/create-skill",
