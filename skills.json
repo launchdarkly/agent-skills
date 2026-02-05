@@ -1,6 +1,13 @@
 {
   "skills": [
     {
+      "name": "aiconfig-api",
+      "description": "Access LaunchDarkly AI Configs through the REST API. Learn how to authenticate and perform operations not available through SDKs.",
+      "path": "skills/ai-configs/aiconfig-api",
+      "version": "0.1.0",
+      "compatibility": "Requires LaunchDarkly account and project with AI Configs enabled."
+    },
+    {
       "name": "create-skill",
       "description": "Add a new skill to the LaunchDarkly agent-skills repo. Use when creating a new SKILL.md, updating the skills catalog, and aligning with repo conventions.",
       "path": "skills/skill-authoring/create-skill",
