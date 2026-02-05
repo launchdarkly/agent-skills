@@ -1,6 +1,13 @@
 {
   "skills": [
     {
+      "name": "aiconfig-projects",
+      "description": "Create LaunchDarkly projects to organize your AI Configs. Projects are containers that hold AI Configs, feature flags, and segments.",
+      "path": "skills/ai-configs/aiconfig-projects",
+      "version": "0.3.0",
+      "compatibility": "Requires LaunchDarkly API access token with projects:write permission."
+    },
+    {
       "name": "create-skill",
       "description": "Add a new skill to the LaunchDarkly agent-skills repo. Use when creating a new SKILL.md, updating the skills catalog, and aligning with repo conventions.",
       "path": "skills/skill-authoring/create-skill",
