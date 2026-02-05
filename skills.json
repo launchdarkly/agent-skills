@@ -6,15 +6,7 @@
       "path": "skills/gonfalon/create-feature-preview",
       "version": "0.1.0",
       "license": "Apache-2.0",
-      "compatibility": "Requires access to the launchdarkly/gonfalon repository",
-      "tags": [
-        "launchdarkly",
-        "gonfalon",
-        "feature-preview",
-        "plop",
-        "code-generation",
-        "ui"
-      ]
+      "compatibility": "Requires access to the launchdarkly/gonfalon repository"
     },
     {
       "name": "create-skill",
