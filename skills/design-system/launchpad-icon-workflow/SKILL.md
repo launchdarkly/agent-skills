@@ -255,18 +255,15 @@ cd gonfalon
 # Create a new branch
 git checkout -b devin/$(date +%s)-bump-launchpad-icons
 
-# Find all packages that depend on @launchpad-ui/icons
-grep -r "@launchpad-ui/icons" --include="package.json" packages/ static/
-
-# Update the version in each package.json (typically 15+ packages)
-# Then regenerate lockfile
-pnpm install
+# Update ALL @launchpad-ui packages to latest across the entire monorepo
+# This single command handles all 15+ packages automatically
+pnpm up "@launchpad-ui/*" --latest -r
 
 # Commit and create PR
 git add .
-git commit -m "chore: bump @launchpad-ui/icons to vX.Y.Z"
+git commit -m "chore: bump @launchpad-ui packages to latest"
 git push origin HEAD
-gh pr create --title "chore: bump @launchpad-ui/icons" --body "Updates icons package to include new icons"
+gh pr create --title "chore: bump @launchpad-ui packages" --body "Updates launchpad-ui packages to include new icons"
 ```
 
 ### Step 9: Use the New Icon
