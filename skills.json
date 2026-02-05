@@ -31,9 +31,9 @@
       "name": "launchpad-icon-workflow",
       "description": "Add new icons from Tabler Icons to LaunchDarkly's @launchpad-ui/icons package and propagate them to gonfalon. Use when a user needs to add a new icon to the LaunchDarkly design system, bump icon package versions, or understand the icon contribution process.",
       "path": "skills/design-system/launchpad-icon-workflow",
-      "version": "1.0.0-alpha",
+      "version": "1.1.0-alpha",
       "license": "Apache-2.0",
-      "compatibility": "Requires git, gh CLI, and GitHub access. Figma steps require human intervention for design review."
+      "compatibility": "Requires git, gh CLI, Node.js, and GitHub access. Optional Figma MCP for read operations. Visual QA requires jest-image-snapshot."
     }
   ]
 }
