@@ -1,6 +1,22 @@
 {
   "skills": [
     {
+      "name": "create-feature-preview",
+      "description": "Add a new feature preview to the gonfalon codebase using the plop generator. Use when creating feature previews that allow users to opt-in to experimental features in the LaunchDarkly UI.",
+      "path": "skills/gonfalon/create-feature-preview",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires access to the launchdarkly/gonfalon repository",
+      "tags": [
+        "launchdarkly",
+        "gonfalon",
+        "feature-preview",
+        "plop",
+        "code-generation",
+        "ui"
+      ]
+    },
+    {
       "name": "create-skill",
       "description": "Add a new skill to the LaunchDarkly agent-skills repo. Use when creating a new SKILL.md, updating the skills catalog, and aligning with repo conventions.",
       "path": "skills/skill-authoring/create-skill",
