@@ -1,241 +1,88 @@
 ---
 name: aiconfig-ai-metrics
-description: Track AI metrics automatically with LaunchDarkly SDK. Monitor tokens, duration, costs, and quality for AI Configs with simple SDK integration.
-compatibility: Requires LaunchDarkly SDK with AI Config support (Python, Node.js, Go, .NET, Ruby).
+description: Guide for instrumenting AI metrics tracking in an existing codebase using LaunchDarkly SDK.
 metadata:
   author: launchdarkly
-  version: "0.3.0"
+  version: "0.4.0"
 ---
 
-# AI Metrics Tracking
+# AI Metrics Instrumentation
 
-Automatically track AI metrics using LaunchDarkly's SDK. The SDK captures tokens, duration, success rates, and costs without manual instrumentation.
+This skill guides you through adding AI metrics tracking to a codebase. Your job is to explore, assess, and implement the right instrumentation strategy for this specific codebase.
 
-## Prerequisites
+## Workflow
 
-- LaunchDarkly SDK initialized (see `aiconfig-sdk`)
-- AI Config created in LaunchDarkly (see `aiconfig-create`)
+### 1. Explore the Codebase
 
-## What Gets Tracked Automatically
+Before implementing anything, understand what you're working with:
 
-When you use the LaunchDarkly AI SDK, these metrics are captured automatically:
+- [ ] Find where AI/LLM calls are made (search for `openai`, `anthropic`, `bedrock`, `langchain`, etc.)
+- [ ] Identify which providers are in use
+- [ ] Check if LaunchDarkly SDK is already initialized
+- [ ] Look for existing AI Config usage (`completion_config()`, `agent_config()`)
+- [ ] Note whether calls are streaming or non-streaming
+- [ ] Identify the language/runtime (Python, Node.js, Go, etc.)
 
-1. **Token Usage** - Input tokens, output tokens, total tokens per request
-2. **Performance** - End-to-end duration, time to first token (TTFT), success/failure rates
-3. **Cost** - Calculated based on model and token usage, aggregated by variation and context
-4. **Quality** (with Online Evaluations) - Accuracy, relevance, toxicity scores
+### 2. Assess the Situation
 
-## Tracker Methods
+Based on exploration, determine:
 
-The config object returned by `completion_config()` or `agent_config()` includes a `.tracker` attribute with these methods:
+| Question | Why It Matters |
+|----------|----------------|
+| Which AI provider(s)? | Determines tracking method (automatic vs manual) |
+| Streaming or batch? | Streaming requires TTFT tracking |
+| AI Config already in use? | If not, see `aiconfig-sdk` skill first |
+| Centralized or scattered calls? | Affects instrumentation strategy |
+| Error handling in place? | Need to add `track_error()` calls |
 
-| Method | Purpose |
-|--------|---------|
-| `track_openai_metrics(fn)` | Wrap OpenAI calls for automatic tracking |
-| `track_bedrock_converse_metrics(res)` | Track Bedrock metrics from response dict |
-| `track_duration_of(fn)` | Track duration of any callable |
-| `track_tokens(TokenUsage)` | Manually track token usage |
-| `track_duration(int)` | Manually track duration in milliseconds |
-| `track_time_to_first_token(int)` | Track TTFT in milliseconds |
-| `track_success()` | Mark request as successful |
-| `track_error()` | Mark request as failed |
+### 3. Choose Your Implementation Path
 
-## OpenAI Automatic Tracking
+Based on your assessment, select the appropriate reference:
 
-```python
-import openai
-from ldai.tracker import TokenUsage
+| Situation | Reference |
+|-----------|-----------|
+| OpenAI calls (non-streaming) | `references/openai-tracking.md` |
+| Anthropic calls | `references/anthropic-tracking.md` |
+| AWS Bedrock | `references/bedrock-tracking.md` |
+| Streaming responses | `references/streaming-tracking.md` |
+| Need to query metrics data | `references/metrics-api.md` |
 
-def track_openai_completion(config, prompt: str):
-    """Track OpenAI completion with automatic metrics."""
-    if not config.enabled:
-        return None
+### 4. Implement
 
-    tracker = config.tracker
+Follow the chosen reference to implement tracking. Key principles:
 
-    # Wrap OpenAI call - automatically captures tokens, duration, success/failure
-    response = tracker.track_openai_metrics(
-        lambda: openai.chat.completions.create(
-            model=config.model.name,
-            messages=[
-                {"role": "system", "content": config.messages[0].content},
-                {"role": "user", "content": prompt}
-            ]
-        )
-    )
+1. **Always check `config.enabled`** before making tracked calls
+2. **Wrap existing calls** rather than rewriting them when possible
+3. **Track errors** in exception handlers
+4. **Flush in serverless** environments before function terminates
 
-    return response.choices[0].message.content
-```
+### 5. Verify
 
-## Manual Token Tracking
+Confirm your instrumentation is working:
 
-For providers without automatic tracking, use `TokenUsage` and manual methods:
+- [ ] Make a test call through the instrumented code path
+- [ ] Check LaunchDarkly dashboard for metrics appearing
+- [ ] Verify token counts look reasonable
+- [ ] Confirm duration is being tracked
+- [ ] Test error tracking by forcing a failure
 
-```python
-from ldai.tracker import TokenUsage
+## Quick Reference: Tracker Methods
 
-def track_anthropic_completion(config, prompt: str):
-    """Track Anthropic completion with manual metrics."""
-    import anthropic
-    client = anthropic.Anthropic()
+The `config.tracker` object provides these methods:
 
-    if not config.enabled:
-        return None
-
-    tracker = config.tracker
-
-    # Track duration of the call
-    response = tracker.track_duration_of(
-        lambda: client.messages.create(
-            model=config.model.name,
-            max_tokens=1024,
-            messages=[{"role": "user", "content": prompt}]
-        )
-    )
-
-    # Manually track tokens using TokenUsage object
-    if hasattr(response, 'usage'):
-        tokens = TokenUsage(
-            total=response.usage.input_tokens + response.usage.output_tokens,
-            input=response.usage.input_tokens,
-            output=response.usage.output_tokens
-        )
-        tracker.track_tokens(tokens)
-
-    tracker.track_success()
-    return response.content[0].text
-```
-
-## Streaming Metrics
-
-```python
-import time
-from ldai.tracker import TokenUsage
-
-def track_streaming_completion(config, prompt: str):
-    """Track metrics for streaming responses."""
-    import openai
-
-    if not config.enabled:
-        return None
-
-    tracker = config.tracker
-    start_time = time.time()
-    first_token_time = None
-
-    stream = openai.chat.completions.create(
-        model=config.model.name,
-        messages=[{"role": "user", "content": prompt}],
-        stream=True
-    )
-
-    response_text = ""
-    for chunk in stream:
-        if first_token_time is None and chunk.choices[0].delta.content:
-            first_token_time = time.time()
-            ttft_ms = int((first_token_time - start_time) * 1000)
-            tracker.track_time_to_first_token(ttft_ms)
-
-        if chunk.choices[0].delta.content:
-            response_text += chunk.choices[0].delta.content
-
-    # Track final metrics (milliseconds)
-    duration_ms = int((time.time() - start_time) * 1000)
-    tracker.track_duration(duration_ms)
-    tracker.track_success()
-
-    # Estimate tokens (or use tiktoken for accuracy)
-    estimated_input = len(prompt.split()) * 2
-    estimated_output = len(response_text.split()) * 2
-    tokens = TokenUsage(
-        total=estimated_input + estimated_output,
-        input=estimated_input,
-        output=estimated_output
-    )
-    tracker.track_tokens(tokens)
-
-    return response_text
-```
-
-## Retrieving Metrics via API
-
-```python
-import requests
-import time
-import os
-
-def get_ai_config_metrics(project_key: str, config_key: str, env: str = "production", hours: int = 24):
-    """Get AI Config metrics for the last N hours."""
-    API_TOKEN = os.environ.get("LAUNCHDARKLY_API_TOKEN")
-
-    now = int(time.time())
-    start = now - (hours * 3600)
-
-    url = f"https://app.launchdarkly.com/api/v2/projects/{project_key}/ai-configs/{config_key}/metrics"
-
-    params = {
-        "from": start,
-        "to": now,
-        "env": env
-    }
-
-    headers = {
-        "Authorization": API_TOKEN,
-        "LD-API-Version": "beta"
-    }
-
-    response = requests.get(url, headers=headers, params=params)
-
-    if response.status_code == 200:
-        metrics = response.json()
-        print(f"[OK] Metrics for {config_key} (last {hours} hours, {env}):")
-        print(f"     Generations: {metrics.get('generationCount', 0):,}")
-        print(f"     Success: {metrics.get('generationSuccessCount', 0):,}")
-        print(f"     Errors: {metrics.get('generationErrorCount', 0):,}")
-        print(f"     Input Tokens: {metrics.get('inputTokens', 0):,}")
-        print(f"     Output Tokens: {metrics.get('outputTokens', 0):,}")
-        print(f"     Total Tokens: {metrics.get('totalTokens', 0):,}")
-        print(f"     Input Cost: ${metrics.get('inputCost', 0):.4f}")
-        print(f"     Output Cost: ${metrics.get('outputCost', 0):.4f}")
-        print(f"     Duration (ms): {metrics.get('durationMs', 0):,}")
-        print(f"     TTFT (ms): {metrics.get('timeToFirstTokenMs', 0):,}")
-        print(f"     Thumbs Up: {metrics.get('thumbsUp', 0)}")
-        print(f"     Thumbs Down: {metrics.get('thumbsDown', 0)}")
-        return metrics
-    else:
-        print(f"[ERROR] Failed to get metrics: {response.status_code}")
-        return None
-```
-
-**Response Fields:**
-| Field | Description |
-|-------|-------------|
-| `generationCount` | Total number of generations |
-| `generationSuccessCount` | Successful generations |
-| `generationErrorCount` | Failed generations |
-| `inputTokens` | Total input tokens used |
-| `outputTokens` | Total output tokens generated |
-| `totalTokens` | Sum of input + output tokens |
-| `inputCost` | Cost for input tokens |
-| `outputCost` | Cost for output tokens |
-| `durationMs` | Total duration in milliseconds |
-| `timeToFirstTokenMs` | Time to first token (streaming) |
-| `thumbsUp` | Positive feedback count |
-| `thumbsDown` | Negative feedback count |
-
-## Best Practices
-
-1. **Always Check `config.enabled`** - Skip tracking if config is disabled
-2. **Track Errors** - Call `track_error()` in exception handlers
-3. **Flush in Serverless** - Call `ld_client.flush()` before Lambda/Function terminates
+| Method | Use Case |
+|--------|----------|
+| `track_openai_metrics(fn)` | Automatic tracking for OpenAI |
+| `track_bedrock_converse_metrics(res)` | Automatic tracking for Bedrock |
+| `track_duration_of(fn)` | Wrap any callable to track duration |
+| `track_tokens(TokenUsage)` | Manual token tracking |
+| `track_duration(int)` | Manual duration (ms) |
+| `track_time_to_first_token(int)` | TTFT for streaming (ms) |
+| `track_success()` | Mark successful |
+| `track_error()` | Mark failed |
 
 ## Related Skills
 
-- `aiconfig-sdk` - SDK setup and config retrieval
-- `aiconfig-custom-metrics` - Track business metrics
+- `aiconfig-sdk` - SDK setup (prerequisite if not already configured)
+- `aiconfig-custom-metrics` - Business metrics beyond AI metrics
 - `aiconfig-online-evals` - Automatic quality evaluation
-
-## References
-
-- [AI Metrics Documentation](https://docs.launchdarkly.com/sdk/features/ai-config)
-- [Python AI SDK](https://docs.launchdarkly.com/sdk/ai/python)
