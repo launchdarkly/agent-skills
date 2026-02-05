@@ -1,6 +1,27 @@
 {
   "skills": [
     {
+      "name": "aiconfig-context-advanced",
+      "description": "Build safe, scalable contexts for LaunchDarkly AI Configs with cardinality controls, multi-context patterns, and agent graph attributes.",
+      "path": "skills/ai-configs/aiconfig-context-advanced",
+      "version": "0.2.0",
+      "compatibility": "Python 3.9+, launchdarkly-server-sdk"
+    },
+    {
+      "name": "aiconfig-context-basic",
+      "description": "Build and manage user contexts for LaunchDarkly AI Config targeting. Use this skill to create contexts with attributes for personalization, segmentation, and experimentation.",
+      "path": "skills/ai-configs/aiconfig-context-basic",
+      "version": "0.1.0",
+      "compatibility": "Requires launchdarkly-server-sdk Python package."
+    },
+    {
+      "name": "aiconfig-sdk",
+      "description": "Use LaunchDarkly AI Configs in your Python application with the Python AI SDK. Consume AI Configs, use tools and custom parameters, handle fallbacks, and track metrics for both agent and completion modes.",
+      "path": "skills/ai-configs/aiconfig-sdk",
+      "version": "0.2.0",
+      "compatibility": "Python 3.8+ with launchdarkly-server-sdk and launchdarkly-server-sdk-ai packages."
+    },
+    {
       "name": "create-skill",
       "description": "Add a new skill to the LaunchDarkly agent-skills repo. Use when creating a new SKILL.md, updating the skills catalog, and aligning with repo conventions.",
       "path": "skills/skill-authoring/create-skill",
