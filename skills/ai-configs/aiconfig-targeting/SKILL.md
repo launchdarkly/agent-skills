@@ -597,10 +597,15 @@ Common errors and solutions:
 
 ## Next Steps
 
-- **Monitor performance**: Use `aiconfig-ai-metrics` to track impact
-- **Update variations**: Use `aiconfig-variations` to modify prompts
-- **Manage segments**: Use `aiconfig-segments` to create reusable segments
-- **Add quality monitoring**: Use `aiconfig-online-evals` for judge-based evaluation
+After configuring targeting:
+1. **ALWAYS provide the AI Config URL to the user:**
+   ```
+   https://app.launchdarkly.com/projects/{PROJECT_KEY}/ai-configs/{CONFIG_KEY}
+   ```
+2. **Monitor performance**: Use `aiconfig-ai-metrics` to track impact
+3. **Update variations**: Use `aiconfig-variations` to modify prompts
+4. **Manage segments**: Use `aiconfig-segments` to create reusable segments
+5. **Add quality monitoring**: Use `aiconfig-online-evals` for judge-based evaluation
 
 ## Related Skills
 

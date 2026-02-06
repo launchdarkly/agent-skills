@@ -112,10 +112,11 @@ class AIConfigSegments:
 
         if response.status_code in [200, 201]:
             print(f"[OK] Created segment '{key}'")
+            print(f"  URL: https://app.launchdarkly.com/{self.project_key}/{self.environment}/segments/{key}")
             time.sleep(0.5)
             return response.json()
         elif response.status_code == 409:
-            print(f"[WARNING] Segment '{key}' already exists")
+            print(f"[INFO] Segment '{key}' already exists")
             return self.get_segment(key)
         else:
             print(f"[ERROR] Failed to create segment: {response.text}")
@@ -746,10 +747,14 @@ def create_or_update_segment(key: str, name: str):
 ## Next Steps
 
 After creating segments:
-1. **Use in AI Config targeting** - See `aiconfig-targeting` skill
-2. **Test segment membership** - Verify contexts match expected rules
-3. **Monitor segment size** - Track growth and performance
-4. **Set up experiments** - Use segments for A/B testing
+1. **ALWAYS provide the segment URL to the user:**
+   ```
+   https://app.launchdarkly.com/{PROJECT_KEY}/{ENVIRONMENT}/segments/{SEGMENT_KEY}
+   ```
+2. **Use in AI Config targeting** - See `aiconfig-targeting` skill
+3. **Test segment membership** - Verify contexts match expected rules
+4. **Monitor segment size** - Track growth and performance
+5. **Set up experiments** - Use segments for A/B testing
 
 ## Related Skills
 
