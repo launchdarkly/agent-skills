@@ -284,7 +284,7 @@ Navigate to: `https://app.launchdarkly.com/projects/support-ai/ai-configs/produc
 | Rule 1 | Segment match: `beta-testers` | (see note) |
 | Default | Fallthrough | 50% variation-a, 50% variation-b |
 
-> **Note:** There is a known limitation where `addRule` with `variationId` may not properly assign the variation. Verify the fallthrough rollout is set to 50/50.
+> **Note:** Use `rolloutWeights` (not `variationId`) when adding rules. Verify the fallthrough rollout is set to 50/50.
 
 ### Test Case 4: Full Agent Workflow with Metrics
 
