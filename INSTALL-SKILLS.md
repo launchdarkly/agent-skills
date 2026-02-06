@@ -2,6 +2,61 @@
 
 Install all AI Config skills from the development branches.
 
+## New User Quick Start
+
+### Step 1: Get a LaunchDarkly API Key
+1. Go to **Account settings > Authorization** in LaunchDarkly
+2. Click **Create token** with **Writer** role
+3. Add to your shell profile:
+```bash
+echo 'export LAUNCHDARKLY_API_KEY="api-xxx-your-key-here"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+### Step 2: Set Up the MCP Server
+Add to `~/.claude/config.json`:
+```json
+{
+  "mcpServers": {
+    "launchdarkly": {
+      "command": "npx",
+      "args": ["-y", "@launchdarkly/mcp-server"],
+      "env": {
+        "LAUNCHDARKLY_API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+### Step 3: Install the Skills
+```bash
+git clone https://github.com/launchdarkly/agent-skills.git
+cd agent-skills
+git checkout scarlett/do-not-merge
+./install-scarlett-skills.sh --global
+```
+
+### Step 4: Restart Claude Code
+
+### Step 5: Use the Skills
+
+**Just ask naturally** - Claude automatically uses the right skill:
+```
+"Create an AI config for a customer support chatbot"
+"Set up A/B testing for my AI config"
+"Add metrics tracking to my AI config"
+```
+
+Or invoke explicitly with `/skill-name`:
+```
+/aiconfig-create
+/aiconfig-sdk
+/aiconfig-targeting
+```
+
+---
+
 ## Prerequisites
 
 ### LaunchDarkly API Key
