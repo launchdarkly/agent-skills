@@ -205,9 +205,48 @@ def create_aiconfig(api_token, project_key, config_data):
 
 ### Step 5: Verify Creation
 
-1. Confirm the AI Config was created successfully
-2. Provide the config URL for user reference
-3. Suggest next steps (targeting, experimentation, SDK integration)
+**IMPORTANT:** Always verify the config was created correctly with all properties.
+
+1. **Fetch the created config via API to verify:**
+```python
+def verify_config(api_token, project_key, config_key):
+    """Verify AI Config was created with correct properties."""
+    url = f"https://app.launchdarkly.com/api/v2/projects/{project_key}/ai-configs/{config_key}"
+    headers = {"Authorization": api_token}
+
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        config = response.json()
+        print(f"[OK] Config: {config['key']}")
+        print(f"     Mode: {config['mode']}")
+        print(f"     Variations: {len(config.get('variations', []))}")
+        for v in config.get('variations', []):
+            model = v.get('model', {})
+            tools = v.get('tools', [])
+            print(f"     - {v['key']}: {model.get('modelName', 'NO MODEL')} ({len(tools)} tools)")
+            if model.get('parameters'):
+                print(f"       Parameters: {model['parameters']}")
+            else:
+                print(f"       [WARNING] No parameters set!")
+        return config
+    return None
+```
+
+2. **Check for missing model/parameters** - If a variation shows no model or parameters:
+```python
+def fix_variation_model(api_token, project_key, config_key, variation_key, model_config):
+    """Fix missing model configuration on a variation."""
+    url = f"https://app.launchdarkly.com/api/v2/projects/{project_key}/ai-configs/{config_key}/variations/{variation_key}"
+    headers = {"Authorization": api_token, "Content-Type": "application/json"}
+
+    response = requests.patch(url, headers=headers, json={"model": model_config})
+    return response.status_code == 200
+```
+
+3. **Provide the config URL:**
+   `https://app.launchdarkly.com/projects/{PROJECT_KEY}/ai-configs/{CONFIG_KEY}`
+
+4. **Suggest next steps** (targeting, experimentation, SDK integration)
 
 ## Python Examples
 
