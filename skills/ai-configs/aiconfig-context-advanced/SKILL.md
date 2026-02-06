@@ -14,7 +14,7 @@ Advanced patterns for context enrichment, multi-context scenarios, performance o
 ## Prerequisites
 
 - Understanding of basic context patterns (see `aiconfig-context-basic`)
-- LaunchDarkly SDK key
+- LaunchDarkly SDK key (retrieve via API: `GET /api/v2/projects/{projectKey}/environments`)
 - Python 3.9+ (required by SDK)
 - launchdarkly-server-sdk and launchdarkly-server-sdk-ai packages
 

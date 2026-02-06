@@ -25,9 +25,40 @@ For other languages, check the [SDK documentation](https://docs.launchdarkly.com
 
 ## Prerequisites
 
-- LaunchDarkly SDK key (from project settings)
+- LaunchDarkly SDK key (from project settings or via API)
 - Python 3.8+
 - AI Config created in LaunchDarkly (see `aiconfig-create`)
+
+## Getting the SDK Key
+
+You can retrieve the SDK key via the LaunchDarkly API:
+
+```python
+import requests
+
+def get_sdk_key(api_token: str, project_key: str, environment: str = "production"):
+    """Retrieve SDK key for a project environment via API."""
+    url = f"https://app.launchdarkly.com/api/v2/projects/{project_key}/environments"
+    headers = {"Authorization": api_token}
+
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        for env in response.json().get("items", []):
+            if env["key"] == environment:
+                return env.get("apiKey")  # This is the SDK key
+    return None
+
+# Example usage
+API_TOKEN = "api-xxx-your-api-token"  # From ~/.claude/config.json or environment
+sdk_key = get_sdk_key(API_TOKEN, "your-project", "production")
+print(f"SDK Key: {sdk_key}")
+```
+
+**API endpoint:** `GET /api/v2/projects/{projectKey}/environments`
+
+Each environment returns:
+- `apiKey` - Server-side SDK key
+- `mobileKey` - Mobile/client-side SDK key
 
 ## Installation
 

@@ -13,9 +13,31 @@ Build user contexts with attributes to enable targeted AI Config delivery, perso
 
 ## Prerequisites
 
-- LaunchDarkly SDK key
+- LaunchDarkly SDK key (from project settings or via API)
 - Python 3.8+
 - launchdarkly-server-sdk and launchdarkly-server-sdk-ai packages
+
+## Getting the SDK Key
+
+Retrieve the SDK key via the LaunchDarkly API:
+
+```python
+import requests
+
+def get_sdk_key(api_token: str, project_key: str, environment: str = "production"):
+    """Retrieve SDK key for a project environment via API."""
+    url = f"https://app.launchdarkly.com/api/v2/projects/{project_key}/environments"
+    headers = {"Authorization": api_token}
+
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        for env in response.json().get("items", []):
+            if env["key"] == environment:
+                return env.get("apiKey")  # This is the SDK key
+    return None
+```
+
+**API endpoint:** `GET /api/v2/projects/{projectKey}/environments`
 
 ## Core Concepts
 
