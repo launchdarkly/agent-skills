@@ -251,59 +251,44 @@ get_tool_versions("search_knowledge_base")
 
 ## Attaching Tools to AI Config Variations
 
-After creating tools, attach them to AI Config variations to enable function calling:
+After creating tools, attach them to AI Config variations to enable function calling.
+
+**⚠️ IMPORTANT:** Tools **cannot** be attached via `defaultVariation` when creating an AI Config - they will be ignored. You **must** use a separate PATCH request to attach tools after the config is created.
+
+### Complete Workflow
+
+1. **Create tools** via `POST /ai-tools`
+2. **Create AI Config** via `POST /ai-configs` (without tools)
+3. **Attach tools** via `PATCH /ai-configs/{config}/variations/{variation}`
 
 ### Add Tools to a Variation
 
 ```python
-def attach_tools_to_variation(config_key: str, variation_id: str, tool_keys: list):
+def attach_tools_to_variation(config_key: str, variation_key: str, tool_keys: list):
     """
     Attach tools to a specific variation of an AI Config.
-    Tools must be created first using create_tool().
-    """
 
-    # First, get the config to find the variation
-    url = f"https://app.launchdarkly.com/api/v2/projects/{PROJECT_KEY}/ai-configs/{config_key}"
+    IMPORTANT: This must be called AFTER creating the AI Config.
+    Tools cannot be attached via defaultVariation during config creation.
+    """
+    url = f"https://app.launchdarkly.com/api/v2/projects/{PROJECT_KEY}/ai-configs/{config_key}/variations/{variation_key}"
 
     headers = {
         "Authorization": API_TOKEN,
         "Content-Type": "application/json"
     }
 
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200:
-        print(f"[ERROR] Failed to get config: {response.text}")
-        return None
-
-    config = response.json()
-
-    # Find and update the variation
-    variations = config.get('variations', [])
-    variation_found = False
-
-    for variation in variations:
-        if variation.get('_id') == variation_id or variation.get('key') == variation_id:
-            # Format tools for the variation
-            variation['tools'] = [
-                {"key": tool_key, "version": 1}
-                for tool_key in tool_keys
-            ]
-            variation_found = True
-            break
-
-    if not variation_found:
-        print(f"[ERROR] Variation '{variation_id}' not found")
-        return None
-
-    # Update the config with modified variations
-    update_payload = {
-        "variations": variations
+    payload = {
+        "tools": [
+            {"key": tool_key, "version": 1}
+            for tool_key in tool_keys
+        ]
     }
 
-    response = requests.patch(url, json=update_payload, headers=headers)
+    response = requests.patch(url, json=payload, headers=headers)
 
     if response.status_code == 200:
-        print(f"[OK] Attached {len(tool_keys)} tools to variation '{variation_id}'")
+        print(f"[OK] Attached {len(tool_keys)} tools to variation '{variation_key}'")
         return response.json()
     else:
         print(f"[ERROR] Failed to attach tools: {response.text}")
@@ -316,7 +301,7 @@ tools_to_attach = [
     "send_email"
 ]
 
-attach_tools_to_variation("support-agent", "base-config", tools_to_attach)
+attach_tools_to_variation("support-agent", "default", tools_to_attach)
 ```
 
 ### Update Tools in Variation

@@ -164,12 +164,18 @@ Based on mode, prepare the appropriate structure:
 - Custom parameters for your application
 
 **Important: Tools Setup**
-- Tools must be created BEFORE they can be referenced in variations
+- Tools must be created BEFORE they can be attached to variations
 - **API endpoint for tools:** `POST https://app.launchdarkly.com/api/v2/projects/{PROJECT_KEY}/ai-tools`
 - Do NOT use `/ai-configs/tools` - that endpoint does not exist
-- Use the `aiconfig-tools` skill to create tools
-- Once created, reference them in variations as: `"tools": [{"key": "tool-name", "version": 1}]`
-- Tools work in BOTH agent and completion modes
+
+**⚠️ Tools cannot be attached via defaultVariation** - they are ignored during config creation. You must:
+1. Create the AI Config first (without tools)
+2. Then PATCH the variation to attach tools:
+   ```
+   PATCH /api/v2/projects/{PROJECT_KEY}/ai-configs/{CONFIG_KEY}/variations/{VARIATION_KEY}
+   {"tools": [{"key": "tool-name", "version": 1}]}
+   ```
+- See `aiconfig-tools` skill for the complete workflow
 
 ### Step 4: Create via API
 
@@ -250,11 +256,8 @@ Priority: {{support_priority}}""",
                     "enable_feature": True
                 }
             },
-            # Optional: tools created via aiconfig-tools skill
-            "tools": [
-                {"key": "search_knowledge_base", "version": 1},
-                {"key": "get_customer_info", "version": 1}
-            ]
+            # NOTE: Tools cannot be added here - attach via PATCH after creation
+            # See aiconfig-tools skill for the complete workflow
         }
     }
 
@@ -318,11 +321,8 @@ def create_completion_config():
                     "output_format": "markdown"
                 }
             },
-            # Optional: tools created via aiconfig-tools skill
-            "tools": [
-                {"key": "search_knowledge_base", "version": 1},
-                {"key": "get_customer_info", "version": 1}
-            ]
+            # NOTE: Tools cannot be added here - attach via PATCH after creation
+            # See aiconfig-tools skill for the complete workflow
         }
     }
 
