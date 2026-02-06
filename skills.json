@@ -16,36 +16,9 @@
       "compatibility": "Works in repositories following the Agent Skills open standard"
     },
     {
-      "name": "create-skill",
-      "description": "Add a new skill to the LaunchDarkly agent-skills repo. Use when creating a new SKILL.md, updating the skills catalog, and aligning with repo conventions.",
-      "path": ".agents/skills/create-skill",
-      "version": "0.1.0",
-      "license": "Apache-2.0",
-      "compatibility": "Works in repositories following the Agent Skills open standard"
-    },
-    {
       "name": "launchdarkly-flag-cleanup",
       "description": "Safely automate feature flag cleanup workflows using the LaunchDarkly MCP server. Use when removing flags from code, cleaning up stale flags, assessing removal readiness, or creating PRs that preserve production behavior.",
       "path": "skills/feature-flags/launchdarkly-flag-cleanup",
-      "version": "1.0.0-alpha",
-      "license": "Apache-2.0",
-      "compatibility": "Requires LaunchDarkly MCP server (@launchdarkly/mcp-server)",
-      "tags": [
-        "launchdarkly",
-        "feature-flags",
-        "feature-management",
-        "stale-flags",
-        "tech-debt",
-        "cleanup",
-        "code-removal",
-        "devops",
-        "mcp"
-      ]
-    },
-    {
-      "name": "launchdarkly-flag-cleanup",
-      "description": "Safely automate feature flag cleanup workflows using the LaunchDarkly MCP server. Use when removing flags from code, cleaning up stale flags, assessing removal readiness, or creating PRs that preserve production behavior.",
-      "path": ".agents/skills/launchdarkly-flag-cleanup",
       "version": "1.0.0-alpha",
       "license": "Apache-2.0",
       "compatibility": "Requires LaunchDarkly MCP server (@launchdarkly/mcp-server)",
