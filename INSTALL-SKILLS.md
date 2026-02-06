@@ -146,11 +146,26 @@ After installation, try these test cases to verify the skills work correctly.
 ```
 /aiconfig-create
 
-Create an AI config called "customer-support-agent" in the project "default"
+Create an AI config called "test-basic-config" in the project "support-ai"
 with two variations:
 - "standard": uses gpt-4o-mini with a helpful customer service prompt
 - "premium": uses gpt-4o with a more detailed, personalized prompt
 ```
+
+**Expected UI Verification:**
+
+Navigate to: `https://app.launchdarkly.com/projects/support-ai/ai-configs/test-basic-config`
+
+| Item | Expected |
+|------|----------|
+| **AI Config** | `test-basic-config` |
+| **Mode** | Agent |
+| **Variations** | 2 |
+
+| Variation | Model | Temperature | Max Tokens |
+|-----------|-------|-------------|------------|
+| `standard` | gpt-4o-mini | 0.7 | 1000 |
+| `premium` | gpt-4o | 0.8 | 2000 |
 
 ### Test Case 2: Multi-Tool Agent with Function Calling
 
@@ -167,6 +182,36 @@ Create an AI config called "order-lookup-agent" with:
 - System prompt that instructs the agent to help customers with order inquiries
 ```
 
+**Expected UI Verification:**
+
+Navigate to: `https://app.launchdarkly.com/projects/support-ai/ai-configs/order-lookup-agent`
+
+| Item | Expected |
+|------|----------|
+| **AI Config** | `order-lookup-agent` |
+| **Mode** | Agent |
+| **Variations** | 1 |
+
+| Variation | Model | Tools Attached |
+|-----------|-------|----------------|
+| `default` | gpt-4o | 3 tools |
+
+**Tools (verify in AI Config > Variation > Tools section):**
+
+| Tool Key | Description |
+|----------|-------------|
+| `get_order_status` | Looks up order status |
+| `get_customer_info_v2` | Retrieves customer details |
+| `create_support_ticket` | Creates support ticket |
+
+**Tools in Project** (navigate to: AI Configs > Tools):
+
+| Tool | Schema |
+|------|--------|
+| `get_order_status` | `order_id: string` (required) |
+| `get_customer_info_v2` | `customer_id: string` (required) |
+| `create_support_ticket` | `subject: string`, `priority: enum[low,medium,high]` (required) |
+
 ### Test Case 3: A/B Test with Targeting Rules
 
 ```
@@ -180,6 +225,36 @@ Then use /aiconfig-targeting to:
 - Serve variation A to users in segment "beta-testers"
 - Split remaining traffic 50/50 between variations
 ```
+
+**Expected UI Verification:**
+
+Navigate to: `https://app.launchdarkly.com/projects/support-ai/ai-configs/product-recommender`
+
+| Item | Expected |
+|------|----------|
+| **AI Config** | `product-recommender` |
+| **Mode** | Completion |
+| **Variations** | 2 (plus disabled) |
+
+| Variation | Model | Temperature | Max Tokens |
+|-----------|-------|-------------|------------|
+| `variation-a` | claude-3-5-sonnet | 0.7 | 1000 |
+| `variation-b` | gpt-4o-mini | 0.3 | 800 |
+
+**Segment** (navigate to: Segments > production):
+
+| Segment Key | Name |
+|-------------|------|
+| `beta-testers` | Beta Testers |
+
+**Targeting** (navigate to: AI Config > Targeting > production):
+
+| Rule | Condition | Serves |
+|------|-----------|--------|
+| Rule 1 | Segment match: `beta-testers` | (see note) |
+| Default | Fallthrough | 50% variation-a, 50% variation-b |
+
+> **Note:** There is a known limitation where `addRule` with `variationId` may not properly assign the variation. Verify the fallthrough rollout is set to 50/50.
 
 ### Test Case 4: Full Agent Workflow with Metrics
 
@@ -198,6 +273,46 @@ Then:
 3. Use /aiconfig-custom-metrics to track "quotes_generated" and "conversion_rate"
 ```
 
+**Expected UI Verification:**
+
+Navigate to: `https://app.launchdarkly.com/projects/support-ai/ai-configs/sales-assistant`
+
+| Item | Expected |
+|------|----------|
+| **AI Config** | `sales-assistant` |
+| **Mode** | Agent |
+| **Variations** | 3 |
+
+| Variation | Model | Tools | Max Tokens |
+|-----------|-------|-------|------------|
+| `basic-tier` | gpt-4o-mini | 2 | 500 |
+| `pro-tier` | gpt-4o | 4 | 1000 |
+| `enterprise-tier` | claude-3-5-sonnet | 4 | 2000 |
+
+**Tools per Variation:**
+
+| Variation | Tools Attached |
+|-----------|----------------|
+| `basic-tier` | `search_products`, `check_inventory` |
+| `pro-tier` | `search_products`, `check_inventory`, `calculate_discount`, `create_quote` |
+| `enterprise-tier` | `search_products`, `check_inventory`, `calculate_discount`, `create_quote` |
+
+**Tools in Project** (navigate to: AI Configs > Tools):
+
+| Tool Key | Description |
+|----------|-------------|
+| `search_products` | Search product catalog |
+| `check_inventory` | Check inventory levels |
+| `calculate_discount` | Calculate discount |
+| `create_quote` | Create sales quote |
+
+**Custom Metrics** (navigate to: Metrics):
+
+| Metric Key | Name | Type | Unit |
+|------------|------|------|------|
+| `quotes-generated` | Quotes Generated | Custom (numeric) | count |
+| `conversion-rate` | Conversion Rate | Custom (numeric) | percent |
+
 ### Test Case 5: Context-Aware Personalization
 
 ```
@@ -214,6 +329,21 @@ Then use /aiconfig-targeting to:
 - Use lighter models for mobile contexts
 ```
 
+**Expected UI Verification:**
+
+This test case generates **SDK-side code patterns** for building contexts. There is no direct UI verification - the skill provides Python code examples for:
+
+- Single-context creation (`Context.builder()`)
+- Multi-context creation (`Context.multi_builder()`)
+- Context attributes for targeting
+
+**Verify SDK Key is retrievable** (navigate to: Project Settings > Environments):
+
+| Environment | SDK Key Format |
+|-------------|----------------|
+| `production` | `sdk-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` |
+| `test` | `sdk-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` |
+
 ### Test Case 6: Complex Segment-Based Rollout
 
 ```
@@ -229,6 +359,30 @@ Then use /aiconfig-targeting to create a rollout:
 - AI power users: gpt-4o with rate limiting
 - New users: gpt-4o-mini only (gradual rollout 10% -> 50% -> 100%)
 ```
+
+**Expected UI Verification:**
+
+Navigate to: Segments > production (`https://app.launchdarkly.com/support-ai/production/segments`)
+
+| Segment Key | Name | Description |
+|-------------|------|-------------|
+| `enterprise-customers` | Enterprise Customers | Organizations with enterprise plan |
+| `ai-power-users` | AI Power Users | Users with high AI usage |
+| `new-users` | New Users | Users created in the last 7 days |
+
+**Segment Rules (click each segment to verify):**
+
+| Segment | Rule |
+|---------|------|
+| `enterprise-customers` | `plan` in `["enterprise"]` |
+| `ai-power-users` | `ai_requests_30d` > `100` |
+| `new-users` | (no rules - manually managed or time-based) |
+
+**Also verify these segments exist:**
+
+| Segment Key | Name |
+|-------------|------|
+| `beta-testers` | Beta Testers (from Test Case 3) |
 
 ---
 
