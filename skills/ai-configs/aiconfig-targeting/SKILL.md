@@ -77,6 +77,11 @@ Headers required:
 
 > **Important:** The targeting API uses `variationId` (UUID) not variation keys. You must look up variation IDs from the targeting response before creating rules.
 
+> **⚠️ Known Limitation:** The `addRule` instruction with `variationId` may not properly assign the variation to the rule. If you need to target a specific variation, use `rolloutWeights` with 100% weight on a single variation instead:
+> ```json
+> {"kind": "addRule", "clauses": [...], "rolloutWeights": {"variation-uuid": 100000}}
+> ```
+
 ## Python Implementation
 
 ### Setup and Configuration
