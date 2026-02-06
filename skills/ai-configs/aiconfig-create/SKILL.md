@@ -250,6 +250,16 @@ def fix_variation_model(api_token, project_key, config_key, variation_key, model
 
 ## Model Configuration
 
+### List Available Models
+
+Fetch available model configs from the API:
+
+```bash
+GET https://app.launchdarkly.com/api/v2/projects/{projectKey}/ai-configs/model-configs
+```
+
+Response includes `key` (use as `modelConfigKey`), `provider`, `name`, and pricing info.
+
 ### modelConfigKey (Required)
 
 **`modelConfigKey` is required for models to display correctly in the UI.** The format is `{Provider}.{model-id}`:
