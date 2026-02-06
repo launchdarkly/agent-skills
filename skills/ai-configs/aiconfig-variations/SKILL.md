@@ -63,6 +63,19 @@ Variations allow you to:
 - Configure Online Evaluations (judges) per variation
 - A/B test configurations without code changes
 
+## Model Configuration
+
+### modelConfigKey (Required)
+
+**`modelConfigKey` is required for models to display correctly in the UI.** The format is `{Provider}.{model-id}`:
+
+| Provider | Model ID | modelConfigKey |
+|----------|----------|----------------|
+| OpenAI | gpt-4o | `OpenAI.gpt-4o` |
+| OpenAI | gpt-4o-mini | `OpenAI.gpt-4o-mini` |
+| Anthropic | claude-sonnet-4-5 | `Anthropic.claude-sonnet-4-5` |
+| Anthropic | claude-3-5-sonnet | `Anthropic.claude-3-5-sonnet` |
+
 ## Python Examples
 
 ### Example 1: Add Agent Mode Variations
@@ -90,16 +103,10 @@ Your responsibilities:
 
 Company: {{company_name}}
 Priority: {{support_priority}}""",
-            "messages": [],  # Required for agent mode
+            "modelConfigKey": "OpenAI.gpt-4o",  # Required for UI display
             "model": {
-                "modelName": "gpt-4",
-                "parameters": {
-                    "temperature": 0.7,
-                    "maxTokens": 2000,
-                    # Optional: custom parameters for your application
-                    "custom_param": "value",
-                    "enable_feature": True
-                }
+                "modelName": "gpt-4o",
+                "parameters": {"temperature": 0.7, "maxTokens": 2000}
             },
             # Optional: tools created via aiconfig-tools skill
             "tools": [
@@ -119,14 +126,10 @@ Provide detailed assistance with:
 
 Company: {{company_name}}
 Priority: {{support_priority}}""",
-            "messages": [],  # Required for agent mode
+            "modelConfigKey": "Anthropic.claude-sonnet-4-5",  # Required for UI display
             "model": {
-                "modelName": "gpt-4-turbo",
-                "parameters": {
-                    "temperature": 0.5,
-                    "maxTokens": 4000,
-                    "reasoning_depth": "deep"
-                }
+                "modelName": "claude-sonnet-4-5",
+                "parameters": {"temperature": 0.5, "maxTokens": 4000}
             },
             "tools": [
                 {"key": "search_knowledge_base", "version": 1},
@@ -180,14 +183,10 @@ def add_completion_variations(config_key: str):
                 {"role": "system", "content": "You are a creative content writer for {{brand}}."},
                 {"role": "user", "content": "{{content_request}}"}
             ],
+            "modelConfigKey": "OpenAI.gpt-4o",  # Required for UI display
             "model": {
-                "modelName": "gpt-4",
-                "parameters": {
-                    "temperature": 0.9,
-                    "maxTokens": 2000,
-                    # Optional: custom parameters
-                    "style_guide": "creative"
-                }
+                "modelName": "gpt-4o",
+                "parameters": {"temperature": 0.9, "maxTokens": 2000}
             },
             # Optional: tools created via aiconfig-tools skill
             "tools": [
@@ -202,13 +201,10 @@ def add_completion_variations(config_key: str):
                 {"role": "system", "content": "You are a professional content strategist for {{brand}}."},
                 {"role": "user", "content": "{{content_request}}"}
             ],
+            "modelConfigKey": "OpenAI.gpt-4o-mini",  # Required for UI display
             "model": {
-                "modelName": "gpt-4-turbo",
-                "parameters": {
-                    "temperature": 0.3,
-                    "maxTokens": 3000,
-                    "style_guide": "professional"
-                }
+                "modelName": "gpt-4o-mini",
+                "parameters": {"temperature": 0.3, "maxTokens": 3000}
             },
             "tools": [
                 {"key": "search_knowledge_base", "version": 1},
