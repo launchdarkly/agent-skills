@@ -77,7 +77,7 @@ Headers required:
 
 > **Important:** The targeting API uses `variationId` (UUID) not variation keys. You must look up variation IDs from the targeting response before creating rules.
 
-> **⚠️ Known Limitation:** The `addRule` instruction with `variationId` may not properly assign the variation to the rule. If you need to target a specific variation, use `rolloutWeights` with 100% weight on a single variation instead:
+> **⚠️ Do NOT use `variationId` in `addRule`** - use `rolloutWeights` instead. To serve 100% of matching traffic to a single variation:
 > ```json
 > {"kind": "addRule", "clauses": [...], "rolloutWeights": {"variation-uuid": 100000}}
 > ```
@@ -290,7 +290,7 @@ def add_attribute_rule(self, config_key: str, environment: str,
         context_kind: Type of context ("user", "organization", etc.)
     """
 
-    # Use rolloutWeights for 100% to one variation (variationId has known issues)
+    # Use rolloutWeights for 100% to one variation (do not use variationId)
     instructions = [
         {
             "kind": "addRule",
@@ -395,7 +395,7 @@ def add_multi_context_rule(self, config_key: str, environment: str,
         variation_id: Variation ID (UUID) to serve when all clauses match
     """
 
-    # Use rolloutWeights for 100% to one variation (variationId has known issues)
+    # Use rolloutWeights for 100% to one variation (do not use variationId)
     instructions = [
         {
             "kind": "addRule",
@@ -461,7 +461,7 @@ def target_segments(self, config_key: str, environment: str,
         include: True to include segments, False to exclude
     """
 
-    # Use rolloutWeights for 100% to one variation (variationId has known issues)
+    # Use rolloutWeights for 100% to one variation (do not use variationId)
     instructions = [
         {
             "kind": "addRule",
