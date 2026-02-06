@@ -1,6 +1,13 @@
 {
   "skills": [
     {
+      "name": "aiconfig-projects",
+      "description": "Guide for setting up LaunchDarkly projects in your codebase. Helps you assess your stack, choose the right approach, and integrate project management that makes sense for your architecture.",
+      "path": "skills/ai-configs/aiconfig-projects",
+      "version": "0.4.0",
+      "compatibility": "Requires LaunchDarkly API access token with projects:write permission or LaunchDarkly MCP server."
+    },
+    {
       "name": "create-skill",
       "description": "Add a new skill to the LaunchDarkly agent-skills repo. Use when creating a new SKILL.md, updating the skills catalog, and aligning with repo conventions.",
       "path": "skills/skill-authoring/create-skill",
