@@ -101,10 +101,14 @@ def create_tool(tool_key: str, schema: dict, description: str = None):
     response = requests.post(url, json=payload, headers=headers)
 
     if response.status_code == 201:
+        print(f"[OK] Created tool: {tool_key}")
+        print(f"  URL: https://app.launchdarkly.com/projects/{PROJECT_KEY}/ai-configs/tools")
         return response.json()
     elif response.status_code == 409:
+        print(f"[INFO] Tool already exists: {tool_key}")
         return get_tool(tool_key)
     else:
+        print(f"[ERROR] Failed to create tool: {response.text}")
         return None
 
 # Example: Create a search tool (plain JSON Schema format)
@@ -260,6 +264,9 @@ After creating tools, attach them to AI Config variations to enable function cal
 1. **Create tools** via `POST /ai-tools`
 2. **Create AI Config** via `POST /ai-configs` (without tools)
 3. **Attach tools** via `PATCH /ai-configs/{config}/variations/{variation}`
+4. **ALWAYS provide URLs to the user:**
+   - Tools: `https://app.launchdarkly.com/projects/{PROJECT_KEY}/ai-configs/tools`
+   - AI Config: `https://app.launchdarkly.com/projects/{PROJECT_KEY}/ai-configs/{CONFIG_KEY}`
 
 ### Add Tools to a Variation
 

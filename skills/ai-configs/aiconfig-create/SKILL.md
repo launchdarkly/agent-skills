@@ -243,8 +243,10 @@ def fix_variation_model(api_token, project_key, config_key, variation_key, model
     return response.status_code == 200
 ```
 
-3. **Provide the config URL:**
-   `https://app.launchdarkly.com/projects/{PROJECT_KEY}/ai-configs/{CONFIG_KEY}`
+3. **ALWAYS provide the config URL to the user:**
+   ```
+   https://app.launchdarkly.com/projects/{PROJECT_KEY}/ai-configs/{CONFIG_KEY}
+   ```
 
 4. **Suggest next steps** (targeting, experimentation, SDK integration)
 
