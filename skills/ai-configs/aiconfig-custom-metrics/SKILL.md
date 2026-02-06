@@ -63,6 +63,12 @@ def get_launchdarkly_api_key():
 
 ## 1. Create Metric (API)
 
+**Required fields for numeric custom metrics:**
+- `successCriteria` - Must be one of: `"HigherThanBaseline"`, `"LowerThanBaseline"`
+- `unit` - e.g., `"count"`, `"percent"`, `"milliseconds"`
+
+The API will return `400 Bad Request` if these are missing for numeric metrics.
+
 ```python
 import requests
 import os
