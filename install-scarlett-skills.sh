@@ -6,12 +6,14 @@
 #   git clone https://github.com/launchdarkly/agent-skills.git
 #   cd agent-skills
 #   git checkout scarlett/do-not-merge
-#   ./install-scarlett-skills.sh
+#   ./install-scarlett-skills.sh [--global|--local]
+#
+# Options:
+#   --global  Install to ~/.claude/commands (available everywhere)
+#   --local   Install to ./.claude/commands (current project only)
 #
 
 set -e
-
-DEST="${CLAUDE_SKILLS_DIR:-$HOME/.claude/commands}"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -19,10 +21,56 @@ BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Parse arguments
+INSTALL_MODE=""
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --global)
+      INSTALL_MODE="global"
+      shift
+      ;;
+    --local)
+      INSTALL_MODE="local"
+      shift
+      ;;
+    *)
+      echo "Unknown option: $1"
+      echo "Usage: ./install-scarlett-skills.sh [--global|--local]"
+      exit 1
+      ;;
+  esac
+done
+
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║  LaunchDarkly AI Config Skills Installer                   ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""
+
+# If no mode specified, ask user
+if [ -z "$INSTALL_MODE" ]; then
+  echo -e "Where would you like to install the skills?"
+  echo ""
+  echo -e "  ${GREEN}1)${NC} Global  (~/.claude/commands) - available in all projects"
+  echo -e "  ${GREEN}2)${NC} Local   (./.claude/commands) - current project only"
+  echo ""
+  read -p "Enter choice [1/2]: " choice
+  case $choice in
+    1) INSTALL_MODE="global" ;;
+    2) INSTALL_MODE="local" ;;
+    *) echo "Invalid choice. Defaulting to global."; INSTALL_MODE="global" ;;
+  esac
+  echo ""
+fi
+
+# Set destination based on mode
+if [ "$INSTALL_MODE" = "local" ]; then
+  DEST="./.claude/commands"
+else
+  DEST="$HOME/.claude/commands"
+fi
+
+# Allow override via environment variable
+DEST="${CLAUDE_SKILLS_DIR:-$DEST}"
 
 # Fetch latest from remote
 echo -e "${YELLOW}Fetching latest branches...${NC}"
@@ -109,6 +157,12 @@ echo -e "${GREEN}╚════════════════════
 echo ""
 echo -e "Installed skills:"
 ls -1 "$DEST"/*.md 2>/dev/null | xargs -I {} basename {} .md | sed 's/^/  ✓ /'
+echo ""
+if [ "$INSTALL_MODE" = "local" ]; then
+  echo -e "${GREEN}Usage:${NC} Skills are available in this project with /skill-name"
+else
+  echo -e "${GREEN}Usage:${NC} Skills are available globally with /skill-name"
+fi
 echo ""
 echo -e "${YELLOW}Note:${NC} These skills are from development branches and may change."
 echo -e "For production use, wait for skills to be merged to main."
