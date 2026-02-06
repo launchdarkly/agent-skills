@@ -67,6 +67,13 @@ Tools work in **BOTH agent and completion modes** via function calling.
 
 ## Tool Management API
 
+**IMPORTANT - API Endpoint:**
+```
+Base URL: https://app.launchdarkly.com/api/v2/projects/{PROJECT_KEY}/ai-tools
+```
+
+Do NOT use `/ai-configs/tools` - that endpoint does not exist. The correct path is `/ai-tools`.
+
 > **Note on Orchestrator Integration**: Many AI orchestrators (like LangGraph, CrewAI, AutoGen) automatically create their own tool schemas from function definitions. When using these frameworks, you often don't need to manually define JSON schemas - the orchestrator will generate them based on your tool's function signature and docstring. However, you still need to attach the tool names/keys to your AI Config variations so the SDK knows which tools are available for each variation.
 
 ### Create a New Tool

@@ -165,8 +165,10 @@ Based on mode, prepare the appropriate structure:
 
 **Important: Tools Setup**
 - Tools must be created BEFORE they can be referenced in variations
+- **API endpoint for tools:** `POST https://app.launchdarkly.com/api/v2/projects/{PROJECT_KEY}/ai-tools`
+- Do NOT use `/ai-configs/tools` - that endpoint does not exist
 - Use the `aiconfig-tools` skill to create tools
-- Once created, reference them as: `[{"key": "tool-name", "version": 1}]`
+- Once created, reference them in variations as: `"tools": [{"key": "tool-name", "version": 1}]`
 - Tools work in BOTH agent and completion modes
 
 ### Step 4: Create via API
