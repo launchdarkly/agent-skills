@@ -19,6 +19,40 @@ Create and manage tools that enable AI agents to call functions, interact with e
 
 > **Note:** The LaunchDarkly MCP server does not currently have endpoints for managing AI tools (`/ai-tools`). Use the REST API below. See `aiconfig-api` for details on MCP limitations.
 
+## API Key Detection
+
+Before prompting the user for an API key, try to detect it automatically:
+
+1. **Check Claude MCP config** - Read `~/.claude/config.json` and look for `mcpServers.launchdarkly.env.LAUNCHDARKLY_API_KEY`
+2. **Check environment variables** - Look for `LAUNCHDARKLY_API_KEY`, `LAUNCHDARKLY_API_TOKEN`, or `LD_API_KEY`
+3. **Prompt user** - Only if detection fails, ask the user for their API key
+
+```python
+import os
+import json
+from pathlib import Path
+
+def get_launchdarkly_api_key():
+    """Auto-detect LaunchDarkly API key from Claude config or environment."""
+    # 1. Check Claude MCP config
+    claude_config = Path.home() / ".claude" / "config.json"
+    if claude_config.exists():
+        try:
+            config = json.load(open(claude_config))
+            api_key = config.get("mcpServers", {}).get("launchdarkly", {}).get("env", {}).get("LAUNCHDARKLY_API_KEY")
+            if api_key:
+                return api_key
+        except (json.JSONDecodeError, IOError):
+            pass
+
+    # 2. Check environment variables
+    for var in ["LAUNCHDARKLY_API_KEY", "LAUNCHDARKLY_API_TOKEN", "LD_API_KEY"]:
+        if os.environ.get(var):
+            return os.environ[var]
+
+    return None
+```
+
 ## What Are Tools?
 
 Tools are function definitions that AI models can invoke to:
