@@ -290,6 +290,7 @@ def add_attribute_rule(self, config_key: str, environment: str,
         context_kind: Type of context ("user", "organization", etc.)
     """
 
+    # Use rolloutWeights for 100% to one variation (variationId has known issues)
     instructions = [
         {
             "kind": "addRule",
@@ -302,7 +303,7 @@ def add_attribute_rule(self, config_key: str, environment: str,
                     "negate": False
                 }
             ],
-            "variationId": variation_id
+            "rolloutWeights": {variation_id: 100000}  # 100% to this variation
         }
     ]
 
@@ -394,11 +395,12 @@ def add_multi_context_rule(self, config_key: str, environment: str,
         variation_id: Variation ID (UUID) to serve when all clauses match
     """
 
+    # Use rolloutWeights for 100% to one variation (variationId has known issues)
     instructions = [
         {
             "kind": "addRule",
             "clauses": clauses,
-            "variationId": variation_id
+            "rolloutWeights": {variation_id: 100000}  # 100% to this variation
         }
     ]
 
@@ -442,6 +444,8 @@ targeting.add_multi_context_rule(
 
 > **Note:** First create segments using the `aiconfig-segments` skill, then target them here.
 
+> **⚠️ Important:** Segment clauses require BOTH `attribute: "segmentMatch"` AND `op: "segmentMatch"`.
+
 ```python
 def target_segments(self, config_key: str, environment: str,
                    segment_keys: List[str], variation_id: str,
@@ -457,17 +461,20 @@ def target_segments(self, config_key: str, environment: str,
         include: True to include segments, False to exclude
     """
 
+    # Use rolloutWeights for 100% to one variation (variationId has known issues)
     instructions = [
         {
             "kind": "addRule",
             "clauses": [
                 {
+                    "contextKind": "user",
+                    "attribute": "segmentMatch",  # Required for segment matching
                     "op": "segmentMatch",
                     "values": segment_keys,
                     "negate": not include
                 }
             ],
-            "variationId": variation_id
+            "rolloutWeights": {variation_id: 100000}  # 100% to this variation
         }
     ]
 
