@@ -9,8 +9,8 @@
 #   ./install-scarlett-skills.sh [--global|--local]
 #
 # Options:
-#   --global  Install to ~/.claude/commands (available everywhere)
-#   --local   Install to ./.claude/commands (current project only)
+#   --global  Install to ~/.claude/skills (available everywhere)
+#   --local   Install to ./.claude/skills (current project only)
 #
 
 set -e
@@ -19,6 +19,7 @@ set -e
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
+RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Parse arguments
@@ -50,8 +51,8 @@ echo ""
 if [ -z "$INSTALL_MODE" ]; then
   echo -e "Where would you like to install the skills?"
   echo ""
-  echo -e "  ${GREEN}1)${NC} Global  (~/.claude/commands) - available in all projects"
-  echo -e "  ${GREEN}2)${NC} Local   (./.claude/commands) - current project only"
+  echo -e "  ${GREEN}1)${NC} Global  (~/.claude/skills) - available in all projects"
+  echo -e "  ${GREEN}2)${NC} Local   (./.claude/skills) - current project only"
   echo ""
   read -p "Enter choice [1/2]: " choice
   case $choice in
@@ -64,9 +65,9 @@ fi
 
 # Set destination based on mode
 if [ "$INSTALL_MODE" = "local" ]; then
-  DEST="./.claude/commands"
+  DEST="./.claude/skills"
 else
-  DEST="$HOME/.claude/commands"
+  DEST="$HOME/.claude/skills"
 fi
 
 # Allow override via environment variable
@@ -82,27 +83,39 @@ mkdir -p "$DEST"
 echo -e "${GREEN}Installing to:${NC} $DEST"
 echo ""
 
+# Track installed skills
+INSTALLED_SKILLS=()
+
 install_skill() {
   local branch="$1"
   local skill_path="$2"
   local skill_name=$(basename "$skill_path")
+  local skill_dir="$DEST/$skill_name"
 
   echo -e "  ${YELLOW}→${NC} $skill_name"
 
+  # Create skill directory
+  mkdir -p "$skill_dir"
+
   # Extract SKILL.md using git show (no checkout needed)
-  git show "${branch}:skills/${skill_path}/SKILL.md" > "$DEST/${skill_name}.md" 2>/dev/null || {
-    echo -e "    ${YELLOW}(not found)${NC}"
+  if ! git show "${branch}:skills/${skill_path}/SKILL.md" > "$skill_dir/SKILL.md" 2>/dev/null; then
+    echo -e "    ${RED}(SKILL.md not found)${NC}"
+    rmdir "$skill_dir" 2>/dev/null || true
     return
-  }
+  fi
+
+  INSTALLED_SKILLS+=("$skill_name")
 
   # Check for references directory and extract if exists
   local refs=$(git ls-tree --name-only "$branch" "skills/$skill_path/references/" 2>/dev/null || true)
   if [ -n "$refs" ]; then
-    mkdir -p "$DEST/${skill_name}-references"
+    mkdir -p "$skill_dir/references"
     for ref_file in $refs; do
       local filename=$(basename "$ref_file")
-      git show "${branch}:skills/${skill_path}/references/${filename}" > "$DEST/${skill_name}-references/$filename" 2>/dev/null || true
+      git show "${branch}:skills/${skill_path}/references/${filename}" > "$skill_dir/references/$filename" 2>/dev/null || true
     done
+    local ref_count=$(ls -1 "$skill_dir/references" 2>/dev/null | wc -l | tr -d ' ')
+    echo -e "    ${GREEN}+ ${ref_count} reference file(s)${NC}"
   fi
 }
 
@@ -155,14 +168,18 @@ echo -e "${GREEN}╔════════════════════
 echo -e "${GREEN}║  Installation Complete!                                    ║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""
-echo -e "Installed skills:"
-ls -1 "$DEST"/*.md 2>/dev/null | xargs -I {} basename {} .md | sed 's/^/  ✓ /'
+echo -e "Installed ${#INSTALLED_SKILLS[@]} skills:"
+for skill in "${INSTALLED_SKILLS[@]}"; do
+  echo -e "  ${GREEN}✓${NC} $skill"
+done
 echo ""
 if [ "$INSTALL_MODE" = "local" ]; then
-  echo -e "${GREEN}Usage:${NC} Skills are available in this project with /skill-name"
+  echo -e "${GREEN}Usage:${NC} Skills are available in this project"
 else
-  echo -e "${GREEN}Usage:${NC} Skills are available globally with /skill-name"
+  echo -e "${GREEN}Usage:${NC} Skills are available globally"
 fi
+echo ""
+echo -e "Invoke skills with: ${BLUE}/skill-name${NC} (e.g., /aiconfig-create)"
 echo ""
 echo -e "${YELLOW}Note:${NC} These skills are from development branches and may change."
 echo -e "For production use, wait for skills to be merged to main."
