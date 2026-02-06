@@ -162,10 +162,40 @@ Navigate to: `https://app.launchdarkly.com/projects/support-ai/ai-configs/test-b
 | **Mode** | Agent |
 | **Variations** | 2 |
 
-| Variation | Model | Temperature | Max Tokens |
-|-----------|-------|-------------|------------|
-| `standard` | gpt-4o-mini | 0.7 | 1000 |
-| `premium` | gpt-4o | 0.8 | 2000 |
+**Step-by-step verification:**
+
+1. Click on **Variations** tab
+2. You should see `standard` and `premium` variations listed
+3. **Click on `standard` variation** to expand/edit it
+4. Verify:
+   - Model: `gpt-4o-mini`
+   - Temperature: `0.7`
+   - Max Tokens: `1000`
+5. **Click on `premium` variation** to expand/edit it
+6. Verify:
+   - Model: `gpt-4o`
+   - Temperature: `0.8`
+   - Max Tokens: `2000`
+
+**If model or parameters are missing:**
+
+The model and parameters must be set on each variation. If they appear empty in the UI:
+
+```bash
+# Verify via API
+curl -s "https://app.launchdarkly.com/api/v2/projects/support-ai/ai-configs/test-basic-config" \
+  -H "Authorization: $LAUNCHDARKLY_API_KEY" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+for v in data.get('variations', []):
+    print(f\"{v['key']}: {v.get('model', {}).get('modelName', 'MISSING')} - {v.get('model', {}).get('parameters', 'MISSING')}\")"
+
+# Fix via PATCH if needed
+curl -X PATCH "https://app.launchdarkly.com/api/v2/projects/support-ai/ai-configs/test-basic-config/variations/standard" \
+  -H "Authorization: $LAUNCHDARKLY_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": {"name": "openai", "modelName": "gpt-4o-mini", "parameters": {"temperature": 0.7, "maxTokens": 1000}}}'
+```
 
 ### Test Case 2: Multi-Tool Agent with Function Calling
 
