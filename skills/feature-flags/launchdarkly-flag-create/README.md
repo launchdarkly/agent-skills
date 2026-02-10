@@ -23,8 +23,6 @@ Examples:
 
 This skill requires the remotely hosted LaunchDarkly MCP server to be configured in your environment. The remote server provides higher-level, agent-optimized tools that orchestrate multiple API calls and return pruned, actionable responses.
 
-Refer to your LaunchDarkly account settings for instructions on connecting to the remotely hosted MCP server.
-
 ## Usage
 
 Once installed, the skill activates automatically when you ask about creating flags:
