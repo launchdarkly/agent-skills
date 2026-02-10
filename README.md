@@ -18,6 +18,10 @@ Agent Skills are modular, text-based playbooks that teach an agent how to perfor
 
 | Skill | Description |
 |-------|-------------|
+| `ai-configs/aiconfig-create` | Create AI Configs with variations for agent or completion mode |
+| `ai-configs/aiconfig-update` | Update and delete AI Configs, manage lifecycle |
+| `ai-configs/aiconfig-variations` | Manage AI Config variations for A/B testing |
+| `ai-configs/aiconfig-tools` | Create and attach tools for function calling |
 | `ai-configs/aiconfig-projects` | Create and manage projects to organize AI Configs |
 
 ### Skill Authoring
