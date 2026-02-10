@@ -9,7 +9,7 @@ metadata:
 
 # LaunchDarkly Projects Setup
 
-A workflow for integrating LaunchDarkly project management into your codebase. This skill helps you explore your stack, assess your needs, and choose the right implementation approach.
+You're using a skill that will guide you through setting up LaunchDarkly project management in a codebase. Your job is to explore the codebase to understand the stack and patterns, assess what approach makes sense, choose the right implementation path from the references, execute the setup, and verify it works.
 
 ## Prerequisites
 
@@ -22,41 +22,17 @@ A workflow for integrating LaunchDarkly project management into your codebase. T
 1. **Understand First**: Explore the codebase to understand the stack and patterns.
 2. **Choose the Right Fit**: Select an approach that matches your architecture.
 3. **Follow Conventions**: Respect existing code style and structure.
-4. **Verify Integration**: Confirm the setup works in your environment.
+4. **Verify Integration**: Confirm the setup works — the agent performs checks and reports results.
 
 ## API Key Detection
 
 Before prompting the user for an API key, try to detect it automatically:
 
-1. **Check Claude MCP config** - Read `~/.claude/config.json` and look for `mcpServers.launchdarkly.env.LAUNCHDARKLY_API_KEY`
-2. **Check environment variables** - Look for `LAUNCHDARKLY_API_KEY`, `LAUNCHDARKLY_API_TOKEN`, or `LD_API_KEY`
-3. **Prompt user** - Only if detection fails, ask the user for their API key
+1. **Check environment variables** — Look for `LAUNCHDARKLY_API_KEY`, `LAUNCHDARKLY_API_TOKEN`, or `LD_API_KEY`
+2. **Check MCP config** — If using Claude, read `~/.claude/config.json` for `mcpServers.launchdarkly.env.LAUNCHDARKLY_API_KEY`
+3. **Prompt user** — Only if detection fails, ask the user for their API key
 
-```python
-import os
-import json
-from pathlib import Path
-
-def get_launchdarkly_api_key():
-    """Auto-detect LaunchDarkly API key from Claude config or environment."""
-    # 1. Check Claude MCP config
-    claude_config = Path.home() / ".claude" / "config.json"
-    if claude_config.exists():
-        try:
-            config = json.load(open(claude_config))
-            api_key = config.get("mcpServers", {}).get("launchdarkly", {}).get("env", {}).get("LAUNCHDARKLY_API_KEY")
-            if api_key:
-                return api_key
-        except (json.JSONDecodeError, IOError):
-            pass
-
-    # 2. Check environment variables
-    for var in ["LAUNCHDARKLY_API_KEY", "LAUNCHDARKLY_API_TOKEN", "LD_API_KEY"]:
-        if os.environ.get(var):
-            return os.environ[var]
-
-    return None
-```
+See [Quick Start](references/quick-start.md) for API usage patterns.
 
 ## What Are Projects?
 
@@ -150,22 +126,27 @@ Follow the chosen reference guide to implement project management. Key considera
 
 ### Step 5: Verify the Setup
 
-Confirm everything works:
+After creating the project, verify it works:
 
-1. **Verify Project Creation:**
-   - Project exists in LaunchDarkly UI
-   - Default environments (production, test) are present
-   - Tags and metadata are correct
+1. **Fetch via API to confirm it exists:**
+   ```bash
+   curl -X GET "https://app.launchdarkly.com/api/v2/projects/{projectKey}?expand=environments" \
+     -H "Authorization: {api_token}"
+   ```
+   Confirm the response includes the project, environments, and SDK keys.
 
-2. **Verify SDK Keys:**
-   - SDK keys are saved to correct location
-   - Application can load the keys
-   - Keys work with LaunchDarkly SDK
+2. **Test SDK integration:**
+   Run a quick verification to ensure the SDK key works:
+   ```python
+   from ldclient import set_config, Config
+   set_config(Config("{sdk_key}"))
+   # SDK initializes successfully
+   ```
 
-3. **Test Integration:**
-   - Can create AI Configs in the project
-   - Can fetch configs using SDK key
-   - Environment separation works correctly
+3. **Report results:**
+   - ✓ Project exists and has environments
+   - ✓ SDK keys are present and valid
+   - ✓ SDK can initialize (or flag any issues)
 
 ## Project Key Best Practices
 

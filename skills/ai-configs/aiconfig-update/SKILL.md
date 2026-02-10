@@ -1,336 +1,78 @@
 ---
 name: aiconfig-update
-description: Update and delete LaunchDarkly AI Configs. Learn how to modify existing AI Configs and manage their lifecycle.
+description: Update, archive, and delete LaunchDarkly AI Configs and their variations. Use when you need to modify config properties, change model parameters, update instructions or messages, archive unused configs, or permanently remove them.
 compatibility: Requires LaunchDarkly project with AI Configs enabled and API access token.
 metadata:
   author: launchdarkly
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
-# AI Config Update and Delete Operations
+# AI Config Update & Lifecycle
 
-Update existing LaunchDarkly AI Configs and manage their lifecycle. This skill covers updating config properties, archiving configs, and deleting them when no longer needed.
+You're using a skill that will guide you through updating, archiving, and deleting AI Configs and their variations. Your job is to understand the current state of the config, make the changes, and verify the result.
 
 ## Prerequisites
 
-- LaunchDarkly project with AI Configs enabled
-- API access token with write permissions
-- Existing AI Config to update or delete
+- Existing AI Config to modify
+- LaunchDarkly API access token or MCP server
 
-> **Note:** The LaunchDarkly MCP server has `update-ai-config` and `delete-ai-config` tools for basic operations. Use the REST API below for full functionality. See `aiconfig-api` for details.
+## Core Principles
+
+1. **Fetch Before Changing**: Always check the current state before modifying
+2. **Verify After Changing**: Fetch the config again to confirm updates were applied
+3. **Archive Before Deleting**: Archival is reversible; deletion is not
 
 ## API Key Detection
 
-Before prompting the user for an API key, try to detect it automatically:
+1. **Check environment variables** — `LAUNCHDARKLY_API_KEY`, `LAUNCHDARKLY_API_TOKEN`, `LD_API_KEY`
+2. **Check MCP config** — If applicable
+3. **Prompt user** — Only if detection fails
 
-1. **Check Claude MCP config** - Read `~/.claude/config.json` and look for `mcpServers.launchdarkly.env.LAUNCHDARKLY_API_KEY`
-2. **Check environment variables** - Look for `LAUNCHDARKLY_API_KEY`, `LAUNCHDARKLY_API_TOKEN`, or `LD_API_KEY`
-3. **Prompt user** - Only if detection fails, ask the user for their API key
+## Workflow
 
-```python
-import os
-import json
-from pathlib import Path
+### Step 1: Understand Current State
 
-def get_launchdarkly_api_key():
-    """Auto-detect LaunchDarkly API key from Claude config or environment."""
-    # 1. Check Claude MCP config
-    claude_config = Path.home() / ".claude" / "config.json"
-    if claude_config.exists():
-        try:
-            config = json.load(open(claude_config))
-            api_key = config.get("mcpServers", {}).get("launchdarkly", {}).get("env", {}).get("LAUNCHDARKLY_API_KEY")
-            if api_key:
-                return api_key
-        except (json.JSONDecodeError, IOError):
-            pass
-
-    # 2. Check environment variables
-    for var in ["LAUNCHDARKLY_API_KEY", "LAUNCHDARKLY_API_TOKEN", "LD_API_KEY"]:
-        if os.environ.get(var):
-            return os.environ[var]
-
-    return None
+Fetch the config to see what exists before changing anything:
+```bash
+GET /projects/{projectKey}/ai-configs/{configKey}
 ```
 
-## Core Concepts
+### Step 2: Make the Update
 
-AI Config lifecycle management includes:
-- **Updating**: Modify name, description, and other properties
-- **Archiving**: Temporarily disable configs while preserving data
-- **Deleting**: Permanently remove configs (cannot be undone)
+Follow [API Quick Start](references/api-quickstart.md):
 
-## Update AI Config
+- **Update instructions/messages** — PATCH variation
+- **Switch model** — PATCH variation with modelConfigKey and model
+- **Tune parameters** — PATCH variation with model.parameters
+- **Archive config** — PATCH config with `{"archived": true}`
+- **Delete** — DELETE config or variation (irreversible)
 
-Update an existing AI Config's properties using a PATCH request:
+### Step 4: Verify
 
-```python
-import requests
-import json
+1. **Fetch updated config:**
+   ```bash
+   GET /projects/{projectKey}/ai-configs/{configKey}/variations/{variationKey}
+   ```
 
-# Configuration
-API_TOKEN = "your-api-token"
-PROJECT_KEY = "your-project"
-CONFIG_KEY = "your-config-key"
+2. **Confirm the response shows your updated values**
 
-# Update config properties
-url = f"https://app.launchdarkly.com/api/v2/projects/{PROJECT_KEY}/ai-configs/{CONFIG_KEY}"
+3. **Report results:**
+   - ✓ Update applied successfully
+   - ✓ Config reflects changes
+   - ⚠️ Flag any issues or rollback if needed
 
-headers = {
-    "Authorization": f"{API_TOKEN}",
-    "Content-Type": "application/json"
-}
+## What NOT to Do
 
-# Update data - simple object with fields to update
-patch_data = {
-    "name": "Updated AI Config Name",
-    "description": "Updated description for the AI Config"
-}
-
-response = requests.patch(url, headers=headers, json=patch_data)
-
-if response.status_code == 200:
-    print("[OK] AI Config updated successfully")
-    data = response.json()
-    print(f"  Name: {data.get('name')}")
-    print(f"  Description: {data.get('description')}")
-else:
-    print(f"[ERROR] {response.status_code}: {response.text}")
-```
-
-## Archive AI Config
-
-Archiving temporarily disables an AI Config while preserving all its data:
-
-```python
-def archive_config(project_key, config_key, api_token, archive=True):
-    """Archive or unarchive an AI Config"""
-    url = f"https://app.launchdarkly.com/api/v2/projects/{project_key}/ai-configs/{config_key}"
-
-    headers = {
-        "Authorization": f"{api_token}",
-        "Content-Type": "application/json"
-    }
-
-    patch_data = {"archived": archive}
-
-    response = requests.patch(url, headers=headers, json=patch_data)
-
-    if response.status_code == 200:
-        status = "archived" if archive else "unarchived"
-        print(f"[OK] AI Config {status} successfully")
-        return response.json()
-    else:
-        print(f"[ERROR] {response.status_code}: {response.text}")
-        return None
-
-# Archive a config
-archive_config(PROJECT_KEY, CONFIG_KEY, API_TOKEN, archive=True)
-
-# Unarchive a config
-archive_config(PROJECT_KEY, CONFIG_KEY, API_TOKEN, archive=False)
-```
-
-## Delete AI Config
-
-Permanently delete an AI Config. This operation cannot be undone:
-
-```python
-def delete_config(project_key, config_key, api_token, confirm=False):
-    """Permanently delete an AI Config
-
-    Args:
-        confirm: Must be True to actually delete (safety check)
-    """
-    url = f"https://app.launchdarkly.com/api/v2/projects/{project_key}/ai-configs/{config_key}"
-
-    headers = {
-        "Authorization": f"{api_token}"
-    }
-
-    if not confirm:
-        print(f"[WARNING] Delete skipped - set confirm=True to delete '{config_key}'")
-        return False
-
-    response = requests.delete(url, headers=headers)
-
-    if response.status_code == 204:
-        print(f"[OK] AI Config '{config_key}' deleted successfully")
-        return True
-    else:
-        print(f"[ERROR] deleting config: {response.status_code}")
-        print(response.text)
-        return False
-
-# Delete a config (requires confirm=True)
-delete_config(PROJECT_KEY, CONFIG_KEY, API_TOKEN, confirm=True)
-```
-
-## Batch Operations
-
-Update multiple configs efficiently:
-
-```python
-def batch_update_configs(project_key, updates, api_token):
-    """Update multiple AI Configs"""
-    results = []
-
-    for config_key, patch_data in updates.items():
-        url = f"https://app.launchdarkly.com/api/v2/projects/{project_key}/ai-configs/{config_key}"
-
-        headers = {
-            "Authorization": f"{api_token}",
-            "Content-Type": "application/json"
-        }
-
-        response = requests.patch(url, headers=headers, json=patch_data)
-
-        results.append({
-            "config_key": config_key,
-            "success": response.status_code == 200,
-            "status_code": response.status_code
-        })
-
-    return results
-
-# Example batch update
-updates = {
-    "config-1": {"name": "Updated Config 1"},
-    "config-2": {"archived": True},
-    "config-3": {"description": "New description"}
-}
-
-results = batch_update_configs(PROJECT_KEY, updates, API_TOKEN)
-for result in results:
-    print(f"{result['config_key']}: {'Success' if result['success'] else 'Failed'}")
-```
-
-## Updatable Fields
-
-The AI Config update endpoint accepts a simple object with fields to update:
-
-| Field | Description | Value Type |
-|-------|-------------|------------|
-| `name` | Config display name | string |
-| `description` | Config description | string |
-| `archived` | Archive status | boolean |
-| `tags` | Config tags | array of strings |
-
-## Error Handling
-
-Handle common update and delete errors:
-
-```python
-def safe_update_config(project_key, config_key, patch_data, api_token):
-    """Update config with comprehensive error handling"""
-    url = f"https://app.launchdarkly.com/api/v2/projects/{project_key}/ai-configs/{config_key}"
-
-    headers = {
-        "Authorization": f"{api_token}",
-        "Content-Type": "application/json"
-    }
-
-    try:
-        response = requests.patch(url, headers=headers, json=patch_data)
-
-        if response.status_code == 200:
-            return {"success": True, "data": response.json()}
-        elif response.status_code == 400:
-            return {"success": False, "error": "Invalid request format"}
-        elif response.status_code == 404:
-            return {"success": False, "error": "AI Config not found"}
-        elif response.status_code == 409:
-            return {"success": False, "error": "Conflict - config may have been modified"}
-        else:
-            return {"success": False, "error": f"Unexpected error: {response.status_code}"}
-
-    except requests.exceptions.RequestException as e:
-        return {"success": False, "error": f"Request failed: {str(e)}"}
-
-# Use with error handling
-result = safe_update_config(
-    PROJECT_KEY,
-    CONFIG_KEY,
-    {"name": "New Name"},
-    API_TOKEN
-)
-
-if result["success"]:
-    print("[OK] Update successful")
-else:
-    print(f"[ERROR] Update failed: {result['error']}")
-```
-
-## Best Practices
-
-### 1. Backup Before Delete
-Always export config data before deletion using the API to GET the config and save to a file.
-
-### 2. Use Archiving First
-Archive configs before deletion to ensure they're no longer needed:
-
-1. Archive the config
-2. Monitor for any issues
-3. Delete after confirmation period
-
-### 3. Validate Updates
-Check the update object before applying - ensure it only contains valid fields (name, description, archived, tags).
-
-## Complete Example
-
-Update, archive, and manage an AI Config lifecycle:
-
-```python
-import requests
-import json
-
-class AIConfigManager:
-    def __init__(self, project_key, api_token):
-        self.project_key = project_key
-        self.api_token = api_token
-        self.base_url = f"https://app.launchdarkly.com/api/v2/projects/{project_key}"
-        self.headers = {
-            "Authorization": api_token,
-            "Content-Type": "application/json"
-        }
-
-    def update(self, config_key, patch_data):
-        """Update an AI Config"""
-        url = f"{self.base_url}/ai-configs/{config_key}"
-        response = requests.patch(url, headers=self.headers, json=patch_data)
-        return response.status_code == 200, response
-
-    def archive(self, config_key):
-        """Archive an AI Config"""
-        return self.update(config_key, {"archived": True})
-
-    def unarchive(self, config_key):
-        """Unarchive an AI Config"""
-        return self.update(config_key, {"archived": False})
-
-    def delete(self, config_key):
-        """Delete an AI Config"""
-        url = f"{self.base_url}/ai-configs/{config_key}"
-        response = requests.delete(url, headers={"Authorization": self.api_token})
-        return response.status_code == 204
-
-# Usage
-manager = AIConfigManager(PROJECT_KEY, API_TOKEN)
-success, response = manager.update("test-config", {"description": "Updated via AIConfigManager"})
-```
+- Don't update production directly without testing
+- Don't change multiple things at once
+- Don't skip verification
+- Don't delete without user confirmation
 
 ## Related Skills
 
-### Management Workflow
-- `aiconfig-create` - Create configs first
-- `aiconfig-api` - API reference for updates
-- `aiconfig-variations` - Update variations
+- `aiconfig-variations` — Create variations to test changes
+- `aiconfig-tools` — Update tools
 
-### Related Operations
-- `aiconfig-tools` - Update tool attachments
-- `aiconfig-targeting` - Update targeting rules
-- `aiconfig-experiments` - Update experiment settings
 ## References
 
-- [LaunchDarkly API Documentation](https://apidocs.launchdarkly.com)
-- [AI Configs Documentation](https://docs.launchdarkly.com/home/ai-configs)
+- [API Quick Start](references/api-quickstart.md)
