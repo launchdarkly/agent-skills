@@ -17,6 +17,12 @@ Agent Skills are modular, text-based playbooks that teach an agent how to perfor
 | `feature-flags/launchdarkly-flag-targeting` | Control targeting, rollouts, rules, and cross-environment config |
 | `feature-flags/launchdarkly-flag-cleanup` | Safely remove flags from code using LaunchDarkly as the source of truth |
 
+### AI Configs
+
+| Skill | Description |
+|-------|-------------|
+| `ai-configs/aiconfig-projects` | Create and manage projects to organize AI Configs |
+
 ### Skill Authoring
 
 | Skill | Description |
