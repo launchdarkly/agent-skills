@@ -20,39 +20,9 @@ Examples:
 
 ## Prerequisites
 
-This skill requires the LaunchDarkly MCP server to be configured in your environment.
+This skill requires the remotely hosted LaunchDarkly MCP server to be configured in your environment. The remote server provides higher-level, agent-optimized tools that orchestrate multiple API calls and return pruned, actionable responses.
 
-### Configure MCP Server
-
-**Claude Code (`~/.claude/mcp.json`):**
-```json
-{
-  "mcpServers": {
-    "launchdarkly": {
-      "command": "npx",
-      "args": ["-y", "@launchdarkly/mcp-server", "start"],
-      "env": {
-        "LD_ACCESS_TOKEN": "your-api-key"
-      }
-    }
-  }
-}
-```
-
-**Cursor (`.cursor/mcp.json`):**
-```json
-{
-  "mcpServers": {
-    "launchdarkly": {
-      "command": "npx",
-      "args": ["-y", "@launchdarkly/mcp-server", "start"],
-      "env": {
-        "LD_ACCESS_TOKEN": "your-api-key"
-      }
-    }
-  }
-}
-```
+Refer to your LaunchDarkly account settings for instructions on connecting to the remotely hosted MCP server.
 
 ## Usage
 

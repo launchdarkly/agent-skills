@@ -2,19 +2,19 @@
   "skills": [
     {
       "name": "create-skill",
-      "description": "Add a new skill to the LaunchDarkly agent-skills repo. Use when creating a new SKILL.md, updating the skills catalog, and aligning with repo conventions.",
+      "description": "Add a new skill to the LaunchDarkly agent-skills repo. Use when creating a new SKILL.md, adding a skill to the catalog, or aligning with repo conventions. Guides exploration of existing skills before creating.",
       "path": "skills/skill-authoring/create-skill",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "license": "Apache-2.0",
       "compatibility": "Works in repositories following the Agent Skills open standard"
     },
     {
       "name": "launchdarkly-flag-cleanup",
-      "description": "Safely automate feature flag cleanup workflows using the LaunchDarkly MCP server. Use when removing flags from code, cleaning up stale flags, assessing removal readiness, or creating PRs that preserve production behavior.",
+      "description": "Safely remove a feature flag from code while preserving production behavior. Use when the user wants to remove a flag from code, delete flag references, or create a PR that hardcodes the winning variation after a rollout is complete.",
       "path": "skills/feature-flags/launchdarkly-flag-cleanup",
-      "version": "1.0.0-alpha",
+      "version": "1.0.0-experimental",
       "license": "Apache-2.0",
-      "compatibility": "Requires LaunchDarkly MCP server (@launchdarkly/mcp-server)",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server",
       "tags": [
         "launchdarkly",
         "feature-flags",
@@ -23,6 +23,62 @@
         "tech-debt",
         "cleanup",
         "code-removal",
+        "devops",
+        "mcp"
+      ]
+    },
+    {
+      "name": "launchdarkly-flag-create",
+      "description": "Create and configure LaunchDarkly feature flags in a way that fits the existing codebase. Use when the user wants to create a new flag, wrap code in a flag, add a feature toggle, or set up an experiment. Guides exploration of existing patterns before creating.",
+      "path": "skills/feature-flags/launchdarkly-flag-create",
+      "version": "1.0.0-experimental",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server",
+      "tags": [
+        "launchdarkly",
+        "feature-flags",
+        "feature-management",
+        "flag-creation",
+        "feature-toggle",
+        "sdk",
+        "devops",
+        "mcp"
+      ]
+    },
+    {
+      "name": "launchdarkly-flag-discovery",
+      "description": "Audit your LaunchDarkly feature flags to understand the landscape, find stale or launched flags, and assess removal readiness. Use when the user asks about flag debt, stale flags, cleanup candidates, flag health, or wants to understand their flag inventory.",
+      "path": "skills/feature-flags/launchdarkly-flag-discovery",
+      "version": "1.0.0-experimental",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server",
+      "tags": [
+        "launchdarkly",
+        "feature-flags",
+        "feature-management",
+        "flag-audit",
+        "flag-health",
+        "stale-flags",
+        "tech-debt",
+        "inventory",
+        "discovery",
+        "mcp"
+      ]
+    },
+    {
+      "name": "launchdarkly-flag-targeting",
+      "description": "Control LaunchDarkly feature flag targeting including toggling flags on/off, percentage rollouts, targeting rules, individual targets, and copying flag configurations between environments. Use when the user wants to change who sees a flag, roll out to a percentage, add targeting rules, or promote config between environments.",
+      "path": "skills/feature-flags/launchdarkly-flag-targeting",
+      "version": "1.0.0-experimental",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server",
+      "tags": [
+        "launchdarkly",
+        "feature-flags",
+        "feature-management",
+        "targeting",
+        "rollout",
+        "percentage-rollout",
         "devops",
         "mcp"
       ]

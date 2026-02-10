@@ -8,10 +8,20 @@ Agent Skills are modular, text-based playbooks that teach an agent how to perfor
 
 ## Available Skills
 
+### Feature Flags
+
 | Skill | Description |
 |-------|-------------|
+| `feature-flags/launchdarkly-flag-discovery` | Audit flags, find stale/launched flags, and assess removal readiness |
+| `feature-flags/launchdarkly-flag-create` | Create new feature flags in a way that fits existing codebase patterns |
+| `feature-flags/launchdarkly-flag-targeting` | Control targeting, rollouts, rules, and cross-environment config |
 | `feature-flags/launchdarkly-flag-cleanup` | Safely remove flags from code using LaunchDarkly as the source of truth |
-| `skill-authoring/create-skill` | Add a new skill to the LaunchDarkly agent-skills repo following conventions |
+
+### Skill Authoring
+
+| Skill | Description |
+|-------|-------------|
+| `skill-authoring/create-skill` | Add a new skill following conventions — explore existing skills, create with workflow pattern, verify with validation scripts |
 
 ## Quick Start (Local)
 
@@ -28,6 +38,18 @@ cp -r skills/feature-flags/launchdarkly-flag-cleanup <your-agent-skills-dir>/
 ```
 
 Then ask your agent something like:
+
+```
+Which feature flags are stale and should be cleaned up?
+```
+
+```
+Create a feature flag for the new checkout flow
+```
+
+```
+Roll out dark-mode to 25% of users in production
+```
 
 ```
 Remove the `new-checkout-flow` feature flag from this codebase
