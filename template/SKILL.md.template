@@ -1,60 +1,78 @@
 ---
 name: skill-name
 description: A clear description of what this skill does and when the agent should use it. Include keywords that help the agent identify relevant tasks.
-compatibility: Specify platform requirements (for example, "Works on all platforms" or "Requires LaunchDarkly MCP server").
+compatibility: Specify requirements (e.g., "Requires LaunchDarkly MCP server" or "Works on all platforms").
 metadata:
-  author: your-name
+  author: launchdarkly
   version: "0.1.0"
 ---
 
 # Skill Title
 
-Brief overview of what this skill helps accomplish.
+You're using a skill that will guide you through [the job to be done]. Your job is to explore [what to understand first], assess [what to decide], choose the right path, execute the work, and verify it was done correctly.
 
 ## Prerequisites
 
-List any requirements:
-- Required tools or CLIs
-- Required MCP servers
-- Required permissions or access
+- Requirement 1
+- Requirement 2
+- Required tools or MCP servers (if any)
 
-## Steps
+## Core Principles
 
-Describe the workflow the agent should follow:
+1. **First principle**: Brief description
+2. **Second principle**: Brief description
+3. **Third principle**: Brief description
 
-1. **First step**: What to do first
-2. **Second step**: What comes next
-3. **Continue**: As needed
+## Workflow
 
-## Guidelines
+### Step 1: Explore
 
-- Key principle or best practice
-- Another guideline
-- Things to watch out for
+Before doing anything, understand the situation:
 
-## Examples
+1. What to look for
+2. What patterns to identify
+3. What context to gather
 
-### Example 1: Basic usage
+See [Reference Name](references/reference-name.md) for detailed guidance.
 
-**User**: Example user request
+### Step 2: Assess
 
-**Expected behavior**:
-1. What the agent should do
-2. Expected outcome
+Based on your exploration, determine the right approach:
 
-### Example 2: Edge case
+| Scenario | Recommended Path |
+|----------|------------------|
+| Situation A | Path or action |
+| Situation B | Path or action |
 
-**User**: Another example
+### Step 3: Execute
 
-**Expected behavior**:
-1. How to handle this case
+Follow the chosen path. Reference guides for implementation details:
+
+- [By use case](references/use-case-guide.md)
+- [By stack](references/stack-guide.md)
+
+### Step 4: Verify
+
+Confirm the job was done correctly:
+
+1. **Check via API/MCP** (if applicable): Describe what to verify
+2. **Run validation**: Commands or scripts to run
+3. **Report results**: ✓ Success or ⚠️ Issues found
 
 ## Edge Cases
 
-- **Scenario A**: How to handle it
-- **Scenario B**: How to handle it
+| Situation | Action |
+|-----------|--------|
+| Edge case A | How to handle |
+| Edge case B | How to handle |
+
+## What NOT to Do
+
+- Don't do X
+- Don't do Y
+- Don't do Z
 
 ## References
 
-Link to any additional documentation:
-- [External resources](https://example.com)
+- [Reference 1](references/reference-1.md) — Description
+- [Reference 2](references/reference-2.md) — Description

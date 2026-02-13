@@ -1,6 +1,6 @@
 {
-  "name": "launchdarkly-flag-cleanup",
-  "description": "Safely automate feature flag cleanup workflows using LaunchDarkly MCP server",
+  "name": "launchdarkly-flag-targeting",
+  "description": "Control LaunchDarkly feature flag targeting including toggling, rollouts, rules, individual targets, and cross-environment copying",
   "version": "1.0.0-experimental",
   "author": "LaunchDarkly",
   "repository": "https://github.com/launchdarkly/agent-skills",
@@ -9,10 +9,9 @@
     "launchdarkly",
     "feature-flags",
     "feature-management",
-    "stale-flags",
-    "tech-debt",
-    "cleanup",
-    "code-removal",
+    "targeting",
+    "rollout",
+    "percentage-rollout",
     "devops",
     "mcp"
   ],
