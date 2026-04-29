@@ -12,6 +12,8 @@ metadata:
 
 You're using a skill that will guide you through creating an AI Config in LaunchDarkly. Your job is to understand the use case, choose the right mode, create the config and its variations, and verify everything is set up correctly.
 
+> **⚠️ This skill creates a config — it does not make it servable.** A freshly-created AI Config has its **fallthrough pointing at an auto-generated disabled variation**, not at the variation you just created. The SDK will return `ai_config.enabled=False` on every evaluation until you flip targeting on and point the fallthrough at your new variation. This is not a bug — it's the default state. **You must run `/aiconfig-targeting` (or the equivalent REST / CLI call shown in Step 5) before verifying against the SDK**, or verification will look like the LD-served path is broken when it isn't. The single most common failure mode users hit with this skill is skipping the targeting step and spending time debugging `enabled=False` in their application code.
+
 ## Prerequisites
 
 This skill requires the remotely hosted LaunchDarkly MCP server to be configured in your environment.
@@ -38,7 +40,7 @@ When the user provides enough context (use case, model, mode), proceed through t
 
 Before creating, identify what you're building:
 
-- **What framework?** LangGraph, LangChain, CrewAI, OpenAI SDK, Anthropic SDK, custom
+- **What framework?** LangGraph, LangChain, CrewAI, Strands, OpenAI SDK, Anthropic SDK, custom
 - **What does the AI need?** Just text generation, or tools/function calling?
 - **Agent or completion?** See the decision matrix below
 
@@ -48,8 +50,8 @@ This choice is about **input schema and framework compatibility**, not execution
 
 | Your Need | Mode | Why |
 |-----------|------|-----|
-| LangGraph, CrewAI, AutoGen frameworks | **Agent** | Frameworks expect goal/instruction input |
-| Persistent instructions across interactions | **Agent** | Single instructions string, SDK method: `aiclient.agent()` |
+| LangGraph, CrewAI, Strands, AutoGen frameworks | **Agent** | Frameworks expect goal/instruction input |
+| Persistent instructions across interactions | **Agent** | Single instructions string, SDK method: `agent_config()` (Python) / `agentConfig()` (Node) |
 | Direct OpenAI/Anthropic API calls | **Completion** | Messages array maps directly to provider APIs |
 | Full control of message structure | **Completion** | System/user/assistant role-based messages |
 | One-off text generation | **Completion** | Standard chat format |
@@ -70,7 +72,7 @@ Use `setup-ai-config` to create the config and its first variation in one call. 
 **Variation fields:**
 - `variationKey`, `variationName` -- identifiers for the first variation
 - `modelConfigKey` -- must be `Provider.model-id` format (e.g., `OpenAI.gpt-4o`, `Anthropic.claude-sonnet-4-5`)
-- `modelName` -- the model identifier (e.g., `gpt-4o`)
+- `modelName` -- the model identifier (e.g., `gpt-4o`). **Always pass this in the initial call** — leaving it off produces a variation that displays "NO MODEL" and forces a second PATCH to set it. The field is `modelName`; it is **not** `name` or `model.name` on this endpoint.
 
 **For agent mode**, provide:
 - `instructions` -- a string with the agent's system instructions
@@ -102,7 +104,7 @@ Example completion-mode call:
 ```
 
 **Optional:**
-- `parameters` -- model parameters like `{temperature: 0.7, maxTokens: 2000}`
+- `parameters` -- model parameters like `{temperature: 0.7, max_tokens: 2000}` (match the UI's snake_case keys)
 
 The tool returns the full verified config detail with the variation attached.
 
@@ -125,11 +127,64 @@ If you used `setup-ai-config`, verification is automatic: the response includes 
 3. Instructions or messages are present
 4. Parameters are set
 
+**Use `get-ai-config` for the verification call — do not drop to raw `curl` + `jq`.** The MCP tool returns a typed object you can inspect directly. Hand-rolled `jq` filters against the REST response routinely break: the AI Configs detail endpoint returns the variation list under different keys depending on `expand`, and a filter like `.variations.items[]` will fail with `Cannot index array with string "items"` when the response shape is a bare array. If you must call the REST API, use `jq -e .` first to inspect the actual shape before drilling in.
+
 **Report results:**
 - Config created with correct structure
 - Variation has model assigned
 - Flag any missing model or parameters
 - Provide config URL: `https://app.launchdarkly.com/projects/{projectKey}/ai-configs/{configKey}`
+
+### Step 5: Make the variation servable
+
+`setup-ai-config` and `create-ai-config-variation` create the variation but **do not promote it to fallthrough**. The new config will return `enabled=False` to every consumer until targeting is updated. This is the single most common "I created a config but my SDK still gets the fallback" failure. **The workflow is not complete until this step is done.**
+
+#### What to tell the user
+
+Print this checklist verbatim to the user after Step 4, then wait for confirmation. Do not claim the skill succeeded until the user confirms the fallthrough was flipped.
+
+> ✅ Config and variation are created.
+>
+> 🔴 **The SDK will return `enabled=False` until you flip targeting on.** The fallthrough is currently pointing at an auto-generated disabled variation, not at the `{variationKey}` you just created.
+>
+> **Next step — run `/aiconfig-targeting`** with these inputs:
+> - Project key: `{projectKey}`
+> - Config key: `{configKey}`
+> - Environment key: the env whose SDK key is in your `.env` (usually `test` or `production`)
+> - Fallthrough variation: `{variationKey}` (the one this skill just created)
+>
+> Verify after targeting is flipped by:
+> 1. Opening the AI Config in the LD UI, switching to the correct environment, and confirming "Default rule serves: `{variationName}`" is shown with targeting **On**.
+> 2. Running a quick test: `ai_config = ai_client.{completion|agent}_config(...)` and asserting `ai_config.enabled is True`.
+
+#### Direct shortcut if the user wants to flip targeting without invoking the sibling skill
+
+`aiconfig-targeting` is the canonical path — it handles percentage rollouts, targeted rules, and variation-ID lookups. But for the simplest case ("promote the new variation to fallthrough in one environment"), you can run the underlying semantic PATCH yourself once you know the new variation's `_id`.
+
+Get the variation ID (use `get-ai-config` MCP, or):
+```bash
+curl -s "https://app.launchdarkly.com/api/v2/projects/$PROJECT/ai-configs/$CONFIG_KEY/targeting?env=$ENV" \
+  -H "Authorization: $LD_API_KEY" -H "LD-API-Version: beta" \
+  | jq '.variations[] | {key, _id}'
+```
+
+Flip the fallthrough to point at it:
+```bash
+curl -X PATCH "https://app.launchdarkly.com/api/v2/projects/$PROJECT/ai-configs/$CONFIG_KEY/targeting?env=$ENV" \
+  -H "Authorization: $LD_API_KEY" \
+  -H "Content-Type: application/json; domain-model=launchdarkly.semanticpatch" \
+  -H "LD-API-Version: beta" \
+  -d '{"instructions":[{"kind":"updateFallthroughVariationOrRollout","variationId":"<id-from-step-above>"}]}'
+```
+
+Or the same thing via the LD CLI if it's installed locally:
+```bash
+ldcli resources ai-configs update-ai-config-targeting \
+  --projectKey $PROJECT --configKey $CONFIG_KEY --envKey $ENV \
+  --data '{"instructions":[{"kind":"updateFallthroughVariationOrRollout","variationId":"<id>"}]}'
+```
+
+Do not use `turnTargetingOn` — that semantic-patch instruction does **not** work for AI Configs. `updateFallthroughVariationOrRollout` is the only instruction that actually flips the fallthrough.
 
 ## modelConfigKey Format
 
@@ -156,6 +211,9 @@ The `create-ai-config-variation` tool validates this format and rejects invalid 
 - Don't skip the two-step process (config then variation)
 - Don't try to attach tools during initial creation -- update the variation afterward
 - Don't forget modelConfigKey (models won't show in the UI)
+- Don't omit `modelName` from the initial variation call. It is required at create time; setting it via a follow-up PATCH is a workaround for a bug, not the intended flow. The PATCH field is also `modelName`, not `name`.
+- Don't drop to raw `curl` + `jq` for verification. Use `get-ai-config` (MCP) — it returns a typed object and avoids brittle `jq` filters that break on response-shape variation.
+- Don't consider the workflow complete until the user has been told to run `aiconfig-targeting`. A created variation that isn't promoted to fallthrough returns `enabled=False` to every consumer.
 
 ## Related Skills
 
