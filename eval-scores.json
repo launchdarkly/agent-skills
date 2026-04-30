@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-04-30T07:11:41.830Z",
+  "skills": {
+    "ai-configs/aiconfig-create": {
+      "score": 87,
+      "passed": 4,
+      "total": 5,
+      "status": "failing",
+      "lastCommit": "90fc9b6",
+      "lastRun": "2026-04-30T07:10:12.665Z",
+      "perTest": [
+        {
+          "description": "Creates an agent-mode AI Config via setup-ai-config",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "Creates a completion-mode AI Config with messages array",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "Lists existing configs before creating when context is absent",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "Uses two-step creation with create-ai-config then create-ai-config-variation",
+          "pass": true,
+          "score": 0.917
+        },
+        {
+          "description": "Does not attach tools during initial AI Config creation",
+          "pass": false,
+          "score": 0.444
+        }
+      ]
+    },
+    "ai-configs/aiconfig-update": {
+      "score": 86,
+      "passed": 4,
+      "total": 5,
+      "status": "failing",
+      "lastCommit": "f3f4eb2",
+      "lastRun": "2026-04-30T07:10:14.906Z",
+      "perTest": [
+        {
+          "description": "Checks health and fetches config before updating a variation's model",
+          "pass": true,
+          "score": 0.962
+        },
+        {
+          "description": "Archives a config instead of deleting it",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "Updates config metadata including name, description, and tags",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "Does not delete a config without explicit user confirmation",
+          "pass": false,
+          "score": 0.46
+        },
+        {
+          "description": "Fetches and verifies config after making updates",
+          "pass": true,
+          "score": 0.875
+        }
+      ]
+    },
+    "ai-configs/aiconfig-tools": {
+      "score": 87,
+      "passed": 4,
+      "total": 5,
+      "status": "failing",
+      "lastCommit": "f3f4eb2",
+      "lastRun": "2026-04-30T07:10:19.038Z",
+      "perTest": [
+        {
+          "description": "Creates a tool and attaches it to a variation",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "Uses raw JSON Schema format for tool schema, not OpenAI wrapper",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "Lists existing tools before creating a new one",
+          "pass": false,
+          "score": 0.333
+        },
+        {
+          "description": "Verifies tool creation and attachment via get-ai-config",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "Always creates tools before attempting to attach them",
+          "pass": true,
+          "score": 1
+        }
+      ]
+    },
+    "ai-configs/aiconfig-variations": {
+      "score": 88,
+      "passed": 4,
+      "total": 5,
+      "status": "failing",
+      "lastCommit": "f3f4eb2",
+      "lastRun": "2026-04-30T07:10:22.441Z",
+      "perTest": [
+        {
+          "description": "Clones a variation to test a cheaper model",
+          "pass": true,
+          "score": 0.983
+        },
+        {
+          "description": "Clones a variation to test different instructions",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "Gets config before creating a variation from scratch",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "Does not remove the baseline variation during experimentation",
+          "pass": false,
+          "score": 0.4
+        },
+        {
+          "description": "Uses correct Provider.model-id format for modelConfigKey",
+          "pass": true,
+          "score": 1
+        }
+      ]
+    },
+    "onboarding-router": {
+      "score": 98,
+      "passed": 7,
+      "total": 7,
+      "status": "passing",
+      "lastCommit": null,
+      "lastRun": "2026-04-30T06:43:17.402Z",
+      "perTest": [
+        {
+          "description": "Routes to flags when the user explicitly asks to wrap code in a flag",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "Routes to ai-configs when the user asks about LLM prompt management",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "Routes to experiments when the user wants A/B testing with metrics",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "Routes to observability with a docs-led handoff (no skill exists yet)",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "Picks ai-configs over flags when codebase has heavy LLM usage and request is generic",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "Asks one structured question with all four routes when no signal exists",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "Picks ai-configs as primary but acknowledges flags as secondary when both are mentioned",
+          "pass": true,
+          "score": 0.889
+        }
+      ]
+    }
+  }
+}

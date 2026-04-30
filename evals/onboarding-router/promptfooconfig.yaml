@@ -1,0 +1,442 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+#
+# Run with shared defaults:
+#   promptfoo eval -c ../shared/defaults.yaml -c onboarding-router/promptfooconfig.yaml
+#
+# The onboarding-router skill is a routing dispatcher: it reads the user's
+# stated intent + the simulated codebase context, picks one of four routes
+# (flags / ai-configs / experiments / observability), and hands off to the
+# destination skill.
+#
+# The router SHOULD NOT call any LaunchDarkly MCP write tools - it's a
+# pre-MCP routing layer. Most of the signal is in the response text. We mix
+# deterministic text-pattern checks with llm-rubric for routing-quality.
+#
+# See ../shared/assertions.js for the FIRST/LAST trajectory convention.
+description: "End-to-end evaluation of the onboarding-router skill"
+
+prompts:
+  - file://../../skills/onboarding-router/SKILL.md
+
+providers:
+  - id: file://../providers/claude-skill-agent-sdk.js
+    label: claude-skill-agent-sdk
+    config:
+      skill_slug: onboarding-router
+      # The router runs before MCP setup and must NEVER call any LaunchDarkly
+      # MCP tools (its job is to pick a route, not to do flag/AI Config work).
+      # `expose_mcp_tools: false` removes the LD mock server entirely so the
+      # harness's "use the exposed tools" nudge can't pull the agent toward
+      # tool calls that violate the skill's hard rules.
+      expose_mcp_tools: false
+      # The router is meta - the agent often thinks "the user said 'feature
+      # flag', I can answer this from base knowledge" and never activates the
+      # skill, so the SKILL.md body never reaches the model. We invoke the
+      # skill explicitly via slash command so the body IS loaded; in
+      # production the orchestrator would pick the skill the same way.
+      force_skill_invocation: true
+
+tests:
+  # ------------------------------------------------------------------
+  # Test 1: Stated intent -- Feature Flags. Clear flags signal in
+  # request, generic backend codebase, no AI/observability tilt.
+  # ------------------------------------------------------------------
+  - description: "Routes to flags when the user explicitly asks to wrap code in a flag"
+    vars:
+      user_request: >
+        I want to wrap our checkout button behind a feature flag so we can
+        roll it out gradually. How do I get started with LaunchDarkly?
+      codebase_context: >
+        Next.js 14 app with Express API server. package.json has react,
+        next, express. No LLM SDKs, no OpenTelemetry, no existing
+        LaunchDarkly integration. Project key would be "web-app".
+    assert:
+      - type: javascript
+        value: |
+          const text = (output.response || '').toLowerCase();
+          const mentionsFlagsRoute = /\bflags?\b/.test(text) || /feature flag/.test(text);
+          const mentionsOnboarding = /onboarding/.test(text);
+          const score = (mentionsFlagsRoute ? 0.5 : 0) + (mentionsOnboarding ? 0.5 : 0);
+          return { pass: score >= 0.5, score, reason: 'flagsRoute=' + mentionsFlagsRoute + ' onboardingDest=' + mentionsOnboarding };
+        metric: routes_to_flags
+        weight: 3
+
+      - type: javascript
+        value: |
+          const text = (output.response || '').toLowerCase();
+          const handoffPhrases = ['starting you on', 'going to start', 'kicking off', 'picked', 'chose', 'route you to', 'routing you to', 'hand off to', 'handing off to', 'first step'];
+          const wrongPrimary = ['ai config', 'experiment ', 'observability', 'session replay'];
+          const handoffIdx = handoffPhrases
+            .map((p) => text.indexOf(p))
+            .filter((i) => i >= 0)
+            .sort((a, b) => a - b)[0];
+          if (handoffIdx === undefined) {
+            return { pass: true, score: 1, reason: 'no explicit handoff phrase to inspect (rubric will catch routing quality)' };
+          }
+          const window = text.slice(handoffIdx, handoffIdx + 80);
+          const wrongInWindow = wrongPrimary.filter((w) => window.includes(w));
+          const pass = wrongInWindow.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'Handoff window mentions flags, not other surfaces' : 'Handoff window points at wrong surface: ' + wrongInWindow.join(', ') };
+        metric: handoff_targets_flags
+        weight: 2
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const writeTools = ['create-flag', 'setup-ai-config', 'create-ai-config', 'create-ai-config-variation', 'update-flag', 'toggle-flag', 'create-metric'];
+          const violations = writeTools.filter((t) => tools.includes(t));
+          const pass = violations.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'No write tools called (router only routes)' : 'Called write tools: ' + violations.join(', ') };
+        metric: no_write_tools
+        weight: 3
+
+      - type: llm-rubric
+        value: |
+          The user asked to wrap a checkout button behind a feature flag. The router skill
+          should pick the flags route and hand off to the onboarding skill.
+          Evaluate:
+          1. Did the router pick the flags / Feature Flags route as the primary route?
+          2. Did it mention handing off to the `onboarding` skill (or equivalent install / setup language)?
+          3. Did it explain the routing decision in one or two sentences (not paste the whole decision tree)?
+          4. Did it avoid trying to do flag creation / SDK install itself (router stops at the handoff)?
+          5. Did it avoid asking a clarifying question (the intent was clear)?
+          Score 1.0 if all criteria are met, deduct 0.2 for each missed criterion.
+        metric: routing_quality
+        weight: 2
+
+  # ------------------------------------------------------------------
+  # Test 2: Stated intent -- AI Configs. Clear LLM/prompt signal in
+  # request, codebase confirms.
+  # ------------------------------------------------------------------
+  - description: "Routes to ai-configs when the user asks about LLM prompt management"
+    vars:
+      user_request: >
+        We have a customer support chatbot built on OpenAI and we want to
+        manage our prompts and model selection in LaunchDarkly so the
+        product team can iterate without redeploys. Where do we start?
+      codebase_context: >
+        Python FastAPI backend. requirements.txt includes openai,
+        anthropic, fastapi. Multiple files call client.chat.completions.create
+        with hardcoded system prompts. No existing LaunchDarkly SDK.
+    assert:
+      - type: javascript
+        value: |
+          const text = (output.response || '').toLowerCase();
+          const mentionsAiRoute = /ai[\s-]?config/.test(text);
+          const mentionsCreate = /aiconfig-create|create.*ai.?config|setup-ai-config/.test(text);
+          const score = (mentionsAiRoute ? 0.5 : 0) + (mentionsCreate ? 0.5 : 0);
+          return { pass: score >= 0.5, score, reason: 'aiConfigRoute=' + mentionsAiRoute + ' createDest=' + mentionsCreate };
+        metric: routes_to_ai_configs
+        weight: 3
+
+      - type: javascript
+        value: |
+          const text = (output.response || '').toLowerCase();
+          const mentionsTargeting = /aiconfig-targeting|targeting|servable|fallthrough|disabled|enabled.*false|second step|follow[- ]?up/.test(text);
+          return { pass: mentionsTargeting, score: mentionsTargeting ? 1 : 0, reason: mentionsTargeting ? 'Surfaced the targeting / servability follow-up' : 'Did not warn about the post-create targeting step' };
+        metric: surfaces_targeting_followup
+        weight: 2
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const writeTools = ['create-flag', 'setup-ai-config', 'create-ai-config', 'create-ai-config-variation'];
+          const violations = writeTools.filter((t) => tools.includes(t));
+          const pass = violations.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'No write tools called' : 'Called write tools: ' + violations.join(', ') };
+        metric: no_write_tools
+        weight: 3
+
+      - type: llm-rubric
+        value: |
+          The user has an LLM-based chatbot and explicitly asked to manage prompts in
+          LaunchDarkly. The router should pick the ai-configs route and hand off to
+          aiconfig-create.
+          Evaluate:
+          1. Did the router pick the ai-configs route as the primary route?
+          2. Did it identify the destination skill (aiconfig-create) and mention handing off?
+          3. Did it surface the critical follow-up about targeting (config not servable on creation)?
+          4. Did it briefly explain why ai-configs fits (LLM/prompt-management framing)?
+          5. Did it avoid trying to create the AI Config itself (router stops at the handoff)?
+          Score 1.0 if all criteria are met, deduct 0.2 for each missed criterion.
+        metric: routing_quality
+        weight: 2
+
+  # ------------------------------------------------------------------
+  # Test 3: Stated intent -- Experiments. User wants to A/B test.
+  # ------------------------------------------------------------------
+  - description: "Routes to experiments when the user wants A/B testing with metrics"
+    vars:
+      user_request: >
+        I want to run an A/B test on a new pricing page design and measure
+        the impact on conversion. Set me up with the LaunchDarkly path for
+        experimentation.
+      codebase_context: >
+        React + Node monorepo. package.json has @segment/analytics-node and
+        amplitude (already tracking events). No LLM dependencies. No
+        existing LaunchDarkly integration. Project key would be "marketing".
+    assert:
+      - type: javascript
+        value: |
+          const text = (output.response || '').toLowerCase();
+          const mentionsExperiments = /experiment/.test(text);
+          const mentionsMetrics = /metric/.test(text);
+          const score = (mentionsExperiments ? 0.5 : 0) + (mentionsMetrics ? 0.5 : 0);
+          return { pass: score >= 0.5, score, reason: 'experiments=' + mentionsExperiments + ' metrics=' + mentionsMetrics };
+        metric: routes_to_experiments
+        weight: 3
+
+      - type: javascript
+        value: |
+          const text = (output.response || '').toLowerCase();
+          const mentionsMultiSkill = /multi[- ]?(step|skill)|composed?|several|few skills|two skills|3 (skills|steps)|4 (skills|steps)|first step|then/.test(text);
+          const mentionsFlagOrAiCreate = /flag-create|launchdarkly-flag-create|create.*flag|aiconfig-create/.test(text);
+          const mentionsMetricSkills = /metric-choose|metric-create|metric-instrument|launchdarkly-metric/.test(text);
+          const evidence = (mentionsMultiSkill ? 1 : 0) + (mentionsFlagOrAiCreate ? 1 : 0) + (mentionsMetricSkills ? 1 : 0);
+          const score = evidence / 3;
+          return { pass: score >= 2/3, score, reason: 'multi=' + mentionsMultiSkill + ' flagOrAi=' + mentionsFlagOrAiCreate + ' metricSkills=' + mentionsMetricSkills };
+        metric: explains_composed_path
+        weight: 2
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const writeTools = ['create-flag', 'create-metric', 'setup-ai-config'];
+          const violations = writeTools.filter((t) => tools.includes(t));
+          const pass = violations.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'No write tools called' : 'Called write tools: ' + violations.join(', ') };
+        metric: no_write_tools
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The user asked to A/B test a pricing page. The router should pick the
+          experiments route, but honestly note that experimentation is a multi-skill
+          path (flag-create + metric-choose + metric-create + metric-instrument) since
+          there is no single experiments-onboarding skill yet.
+          Evaluate:
+          1. Did the router pick the experiments route as the primary route?
+          2. Did it explain that this is a multi-skill / composed path, not a single skill?
+          3. Did it name the relevant downstream skills (flag-create or aiconfig-create + metric skills)?
+          4. Did it avoid pretending a single experiments-onboarding skill exists?
+          5. Did it stop at the handoff (not try to create the flag or metric itself)?
+          Score 1.0 if all criteria are met, deduct 0.2 for each missed criterion.
+        metric: routing_quality
+        weight: 2
+
+  # ------------------------------------------------------------------
+  # Test 4: Stated intent -- Observability. Honest about no skill yet.
+  # ------------------------------------------------------------------
+  - description: "Routes to observability with a docs-led handoff (no skill exists yet)"
+    vars:
+      user_request: >
+        I want to add session replay and error tracking to our React app
+        using LaunchDarkly Observability. How do I onboard?
+      codebase_context: >
+        Vite + React frontend. package.json has react, react-router,
+        @sentry/react (currently using Sentry). No existing LaunchDarkly
+        integration. They want to migrate to LD observability.
+    assert:
+      - type: javascript
+        value: |
+          const text = (output.response || '').toLowerCase();
+          const mentionsObservability = /observability|session replay|error track/.test(text);
+          return { pass: mentionsObservability, score: mentionsObservability ? 1 : 0, reason: 'observability mentioned: ' + mentionsObservability };
+        metric: routes_to_observability
+        weight: 3
+
+      - type: javascript
+        value: |
+          const text = (output.response || '').toLowerCase();
+          const isHonest = /no (dedicated )?(onboarding )?skill|no skill (exists|yet)|docs[- ]?led|doesn'?t (have|exist)|not (yet|available)|walk you through|manual|docs link|launchdarkly\.com\/docs|documentation/.test(text);
+          return { pass: isHonest, score: isHonest ? 1 : 0, reason: isHonest ? 'Honestly noted docs-led / no-skill-yet' : 'Did not acknowledge that no observability-onboarding skill exists' };
+        metric: honest_about_stub
+        weight: 2
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const pass = tools.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'No tools called (correct -- observability path is docs-led)' : 'Tools called: ' + tools.join(', ') };
+        metric: no_tools_called
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The user asked about session replay + error tracking via LaunchDarkly Observability.
+          There is no observability-onboarding skill in this repo yet. The router should
+          pick the observability route and honestly tell the user this path is currently
+          docs-led, not skill-led.
+          Evaluate:
+          1. Did the router pick the observability route?
+          2. Did it honestly note that no agent-driven onboarding skill exists for this surface?
+          3. Did it offer to walk through docs / point at the LaunchDarkly Observability docs?
+          4. Did it identify the user's stack (React) so the right SDK install page can be linked?
+          5. Did it stop at the handoff and avoid pretending to install observability itself?
+          Score 1.0 if all criteria are met, deduct 0.2 for each missed criterion.
+        metric: routing_quality
+        weight: 2
+
+  # ------------------------------------------------------------------
+  # Test 5: Codebase tilts to AI Configs even when stated intent is generic.
+  # ------------------------------------------------------------------
+  - description: "Picks ai-configs over flags when codebase has heavy LLM usage and request is generic"
+    vars:
+      user_request: >
+        Help me get started with LaunchDarkly.
+      codebase_context: >
+        Python service that's basically an LLM agent. requirements.txt:
+        openai, anthropic, langchain, fastapi. 80% of the code calls
+        client.chat.completions.create or messages.create with hardcoded
+        system prompts. No frontend, no existing LaunchDarkly integration.
+        Project key would be "ai-agent".
+    assert:
+      - type: javascript
+        value: |
+          const text = (output.response || '').toLowerCase();
+          const mentionsAi = /ai[\s-]?config/.test(text);
+          return { pass: mentionsAi, score: mentionsAi ? 1 : 0, reason: 'ai-configs mentioned: ' + mentionsAi };
+        metric: routes_to_ai_configs
+        weight: 3
+
+      - type: javascript
+        value: |
+          const text = (output.response || '').toLowerCase();
+          const explainsCodebaseSignal = /openai|anthropic|llm|prompt|ai (call|usage|code)|your code/.test(text);
+          return { pass: explainsCodebaseSignal, score: explainsCodebaseSignal ? 1 : 0, reason: explainsCodebaseSignal ? 'Cited codebase signal' : 'Did not justify the route from codebase signal' };
+        metric: cites_codebase_signal
+        weight: 2
+
+      - type: javascript
+        value: |
+          const text = (output.response || '').toLowerCase();
+          const mentionsSwitch = /if you'?d rather|if you (want|prefer)|switch (tracks|to|paths)|change (track|path)|or (we can|i can)|happy to/.test(text);
+          return { pass: mentionsSwitch, score: mentionsSwitch ? 1 : 0, reason: mentionsSwitch ? 'Offered a switch path (Branch B requirement)' : 'Did not offer to switch tracks' };
+        metric: offers_switch
+        weight: 1
+
+      - type: llm-rubric
+        value: |
+          The user gave a generic "help me get started" request, but the codebase is
+          dominated by LLM code (openai, anthropic, langchain). Per Branch B in the router
+          SKILL.md, the agent should:
+          1. Recognize the codebase tilt and pick ai-configs as the primary route.
+          2. Tell the user what was found in the codebase (LLM usage) and why that drove the choice.
+          3. Offer one sentence about how to switch (e.g. "say so and I'll switch to flags").
+          4. Hand off to aiconfig-create as the destination.
+          Score 1.0 if all four behaviors are present, deduct 0.25 for each missed.
+        metric: routing_quality
+        weight: 2
+
+  # ------------------------------------------------------------------
+  # Test 6: No signal at all -> agent must ask one question with four options.
+  # ------------------------------------------------------------------
+  - description: "Asks one structured question with all four routes when no signal exists"
+    vars:
+      user_request: >
+        Onboard me to LaunchDarkly.
+      codebase_context: ""
+    assert:
+      - type: javascript
+        value: |
+          const text = (output.response || '').toLowerCase();
+          const mentions = {
+            flags: /\b(feature )?flags?\b/.test(text),
+            ai: /ai[\s-]?config/.test(text),
+            experiments: /experiment/.test(text),
+            observability: /observability|session replay/.test(text),
+          };
+          const count = Object.values(mentions).filter(Boolean).length;
+          const pass = count >= 4;
+          return { pass, score: pass ? 1 : count / 4, reason: 'mentions: ' + JSON.stringify(mentions) + ' count=' + count };
+        metric: presents_all_four_options
+        weight: 3
+
+      - type: javascript
+        value: |
+          const text = (output.response || '');
+          const isQuestion = /\?/.test(text);
+          const hasOptions = /(\n[\d\-\*•] |\n\s*[\d]+\.)/.test(text) || /option[s]?:/i.test(text);
+          const score = (isQuestion ? 0.5 : 0) + (hasOptions ? 0.5 : 0);
+          return { pass: score >= 0.5, score, reason: 'isQuestion=' + isQuestion + ' hasOptions=' + hasOptions };
+        metric: asks_a_question
+        weight: 3
+
+      - type: javascript
+        value: |
+          const text = (output.response || '').toLowerCase();
+          const guessedADefault = /going to start|handing off|chose|picked|first step is|let'?s (begin|start) with/.test(text)
+            && !/which (would|do you|of these)/.test(text);
+          return { pass: !guessedADefault, score: guessedADefault ? 0 : 1, reason: guessedADefault ? 'Guessed a default route instead of asking' : 'Did not silently guess a default' };
+        metric: did_not_silently_guess
+        weight: 3
+
+      - type: llm-rubric
+        value: |
+          The user said "Onboard me to LaunchDarkly" with no codebase context and no
+          stated surface. Per Branch D in the router SKILL.md, the agent must ask one
+          structured question listing all four routes (Feature Flags, AI Configs,
+          Experiments, Observability) and stop -- it should NOT pick a default.
+          Evaluate:
+          1. Did the agent ask exactly one question?
+          2. Did the question include all four routes as labeled options?
+          3. Did it stop and wait, rather than picking a default and starting work?
+          4. Was the question short and conversational (not a copy-paste of the decision tree)?
+          Score 1.0 if all four are met, deduct 0.25 for each missed.
+        metric: branch_d_question_quality
+        weight: 2
+
+  # ------------------------------------------------------------------
+  # Test 7: User mentions multiple surfaces - precedence picks ai-configs
+  # but agent must call out the secondary.
+  # ------------------------------------------------------------------
+  - description: "Picks ai-configs as primary but acknowledges flags as secondary when both are mentioned"
+    vars:
+      user_request: >
+        We have an AI chatbot we want to manage in LaunchDarkly, and we
+        also want to gate the new chat UI behind a feature flag. Where do
+        I start?
+      codebase_context: >
+        Next.js app with @anthropic-ai/sdk and openai. No existing
+        LaunchDarkly integration. Project key would be "support-app".
+    assert:
+      - type: javascript
+        value: |
+          const text = (output.response || '').toLowerCase();
+          const mentionsAiPrimary = /ai[\s-]?config/.test(text);
+          const acknowledgesFlags = /\bflag/.test(text);
+          const score = (mentionsAiPrimary ? 0.5 : 0) + (acknowledgesFlags ? 0.5 : 0);
+          return { pass: score >= 1, score, reason: 'aiPrimary=' + mentionsAiPrimary + ' acksFlags=' + acknowledgesFlags };
+        metric: routes_primary_acknowledges_secondary
+        weight: 3
+
+      - type: javascript
+        value: |
+          const text = (output.response || '').toLowerCase();
+          const orderingPattern = /(start|primary|first|going to|beginning)[^.]*ai[\s-]?config/;
+          const flagsAfterAi = (() => {
+            const aiIdx = text.search(/ai[\s-]?config/);
+            const flagsIdx = text.search(/(?:noticed|also|after|secondary|once|then|come back|next)[^.]*flag/);
+            return aiIdx >= 0 && flagsIdx > aiIdx;
+          })();
+          const score = (orderingPattern.test(text) ? 0.5 : 0) + (flagsAfterAi ? 0.5 : 0);
+          return { pass: score >= 0.5, score, reason: 'aiPrimaryOrder=' + orderingPattern.test(text) + ' flagsAsSecondary=' + flagsAfterAi };
+        metric: precedence_ordering
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The user mentioned both AI Configs ("AI chatbot we want to manage") and feature
+          flags ("gate the new chat UI behind a feature flag"). Per the router SKILL.md
+          Branch C, when multiple surfaces are mentioned the agent should pick AI Configs
+          first (precedence: ai-configs > flags > experiments > observability) and call
+          out flags as a secondary surface to come back for.
+          Evaluate:
+          1. Did the agent pick ai-configs as the primary route (not flags)?
+          2. Did it acknowledge the flags request as a secondary surface they can come back for?
+          3. Did it briefly explain the choice (e.g. "I'll start with AI Configs since that's
+             the highest-leverage starting point for an AI app")?
+          4. Did it hand off cleanly without trying to do both at once?
+          Score 1.0 if all four are met, deduct 0.25 for each missed.
+        metric: precedence_quality
+        weight: 2

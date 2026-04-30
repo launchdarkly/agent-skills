@@ -1,0 +1,253 @@
+name: Skill Evals
+
+# Diff-gated evaluation runner for the public-facing skills under skills/.
+#
+# Triggers:
+#   - pull_request:  comment score diff vs main; do not commit anything.
+#   - schedule:      nightly run on changed skills, commit refreshed
+#                    eval-scores.json + per-skill README badges back to main.
+#   - workflow_dispatch: manual full or partial re-run.
+#
+# Cost shape: only suites whose source has actually changed (per
+# evals/scripts/diff-changed-skills.js) get re-evaluated, so a typical PR
+# touching one skill costs roughly one suite's worth of API tokens.
+
+on:
+  pull_request:
+    paths:
+      - "skills/**"
+      - "evals/**"
+      - ".github/workflows/eval-skills.yml"
+  schedule:
+    # 09:17 UTC daily - off the hour to avoid lining up with API rate limits.
+    - cron: "17 9 * * *"
+  workflow_dispatch:
+    inputs:
+      run_all:
+        description: "Re-run every suite regardless of diff"
+        type: boolean
+        default: false
+
+concurrency:
+  group: skill-evals-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  # contents: write is needed only on `schedule` / `workflow_dispatch` so the
+  # aggregate job can push the refreshed eval-scores.json and per-skill README
+  # badges back to main. Pull requests use the same workflow but the commit
+  # step is gated on event_name, so PR runs effectively only need read.
+  contents: write
+  pull-requests: write
+
+jobs:
+  diff:
+    name: "Compute changed suites"
+    runs-on: ubuntu-latest
+    outputs:
+      slugs: ${{ steps.compute.outputs.slugs }}
+      has_changes: ${{ steps.compute.outputs.has_changes }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute changed suites
+        id: compute
+        run: |
+          if [[ "${{ inputs.run_all }}" == "true" ]]; then
+            slugs="$(node evals/scripts/diff-changed-skills.js --json)"
+            # run_all overrides: list every suite
+            slugs="$(node -e 'const m=require("./evals/scripts/_manifest");process.stdout.write(JSON.stringify(m.SUITES.map(s=>s.suite)))')"
+          else
+            slugs="$(node evals/scripts/diff-changed-skills.js --json --verbose)"
+          fi
+          echo "slugs=${slugs}" >> "$GITHUB_OUTPUT"
+          if [[ "${slugs}" == "[]" ]]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Changed suites: ${slugs}"
+
+  evaluate:
+    name: "Evaluate ${{ matrix.suite }}"
+    needs: diff
+    if: needs.diff.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        suite: ${{ fromJson(needs.diff.outputs.slugs) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: evals/package-lock.json
+
+      - name: Install eval dependencies
+        run: npm ci
+        working-directory: evals
+
+      - name: Run eval suite
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AGENT_MODEL: ${{ vars.AGENT_MODEL || 'claude-sonnet-4-20250514' }}
+          RUBRIC_MODEL: ${{ vars.RUBRIC_MODEL || 'anthropic:messages:claude-haiku-4-5-20251001' }}
+        run: node scripts/aggregate.js --run --only=${{ matrix.suite }}
+        working-directory: evals
+
+      - name: Upload suite results
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-${{ matrix.suite }}
+          path: evals/${{ matrix.suite }}/results.json
+          retention-days: 14
+
+  aggregate:
+    name: "Aggregate scores"
+    needs: [diff, evaluate]
+    if: needs.diff.outputs.has_changes == 'true' && always() && needs.evaluate.result != 'cancelled'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install eval dependencies
+        run: npm ci
+        working-directory: evals
+
+      - name: Download all suite results
+        uses: actions/download-artifact@v4
+        with:
+          path: artifact-results
+          pattern: results-*
+          merge-multiple: false
+
+      - name: Stage suite results into evals/<suite>/results.json
+        run: |
+          set -e
+          shopt -s nullglob
+          for d in artifact-results/results-*; do
+            name=$(basename "$d" | sed 's/^results-//')
+            mkdir -p "evals/$name"
+            if [[ -f "$d/results.json" ]]; then
+              cp "$d/results.json" "evals/$name/results.json"
+              echo "Staged evals/$name/results.json"
+            fi
+          done
+
+      - name: Save previous eval-scores.json for diff
+        run: |
+          if [[ -f eval-scores.json ]]; then
+            cp eval-scores.json /tmp/eval-scores-before.json
+          else
+            echo '{"schemaVersion":1,"updatedAt":null,"skills":{}}' > /tmp/eval-scores-before.json
+          fi
+
+      - name: Aggregate
+        env:
+          SUITES_JSON: ${{ needs.diff.outputs.slugs }}
+        run: |
+          slugs=$(echo "$SUITES_JSON" | node -e 'let s="";process.stdin.on("data",c=>s+=c);process.stdin.on("end",()=>{const a=JSON.parse(s);process.stdout.write(a.join(","))})')
+          if [[ -z "$slugs" ]]; then
+            echo "No suites to aggregate"
+            exit 0
+          fi
+          node scripts/aggregate.js --only="$slugs"
+        working-directory: evals
+
+      - name: Render README badges
+        run: node evals/scripts/render-badges.js
+
+      - name: PR comment with score diff
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          BEFORE_PATH: /tmp/eval-scores-before.json
+          AFTER_PATH: ${{ github.workspace }}/eval-scores.json
+        with:
+          script: |
+            const fs = require('node:fs');
+            const path = require('node:path');
+            const before = JSON.parse(fs.readFileSync(process.env.BEFORE_PATH, 'utf-8'));
+            const after = JSON.parse(fs.readFileSync(process.env.AFTER_PATH, 'utf-8'));
+            const lines = [
+              '<!-- skill-evals-comment -->',
+              '## Skill eval results',
+              '',
+              '| Skill | Before | After | Δ |',
+              '|-------|-------:|------:|----:|',
+            ];
+            const keys = new Set([
+              ...Object.keys(before.skills || {}),
+              ...Object.keys(after.skills || {}),
+            ]);
+            for (const key of [...keys].sort()) {
+              const b = (before.skills || {})[key];
+              const a = (after.skills || {})[key];
+              if (!a) continue;
+              const beforeStr = b && b.score !== null ? `${b.score}/100 (${b.passed}/${b.total})` : '-';
+              const afterStr = a.score !== null ? `${a.score}/100 (${a.passed}/${a.total})` : 'errored';
+              const delta = (b && b.score !== null && a.score !== null)
+                ? (a.score - b.score === 0 ? 'no change' : (a.score - b.score > 0 ? `+${a.score - b.score}` : `${a.score - b.score}`))
+                : 'new';
+              lines.push(`| \`${key}\` | ${beforeStr} | ${afterStr} | ${delta} |`);
+            }
+            lines.push('');
+            lines.push('_Only suites whose source actually changed since their last recorded score were re-run. Soft-failing while we stabilise the baseline._');
+            const body = lines.join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find((c) => c.body && c.body.startsWith('<!-- skill-evals-comment -->'));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Commit refreshed scores and badges
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: |
+          if git diff --quiet eval-scores.json skills/; then
+            echo "No score or badge changes to commit"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add eval-scores.json
+          git add skills/**/README.md
+          git commit -m "chore(evals): refresh eval-scores.json and README badges"
+          git push origin HEAD:${{ github.ref_name }}

@@ -35,6 +35,17 @@ This skill requires the remotely hosted LaunchDarkly MCP server to be configured
 
 ## Workflow
 
+### Step 0 — Always check this first (no-stop-after-listing guard)
+
+If the user's first message asks you to "check what tools already exist", "list existing tools first", or similar, that phrasing is a **safety check to avoid duplicate keys**, not a request for permission. The required action sequence in this skill is:
+
+1. Call `list-ai-tools` (always your first call when asked to check)
+2. **In the same turn, without stopping**, call `create-ai-tool` with a schema you infer from the user's description (see the table further down for examples)
+3. (If applicable) call `update-ai-config-variation` to attach the new tool
+4. (Optionally) `get-ai-config` to verify
+
+If your trajectory ends after just `list-ai-tools` and your reply asks "Would you like me to create it? What parameters should it have?" — that is a failure mode. The user already said yes when they asked you to do the work; pick a sensible schema and proceed.
+
 ### Step 1: Identify Needed Capabilities
 
 What should the AI be able to do?
@@ -48,7 +59,23 @@ If the user asks to check existing tools first, or you have no codebase context 
 3. `update-ai-config-variation` -- attach it
 4. `get-ai-config` -- verify
 
-Call `list-ai-tools` as your **first** tool call before any creation. Never stop after listing alone -- always proceed through all four steps.
+Call `list-ai-tools` as your **first** tool call before any creation. Never stop after listing alone -- always proceed through all four steps in a single pass.
+
+### Stop-after-listing is the most common failure of this skill
+
+If the user described what the tool should do ("looking up customer orders", "creating a ticket", "fetching weather"), you have enough context to design a minimal schema and create it now. **Do not stop after `list-ai-tools` to ask the user to enumerate parameters.** Pick a 1–3 property schema that fits the description, name them with obvious types (string, integer, boolean, enum), and proceed.
+
+**"Before creating it, check what tools already exist" does NOT mean "list, then stop and ask".** It means "list first, then create in the same turn." The user is asking you to avoid duplicate keys, not to seek permission. After listing, immediately call `create-ai-tool` with the inferred schema — do not ask "Would you like me to create it? What parameters should it have?" before that call.
+
+Examples of how to translate a sparse user description into an immediate schema:
+
+| User said | Tool key | Minimal schema |
+|-----------|----------|----------------|
+| "looking up customer orders" | `lookup-customer-orders` | `{ properties: { customerId: { type: "string", description: "Customer ID or email" }, limit: { type: "integer", default: 10 } }, required: ["customerId"] }` |
+| "creating a support ticket" | `create-ticket` | `{ properties: { title: {type: "string"}, priority: {type: "string", enum: ["low","medium","high"]}, description: {type: "string"} }, required: ["title", "priority"] }` |
+| "fetching the weather" | `fetch-weather` | `{ properties: { location: {type: "string", description: "City name or lat,lon"} }, required: ["location"] }` |
+
+When you create with inferred parameters, mention them in your final reply so the user can refine them in a follow-up — that's a much better experience than asking 3 questions before doing anything.
 
 ### Step 2: Create Tools
 

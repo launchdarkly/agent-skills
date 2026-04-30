@@ -32,9 +32,61 @@ This skill requires the remotely hosted LaunchDarkly MCP server to be configured
 
 ## Important: Bias Towards Action
 
-When the user provides enough context (use case, model, mode), proceed through the entire workflow without stopping to ask for details you can infer. Use reasonable defaults for unspecified fields: `default` for variation key, the use case as the basis for instructions/messages, kebab-case for config keys. Complete all steps (create + verify) in one pass.
+When the user names a use case (e.g. "summarization", "support chatbot", "product descriptions"), that alone is enough context to proceed through the entire workflow. Do not stop to ask follow-up questions for fields you can fill in with the defaults below. Complete create + verify in one pass and surface the choices you made in your final reply so the user can correct any of them with a follow-up message.
+
+### Defaults for under-specified fields
+
+When the user does not name a particular field, fill it in from this table rather than asking:
+
+| Field | Default when unspecified |
+|-------|--------------------------|
+| `mode` | `completion` (it's the more flexible default; switch to `agent` only if the user names an agent framework like LangGraph / CrewAI / Strands or says "agent") |
+| `modelConfigKey` | `OpenAI.gpt-4o-mini` (cheap, capable, broadly compatible) |
+| `modelName` | `gpt-4o-mini` |
+| `parameters` | `{ "temperature": 0.7 }` for general use, `{ "temperature": 0.3 }` if the use case is summarization / extraction / classification |
+| `instructions` (agent mode) | A 2–3 sentence draft derived from the use case |
+| `messages` (completion mode) | One system message with a 2–3 sentence draft derived from the use case |
+| `key` | kebab-case derived from the use case (e.g. "summarization feature" → `content-summarizer`) |
+| `name` | Title-case version of the key |
+| `variationKey` | `default` |
+| `variationName` | `Default` |
+
+### When it IS okay to ask
+
+Only ask a clarifying question if one of these is true:
+
+1. The user named a constraint that conflicts with the defaults and didn't resolve it (e.g. "use one of our existing approved models for compliance" without telling you which models qualify).
+2. The user explicitly asked you to confirm before creating.
+
+In every other case — including when the user says "I'm not sure", "I don't know which mode/model/key to pick", or "let's do this step by step" — apply the defaults table and proceed. "I'm not sure" is not a question to bounce back to the user; it's a signal to use the defaults and report what you chose. **"Step by step" means "execute the workflow in order in a single pass", not "pause between each step to ask for confirmation".**
+
+### Tools belong to a separate skill — non-negotiable
+
+This skill **never** calls `create-ai-tool` and **never** passes `tools: [...]` to `setup-ai-config` or `create-ai-config-variation`. Period. Forbidden tool calls in this skill:
+
+- `create-ai-tool` → forbidden
+- `setup-ai-config` with `tools` field populated → forbidden (omit the `tools` field entirely)
+- `create-ai-config-variation` with `tools` field populated → forbidden
+
+This is true even when the user names the tools their agent will need ("search the knowledge base", "create tickets", "fetch weather"). When you see those phrases, your action is:
+
+1. Create the config and variation with **no** `tools` field.
+2. In your final reply, say something like: "I left tool attachment for the next step — run `/aiconfig-tools` (or just ask) to create and attach `<tool-name-1>` and `<tool-name-2>`."
+
+Do not try to "save the user a turn" by attaching tools at create time. The skill that creates tools (`aiconfig-tools`) is owned separately because tool creation has its own validation, error modes, and confirmation steps. Bundling them here breaks that separation.
 
 ## Workflow
+
+### Step 0 — Always check this first (no-tool-creation guard)
+
+Before anything else: scan the user's first message for descriptions of tool functionality the agent will eventually need — phrases like "search the knowledge base", "create a ticket", "fetch weather", "look up X", "query the database", "send an email".
+
+If you see any such phrase, **do not** call `create-ai-tool` and **do not** include `tools: [...]` in your `setup-ai-config` / `create-ai-config-variation` call. Instead:
+
+1. Create the config + first variation with **no** `tools` field.
+2. In your final reply, list the tools the user mentioned and say something like: "I'll handle tool creation as a follow-up — say 'add the tools' and I'll create `<tool-name-1>` and `<tool-name-2>` and attach them."
+
+If your planned trajectory contains `create-ai-tool` or a `tools` field on a write call, your reasoning is wrong — drop those and proceed without tools. Tool creation lives in the separate `aiconfig-tools` skill, and bundling it here breaks the separation.
 
 ### Step 1: Understand the Use Case
 
@@ -114,9 +166,11 @@ If the user asks for more control or a step-by-step approach, use the individual
 
 1. `create-ai-config` -- create the config shell
 2. `create-ai-config-variation` -- add the variation with model, prompts, and parameters
-3. `get-ai-config` -- verify the result
+3. `get-ai-config` -- verify the result (this call is **not** optional)
 
-**Execute all three steps without stopping to ask for details.** Infer the variation key (`default`), name (`Default`), instructions/messages, and model from the user's request context. If the user asked for GPT-4o agent mode, you have enough to complete the entire flow. Only ask clarifying questions if the mode or model is truly ambiguous.
+**Execute all three steps in a single pass without stopping to ask for details.** Infer the variation key (`default`), name (`Default`), instructions/messages, and model from the user's request context. If the user asked for GPT-4o agent mode, you have enough to complete the entire flow. Only ask clarifying questions if the mode or model is truly ambiguous.
+
+**Step 3 (the `get-ai-config` call) is mandatory regardless of how convincing the create response looks.** The two write tools may return what looks like a complete object, but only `get-ai-config` confirms the config was actually persisted with both the shell and variation linked. Skipping this step is a workflow violation — make the call even when you "feel" the previous responses already showed everything.
 
 ### Step 4: Verify
 

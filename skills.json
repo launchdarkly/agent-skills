@@ -227,6 +227,25 @@
       ]
     },
     {
+      "name": "onboarding-router",
+      "description": "Pick the right LaunchDarkly onboarding path (Feature Flags, AI Configs, Experiments, or Observability) before any product-specific setup runs. Routes based on stated intent and codebase signals; asks one structured question only when no signal exists.",
+      "path": "skills/onboarding-router",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Works on any MCP-capable coding agent. No LaunchDarkly account or API token needed for routing itself; the path you hand off to may require one.",
+      "tags": [
+        "launchdarkly",
+        "onboarding",
+        "router",
+        "dispatch",
+        "feature-flags",
+        "ai-configs",
+        "experiments",
+        "observability",
+        "getting-started"
+      ]
+    },
+    {
       "name": "plan",
       "description": "Generate a minimal LaunchDarkly SDK integration plan from detected stack: choose SDK type(s), dual-SDK server+client when required, files to change, env conventions. Nested under sdk-install; follows detect, precedes apply.",
       "path": "skills/onboarding/sdk-install/plan",

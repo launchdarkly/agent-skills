@@ -1,0 +1,273 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+#
+# Run with shared defaults:
+#   promptfoo eval -c ../shared/defaults.yaml -c aiconfig-tools/promptfooconfig.yaml
+description: "End-to-end evaluation of the aiconfig-tools skill"
+
+prompts:
+  - file://../../skills/ai-configs/aiconfig-tools/SKILL.md
+
+providers:
+  - id: file://../providers/claude-skill-agent-sdk.js
+    label: claude-skill-agent-sdk
+    config:
+      skill_slug: aiconfig-tools
+
+tests:
+  # ------------------------------------------------------------------
+  # Test 1: Create tool and attach to variation
+  # ------------------------------------------------------------------
+  - description: "Creates a tool and attaches it to a variation"
+    vars:
+      user_request: >
+        I need to give our support-chatbot AI Config the ability to search our
+        knowledge base. Create a tool called "search-knowledge-base" with a
+        query parameter and a limit parameter, then attach it to the "default"
+        variation. Project key is "support-app".
+      codebase_context: >
+        The codebase uses the LaunchDarkly Python AI SDK. The support-chatbot
+        config is in agent mode. Config key is "support-chatbot".
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const createIdx = tools.indexOf('create-ai-tool');
+          const attachIdx = tools.lastIndexOf('update-ai-config-variation');
+          const pass = createIdx >= 0 && attachIdx > createIdx;
+          return { pass, score: pass ? 1 : 0, reason: 'create-ai-tool@' + createIdx + ' update-ai-config-variation@' + attachIdx };
+        metric: create_before_attach
+        weight: 3
+
+      - type: javascript
+        value: |
+          const call = (output.trajectory || []).find(t => t.tool === 'create-ai-tool');
+          if (!call) return { pass: false, score: 0, reason: 'No create-ai-tool call found' };
+          const schema = call.arguments.schema || {};
+          const isRawSchema = schema.type === 'object' && typeof schema.properties === 'object';
+          const noWrapper = schema.function === undefined;
+          const pass = isRawSchema && noWrapper;
+          return { pass, score: pass ? 1 : 0, reason: 'type=' + schema.type + ' hasProperties=' + !!schema.properties + ' noWrapper=' + noWrapper };
+        metric: raw_json_schema
+        weight: 3
+
+      - type: javascript
+        value: |
+          const call = (output.trajectory || []).find(t => t.tool === 'update-ai-config-variation');
+          if (!call) return { pass: false, score: 0, reason: 'No update-ai-config-variation call found' };
+          const tools = call.arguments.tools || [];
+          const pass = Array.isArray(tools) && tools.length >= 1;
+          return { pass, score: pass ? 1 : 0, reason: 'tools=' + JSON.stringify(tools) };
+        metric: attaches_tools
+        weight: 2
+
+      - type: llm-rubric
+        threshold: 0.75
+        value: |
+          Evaluate whether the agent followed the aiconfig-tools workflow correctly.
+          Score based on these criteria:
+          1. Did it create the tool first with create-ai-tool?
+          2. Did the tool schema use raw JSON Schema format (type: object, properties)?
+          3. Did the schema include the requested parameters (query, limit)?
+          4. Did it attach the tool to the variation via update-ai-config-variation?
+          Score 1.0 if all four are met, deduct 0.25 for each missed criterion.
+          Verifying with get-ai-config is a stylistic nice-to-have, not a required criterion.
+        metric: workflow_quality
+        weight: 2
+
+  # ------------------------------------------------------------------
+  # Test 2: Uses raw JSON Schema (not OpenAI wrapper)
+  # ------------------------------------------------------------------
+  - description: "Uses raw JSON Schema format for tool schema, not OpenAI wrapper"
+    vars:
+      user_request: >
+        Create an AI tool called "create-ticket" that accepts title (required
+        string), priority (enum: low, medium, high), and description (optional
+        string). Attach it to the default variation of the support-chatbot
+        config. Project key is "support-app".
+      codebase_context: >
+        We use the LaunchDarkly Node.js AI SDK with direct OpenAI SDK calls.
+        The support-chatbot config key is "support-chatbot".
+    assert:
+      - type: javascript
+        value: |
+          const call = (output.trajectory || []).find(t => t.tool === 'create-ai-tool');
+          if (!call) return { pass: false, score: 0, reason: 'No create-ai-tool call found' };
+          const schema = call.arguments.schema || {};
+          const isRaw = schema.type === 'object' && typeof schema.properties === 'object';
+          const noFunctionWrapper = !schema.function && !schema.name;
+          const hasRequired = Array.isArray(schema.required);
+          const score = (isRaw ? 0.4 : 0) + (noFunctionWrapper ? 0.3 : 0) + (hasRequired ? 0.3 : 0);
+          return { pass: score >= 0.7, score, reason: 'raw=' + isRaw + ' noWrapper=' + noFunctionWrapper + ' hasRequired=' + hasRequired };
+        metric: raw_json_schema
+        weight: 3
+
+      - type: javascript
+        value: |
+          const call = (output.trajectory || []).find(t => t.tool === 'create-ai-tool');
+          if (!call) return { pass: false, score: 0, reason: 'No create-ai-tool call found' };
+          const props = (call.arguments.schema || {}).properties || {};
+          const hasTitle = 'title' in props;
+          const hasPriority = 'priority' in props;
+          const hasDesc = 'description' in props;
+          const score = (hasTitle ? 0.34 : 0) + (hasPriority ? 0.33 : 0) + (hasDesc ? 0.33 : 0);
+          return { pass: score >= 0.66, score, reason: 'title=' + hasTitle + ' priority=' + hasPriority + ' description=' + hasDesc };
+        metric: schema_fields_correct
+        weight: 3
+
+      - type: javascript
+        value: |
+          const call = (output.trajectory || []).find(t => t.tool === 'create-ai-tool');
+          if (!call) return { pass: false, score: 0, reason: 'No create-ai-tool call found' };
+          const desc = call.arguments.description || '';
+          const pass = desc.length > 10;
+          return { pass, score: pass ? 1 : 0, reason: 'description="' + desc.slice(0, 60) + '"' };
+        metric: has_description
+        weight: 1
+
+      - type: llm-rubric
+        value: |
+          The agent was asked to create a tool with specific parameters. Evaluate:
+          1. Did the schema use raw JSON Schema (type: object, properties, required)?
+          2. Did it NOT use the OpenAI function calling wrapper format?
+          3. Did it include title (string, required), priority (enum), and description (string)?
+          4. Did the tool have a clear, useful description for the LLM?
+        metric: workflow_quality
+        weight: 2
+
+  # ------------------------------------------------------------------
+  # Test 3: Lists existing tools before creating
+  # ------------------------------------------------------------------
+  - description: "Lists existing tools before creating a new one"
+    vars:
+      user_request: >
+        I want to add a tool to our support-chatbot for looking up customer
+        orders. Before creating it, check what tools already exist in the
+        project. Project key is "support-app".
+      codebase_context: ""
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const listIdx = tools.indexOf('list-ai-tools');
+          const createIdx = tools.lastIndexOf('create-ai-tool');
+          const pass = listIdx >= 0 && createIdx >= 0 && listIdx < createIdx;
+          return { pass, score: pass ? 1 : 0, reason: 'list-ai-tools@' + listIdx + ' create-ai-tool@' + createIdx };
+        metric: lists_before_creating
+        weight: 3
+
+      - type: javascript
+        value: |
+          const pass = (output.tools_called || []).includes('create-ai-tool');
+          return { pass, score: pass ? 1 : 0, reason: 'Tools: ' + (output.tools_called || []).join(' -> ') };
+        metric: calls_create_tool
+        weight: 2
+
+      - type: llm-rubric
+        threshold: 0.7
+        value: |
+          The user asked to check existing tools before creating. Evaluate:
+          1. Did the agent call list-ai-tools to explore first?
+          2. Did it acknowledge the existing tools surfaced by list-ai-tools (whatever names came back)?
+          3. Did it then proceed to create a new tool for the order lookup?
+          4. Did the new tool have a different key from existing ones?
+          Score 1.0 if all four are met, deduct 0.25 for each missed criterion.
+        metric: workflow_quality
+        weight: 2
+
+  # ------------------------------------------------------------------
+  # Test 4: Verifies tool creation and attachment
+  # ------------------------------------------------------------------
+  - description: "Verifies tool creation and attachment via get-ai-config"
+    vars:
+      user_request: >
+        Create a "calculate-shipping" tool and attach it to the default
+        variation of the ecommerce-assistant config. After attaching, verify
+        it shows up in the config. Project key is "ecommerce".
+      codebase_context: >
+        The ecommerce-assistant config is in agent mode. Config key is
+        "ecommerce-assistant".
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const attachIdx = tools.indexOf('update-ai-config-variation');
+          const verifyIdx = tools.lastIndexOf('get-ai-config');
+          const pass = verifyIdx > attachIdx && attachIdx >= 0;
+          return { pass, score: pass ? 1 : 0, reason: 'attach@' + attachIdx + ' verify@' + verifyIdx };
+        metric: verifies_attachment
+        weight: 3
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const createIdx = tools.indexOf('create-ai-tool');
+          const attachIdx = tools.indexOf('update-ai-config-variation');
+          const verifyIdx = tools.lastIndexOf('get-ai-config');
+          const pass = createIdx >= 0 && attachIdx > createIdx && verifyIdx > attachIdx;
+          return { pass, score: pass ? 1 : 0, reason: 'create@' + createIdx + ' attach@' + attachIdx + ' verify@' + verifyIdx };
+        metric: full_workflow_order
+        weight: 3
+
+      - type: llm-rubric
+        value: |
+          The user explicitly asked to verify after attachment. Evaluate:
+          1. Did the agent create the tool first?
+          2. Did it attach the tool via update-ai-config-variation?
+          3. Did it verify with get-ai-config after attachment?
+          4. Did it report the verification results in its response?
+        metric: workflow_quality
+        weight: 2
+
+  # ------------------------------------------------------------------
+  # Test 5: Does not skip tool creation before attachment
+  # ------------------------------------------------------------------
+  - description: "Always creates tools before attempting to attach them"
+    vars:
+      user_request: >
+        Attach a new "fetch-weather" tool to the travel-assistant config's
+        default variation. The tool should accept a location parameter.
+        Project key is "travel-app". Config key is "travel-assistant".
+      codebase_context: >
+        The travel-assistant is an agent-mode config. No tools have been
+        created yet in this project.
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const createIdx = tools.indexOf('create-ai-tool');
+          const attachIdx = tools.lastIndexOf('update-ai-config-variation');
+          const pass = createIdx >= 0 && attachIdx > createIdx;
+          return { pass, score: pass ? 1 : 0, reason: 'create-ai-tool@' + createIdx + ' update-ai-config-variation@' + attachIdx };
+        metric: create_before_attach
+        weight: 3
+
+      - type: javascript
+        value: |
+          const call = (output.trajectory || []).find(t => t.tool === 'create-ai-tool');
+          if (!call) return { pass: false, score: 0, reason: 'No create-ai-tool call found' };
+          const key = call.arguments.key || '';
+          const pass = key.length > 3 && /^[a-z0-9-]+$/.test(key);
+          return { pass, score: pass ? 1 : 0, reason: 'key=' + key };
+        metric: valid_tool_key
+        weight: 2
+
+      - type: javascript
+        value: |
+          const call = (output.trajectory || []).find(t => t.tool === 'create-ai-tool');
+          if (!call) return { pass: false, score: 0, reason: 'No create-ai-tool call found' };
+          const props = (call.arguments.schema || {}).properties || {};
+          const pass = 'location' in props;
+          return { pass, score: pass ? 1 : 0, reason: 'hasLocation=' + ('location' in props) + ' props=' + Object.keys(props).join(',') };
+        metric: schema_has_location
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The user asked to attach a new tool. The skill says tools must be
+          created before attachment. Evaluate:
+          1. Did the agent create the tool with create-ai-tool first?
+          2. Did the tool include a location parameter as requested?
+          3. Did it then attach via update-ai-config-variation?
+          4. Did it NOT try to reference a tool that doesn't exist yet?
+        metric: workflow_quality
+        weight: 2

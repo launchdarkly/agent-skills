@@ -1,0 +1,17 @@
+node_modules/
+.env
+.promptfoo/
+results*.json
+results*.html
+
+# Per-suite output paths (written by `npm run eval:<suite>` and
+# scripts/aggregate.js). These are inputs to scripts/aggregate.js and
+# should NOT be committed - the aggregated artifact (eval-scores.json
+# at repo root) is the public source of truth.
+*/results.json
+
+# Per-skill isolated cwds built by claude-skill-agent-sdk.js so the
+# SDK only discovers the one skill being evaluated. Symlinks inside,
+# regenerated on each provider construction, never committed.
+.tmp-skill-fixtures/
+.tmp-isolated-home/

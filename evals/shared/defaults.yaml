@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+#
+# Shared defaults for every skill eval suite under evals/<skill>/.
+#
+# Wired into each suite at run time via:
+#   promptfoo eval -c shared/defaults.yaml -c <skill>/promptfooconfig.yaml
+#
+# promptfoo's combineConfigs deep-merges defaultTest.options, concatenates
+# defaultTest.assert arrays, and dedupes providers, so each suite only needs
+# to declare what's specific to it (description, prompts, providers, tests,
+# and any extra suite-specific assertions).
+description: "shared defaults"
+
+# Empty placeholders so per-config schema validation passes without altering
+# the merged config: combineConfigs concatenates `prompts` and dedupes
+# `providers` across `-c` files, so [] adds nothing.
+prompts: []
+providers: []
+
+defaultTest:
+  options:
+    provider: "{{env.RUBRIC_MODEL}}"
+    transform: file://./transform.js
+  assert:
+    - type: javascript
+      value: file://./output-valid.js
+      weight: 0
+      metric: output_valid
+    - type: cost
+      threshold: 0.5
+    - type: latency
+      threshold: 90000

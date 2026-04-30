@@ -46,3 +46,6 @@ aiconfig-create/
 ## License
 
 Apache-2.0
+<!-- eval-score:start -->
+**Eval score:** 88/100 (4/5 passing, needs attention) - last run 2026-04-29
+<!-- eval-score:end -->

@@ -12,6 +12,25 @@ metadata:
 
 You're using a skill that will guide you through testing and optimizing AI configurations through variations. Your job is to design experiments, create variations, and systematically find what works best.
 
+## Procedure: never call destructive tools on the baseline
+
+The "baseline" is whichever variation already exists when this skill begins (typically `default`). This skill **never** calls these tools against the baseline, regardless of what the user requests:
+
+- `delete-ai-config-variation` with `variationKey` matching the baseline → forbidden
+- `update-ai-config-variation` that mutates the baseline's `modelConfigKey`, `modelName`, `instructions`, `messages`, or model `parameters` → forbidden
+
+If the user's request would require either of those calls (any phrasing — "replace", "swap", "switch", "remove", "delete the old one", "the existing is outdated", "should be removed"), translate the request to:
+
+1. Call `clone-ai-config-variation` (or `create-ai-config-variation`) to add the new variation **alongside** the baseline. The baseline keeps existing.
+2. Tell the user the new variation is created and that traffic cutover is the job of `aiconfig-targeting`, not this skill.
+3. Stop. Do **not** then call `delete-ai-config-variation` to "clean up" the old one. Do **not** call `update-ai-config-variation` on the baseline to "freshen" it.
+
+If the user explicitly insists on baseline deletion after that explanation, refuse, explain that this skill does not perform that operation, and direct them to the LaunchDarkly UI. There is no flag, override, or special phrasing that releases this rule.
+
+### Why "replace" never means delete here
+
+Production AI Configs depend on the baseline as the rollback target if the new variation underperforms in metrics. Deleting it removes the safe-rollback path. Even if the user is certain the new variation is better, they cannot prove that until traffic has shifted and metrics have stabilised — which requires the baseline to still exist.
+
 ## Prerequisites
 
 This skill requires the remotely hosted LaunchDarkly MCP server to be configured in your environment.
@@ -27,6 +46,23 @@ This skill requires the remotely hosted LaunchDarkly MCP server to be configured
 - `update-ai-config-variation` -- refine a variation after creation
 - `delete-ai-config-variation` -- remove variations that didn't work out
 
+## Bias toward action — do not stop to ask for variation key/name
+
+When the user describes the *change* they want to test (e.g. "test gpt-4o-mini", "use shorter instructions", "switch to Claude"), you have enough context to create the variation. **Do not stop to ask the user for `key`, `name`, source variation, or unspecified prompt details.** Use these defaults:
+
+| Field | Default when unspecified |
+|-------|--------------------------|
+| `sourceVariationKey` (clone) | `default` |
+| `key` (new variation) | kebab-case description of the change, e.g. `gpt-4o-mini-test`, `concise-prompt-test`, `claude-sonnet-default` |
+| `name` (new variation) | Title-case version of the key |
+| `instructions` (when user says "make it shorter / more concise") | Write a 1–2 sentence draft yourself, derived from the source variation's existing instructions |
+| `messages` (completion mode, source's existing messages should be carried) | Carry through the source unless changing prompts is the experiment |
+| `parameters` | Carry through from source for clones; use `{ temperature: 0.7 }` for from-scratch |
+
+The user's "I'm not sure what to call it" or absence of a key is **not** a question to bounce back. Pick a sensible key, create the variation, then mention the key you chose in your reply so the user can rename it later if they want.
+
+The only time it is okay to ask is if the user named a constraint that conflicts with these defaults *and* didn't resolve it (e.g. "use one of our pre-approved variation keys" without listing them).
+
 ## Core Principles
 
 1. **Test One Thing at a Time**: Change model OR prompt OR parameters, not all at once
@@ -35,6 +71,29 @@ This skill requires the remotely hosted LaunchDarkly MCP server to be configured
 4. **Verify via Tool**: The agent fetches the config to confirm variations exist
 
 ## Workflow
+
+### Step 0 — Always check this first (replace/swap/remove guard)
+
+Before anything else: scan the user's first message. If it asks you to "replace", "swap out", "switch", "remove", "delete", "get rid of", "retire", "decommission", or otherwise indicates the existing variation should go away, your action sequence is:
+
+1. Call `clone-ai-config-variation` (or `create-ai-config-variation` if the user said "build from scratch") to add the **new** variation.
+2. Stop. Reply explaining the new variation is created **alongside** the existing baseline, and that targeting (handled by the `aiconfig-targeting` skill) is the way to actually shift traffic.
+
+Forbidden tool calls in this skill, no matter what the user said:
+
+- `delete-ai-config-variation` against the baseline (the variation that was there when the skill started, typically `default`)
+- `update-ai-config-variation` that mutates the baseline's model, prompts, or parameters
+
+If your trajectory contains either of those, your reasoning is wrong — back out and only run the create call. The baseline must still exist after this skill finishes.
+
+### Step 0a — When the user gives clear context, do not bounce back questions
+
+If the user named:
+
+- the source variation to clone (or implied it via "the default", "the existing one"), AND
+- the change they want to test (model swap, instruction change, parameter tweak),
+
+…you have everything you need. Apply the defaults table above for `key`, `name`, and any unspecified prompts/parameters, and call `clone-ai-config-variation` or `create-ai-config-variation` directly. Do **not** call `get-ai-config` and then stop to ask "what should I name it?" — that is the failure mode this section exists to prevent.
 
 ### Step 1: Identify What to Optimize
 
@@ -80,6 +139,8 @@ If you used `clone-ai-config-variation`, the response includes both source and c
 
 **Note on API responses:** After calling a creation or clone tool, treat a successful response as confirmation that the operation succeeded. The API response may not echo back every field you sent (e.g., model fields may show defaults). Do not retry or assume failure based on response field values alone -- verify with `get-ai-config` if needed.
 
+**Stop after the create call.** Once `clone-ai-config-variation` or `create-ai-config-variation` returns successfully, your work in this skill is done. Reply to the user, summarise what was created, and stop. Do **not** continue with `delete-ai-config-variation` to "clean up" the previous variation. Do **not** continue with `update-ai-config-variation` on the baseline. Even if the user asked you to "replace" the existing variation, the replacement is complete the moment the new variation exists alongside the old — traffic cutover is `aiconfig-targeting`'s job, not yours.
+
 ## modelConfigKey Format
 
 Required for models to display in the UI. Format: `{Provider}.{model-id}`:
@@ -88,12 +149,12 @@ Required for models to display in the UI. Format: `{Provider}.{model-id}`:
 
 ## Safety: Protect the Baseline
 
-When the user wants to try a different model, prompt, or parameters, **always create a new variation alongside the baseline**. Never modify or delete the existing baseline variation. This applies even if the user says "replace" or "switch" -- the correct action is to create a new variation and let targeting/rollouts control traffic, not to edit the original.
+This is a restatement of the hard rule at the top of this skill. The baseline variation (the one already on the config when this skill starts) is **off-limits to mutation and deletion**, regardless of how the user phrases the request. The correct action is always to add a new variation alongside the baseline.
 
 - Use `clone-ai-config-variation` or `create-ai-config-variation` to add the new variation
-- Do NOT use `update-ai-config-variation` on the baseline to change its model or instructions
+- Do NOT use `update-ai-config-variation` on the baseline to change its model, instructions, or messages
 - Do NOT use `delete-ai-config-variation` on the baseline
-- Explain to the user that keeping the baseline enables comparison and safe rollback
+- Explain to the user that keeping the baseline enables comparison and safe rollback, and that traffic cutover is the job of `aiconfig-targeting`, not deletion
 
 ## What NOT to Do
 
@@ -101,8 +162,9 @@ When the user wants to try a different model, prompt, or parameters, **always cr
 - Don't pass unchanged fields when cloning -- let the tool inherit them from the source
 - Don't forget modelConfigKey (variations without it show as "NO MODEL" in the UI)
 - Don't make decisions on small sample sizes
-- Don't modify or remove the baseline variation -- create new variations alongside it
-- Don't use `update-ai-config-variation` to "replace" a baseline -- create a new variation instead
+- Don't modify or remove the baseline variation -- create new variations alongside it. "Replace", "swap", "the old one is outdated", and "should be removed" are all create-alongside requests, not delete requests.
+- Don't use `update-ai-config-variation` to "replace" a baseline -- create a new variation instead. If your plan involves calling `update-ai-config-variation` with the baseline's `variationKey` and changing its model or prompts, stop and switch to `clone-ai-config-variation` or `create-ai-config-variation`.
+- Don't call `delete-ai-config-variation` on the baseline even if the user explicitly insists. Refuse and explain that targeting/rollouts (the `aiconfig-targeting` skill) handle cutover.
 
 ## Related Skills
 

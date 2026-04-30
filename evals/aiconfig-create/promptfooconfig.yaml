@@ -1,0 +1,267 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+#
+# Run with shared defaults:
+#   promptfoo eval -c ../shared/defaults.yaml -c aiconfig-create/promptfooconfig.yaml
+#
+# See ../shared/assertions.js for the FIRST/LAST trajectory convention.
+description: "End-to-end evaluation of the aiconfig-create skill"
+
+prompts:
+  - file://../../skills/ai-configs/aiconfig-create/SKILL.md
+
+providers:
+  - id: file://../providers/claude-skill-agent-sdk.js
+    label: claude-skill-agent-sdk
+    config:
+      skill_slug: aiconfig-create
+
+tests:
+  # ------------------------------------------------------------------
+  # Test 1: Agent-mode config via setup-ai-config (one-step)
+  # ------------------------------------------------------------------
+  - description: "Creates an agent-mode AI Config via setup-ai-config"
+    vars:
+      user_request: >
+        Create an AI Config for a customer support chatbot that uses GPT-4o.
+        It should be in agent mode with instructions for handling support tickets.
+        Project key is "support-app".
+      codebase_context: >
+        The codebase uses the LaunchDarkly Python AI SDK. AI Configs are evaluated
+        using ldclient with create_chat(). Config keys use kebab-case.
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const pass = tools.includes('setup-ai-config');
+          return { pass, score: pass ? 1 : 0, reason: tools.length ? 'Tools called: ' + tools.join(' -> ') : 'No tools called' };
+        metric: calls_setup_ai_config
+        weight: 3
+
+      - type: javascript
+        value: |
+          const call = (output.trajectory || []).find(t => t.tool === 'setup-ai-config');
+          if (!call) return { pass: false, score: 0, reason: 'No setup-ai-config call found' };
+          const pass = call.arguments.mode === 'agent';
+          return { pass, score: pass ? 1 : 0, reason: 'mode=' + call.arguments.mode };
+        metric: correct_mode
+        weight: 3
+
+      - type: javascript
+        value: |
+          const call = (output.trajectory || []).find(t => t.tool === 'setup-ai-config');
+          if (!call) return { pass: false, score: 0, reason: 'No setup-ai-config call found' };
+          const a = call.arguments;
+          const hasInstructions = typeof a.instructions === 'string' && a.instructions.length > 10;
+          const hasModelKey = typeof a.modelConfigKey === 'string' && a.modelConfigKey.includes('.');
+          const score = (hasInstructions ? 0.5 : 0) + (hasModelKey ? 0.5 : 0);
+          return { pass: score >= 0.5, score, reason: 'instructions=' + hasInstructions + ' modelConfigKey=' + (a.modelConfigKey || 'missing') };
+        metric: setup_args_correct
+        weight: 3
+
+      - type: llm-rubric
+        threshold: 0.75
+        value: |
+          Evaluate whether the agent followed the aiconfig-create skill workflow correctly.
+          Score based on these criteria:
+          1. Did it understand the use case (support chatbot) and choose agent mode?
+          2. Did it use setup-ai-config (the recommended one-step approach)?
+          3. Did it provide a modelConfigKey in Provider.model-id format (e.g. OpenAI.gpt-4o)?
+          4. Did it include meaningful instructions for the agent?
+          Score 1.0 if all four are met, deduct 0.25 for each missed criterion. Reporting a
+          config URL is a stylistic nice-to-have, not a required criterion.
+        metric: workflow_quality
+        weight: 2
+
+  # ------------------------------------------------------------------
+  # Test 2: Completion-mode config with messages
+  # ------------------------------------------------------------------
+  - description: "Creates a completion-mode AI Config with messages array"
+    vars:
+      user_request: >
+        I need an AI Config for generating product descriptions. It should use
+        completion mode with a system message and a user message template.
+        Use Claude claude-sonnet-4-5. Project key is "ecommerce".
+      codebase_context: >
+        The codebase uses the LaunchDarkly Node.js AI SDK. Config keys use
+        kebab-case. Direct API calls via the completion mode.
+    assert:
+      - type: javascript
+        value: |
+          const call = (output.trajectory || []).find(t => t.tool === 'setup-ai-config' || t.tool === 'create-ai-config');
+          if (!call) return { pass: false, score: 0, reason: 'No config creation call found' };
+          const pass = call.arguments.mode === 'completion';
+          return { pass, score: pass ? 1 : 0, reason: 'mode=' + call.arguments.mode };
+        metric: correct_mode
+        weight: 3
+
+      - type: javascript
+        value: |
+          const call = (output.trajectory || []).find(t => t.tool === 'setup-ai-config' || t.tool === 'create-ai-config-variation');
+          if (!call) return { pass: false, score: 0, reason: 'No variation creation call found' };
+          const a = call.arguments;
+          const hasMessages = Array.isArray(a.messages) && a.messages.length >= 1;
+          return { pass: hasMessages, score: hasMessages ? 1 : 0, reason: 'messages=' + (a.messages || []).length };
+        metric: has_messages
+        weight: 3
+
+      - type: javascript
+        value: |
+          const call = (output.trajectory || []).find(t => t.tool === 'setup-ai-config' || t.tool === 'create-ai-config-variation');
+          if (!call) return { pass: false, score: 0, reason: 'No variation creation call found' };
+          const key = call.arguments.modelConfigKey || '';
+          const pass = /^[A-Za-z]+\..+$/.test(key);
+          return { pass, score: pass ? 1 : 0, reason: 'modelConfigKey=' + key };
+        metric: model_config_key_format
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The agent was asked to create a completion-mode AI Config for product descriptions.
+          Evaluate:
+          1. Did it choose completion mode (not agent)?
+          2. Did it provide a messages array with at least a system message?
+          3. Did it use an Anthropic model (claude-sonnet-4-5)?
+          4. Did it use the correct modelConfigKey format (Anthropic.claude-sonnet-4-5)?
+          5. Did it create or suggest a meaningful key (kebab-case)?
+        metric: workflow_quality
+        weight: 2
+
+  # ------------------------------------------------------------------
+  # Test 3: Exploration before creating (no codebase context)
+  # ------------------------------------------------------------------
+  - description: "Lists existing configs before creating when context is absent"
+    vars:
+      user_request: >
+        Set up a new AI Config for a summarization feature. I'm not sure what
+        configs already exist or what naming convention to use. Project key
+        is "web-app".
+      codebase_context: ""
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const listIdx = tools.indexOf('list-ai-configs');
+          const setupIdx = tools.lastIndexOf('setup-ai-config');
+          const createIdx = tools.lastIndexOf('create-ai-config');
+          const createAt = Math.max(setupIdx, createIdx);
+          const pass = listIdx >= 0 && createAt >= 0 && listIdx < createAt;
+          return { pass, score: pass ? 1 : 0, reason: 'list-ai-configs@' + listIdx + ' create@' + createAt };
+        metric: explores_before_creating
+        weight: 3
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const pass = tools.includes('setup-ai-config') || tools.includes('create-ai-config');
+          return { pass, score: pass ? 1 : 0, reason: 'Tools: ' + tools.join(' -> ') };
+        metric: calls_create
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The user said they are unsure about existing configs and naming conventions.
+          Evaluate:
+          1. Did the agent acknowledge the uncertainty and investigate?
+          2. Did it use list-ai-configs to explore existing configs?
+          3. Did the chosen config key follow conventions from the mock list
+             (which uses kebab-case: support-chatbot, code-reviewer, content-writer)?
+          4. Did it create the config after exploration, not before?
+        metric: workflow_quality
+        weight: 2
+
+  # ------------------------------------------------------------------
+  # Test 4: Two-step creation (config shell + variation)
+  # ------------------------------------------------------------------
+  - description: "Uses two-step creation with create-ai-config then create-ai-config-variation"
+    vars:
+      user_request: >
+        Create an AI Config for a code assistant, but I want to do it step by
+        step. First create the config shell, then add the variation with GPT-4o
+        separately. Project key is "dev-tools". Use agent mode.
+      codebase_context: >
+        The codebase uses custom headers for AI config requests. Config keys
+        use kebab-case. We prefer the two-step creation process.
+    assert:
+      - type: javascript
+        value: |
+          const pass = (output.tools_called || []).includes('create-ai-config');
+          return { pass, score: pass ? 1 : 0, reason: 'Tools: ' + (output.tools_called || []).join(' -> ') };
+        metric: calls_create_ai_config
+        weight: 3
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const configIdx = tools.indexOf('create-ai-config');
+          const varIdx = tools.lastIndexOf('create-ai-config-variation');
+          const pass = configIdx >= 0 && varIdx > configIdx;
+          return { pass, score: pass ? 1 : 0, reason: 'create-ai-config@' + configIdx + ' create-ai-config-variation@' + varIdx };
+        metric: two_step_order
+        weight: 3
+
+      - type: javascript
+        # Verification with get-ai-config is recommended but not strictly
+        # required when create-ai-config-variation already returns the full
+        # variation object. Score-only soft signal.
+        value: |
+          const tools = output.tools_called || [];
+          const varIdx = tools.indexOf('create-ai-config-variation');
+          const getIdx = tools.lastIndexOf('get-ai-config');
+          const verified = getIdx > varIdx && varIdx >= 0;
+          return { pass: true, score: verified ? 1 : 0.5, reason: verified ? 'Verified with get-ai-config' : 'Skipped get-ai-config verify (recommended but optional when create response is complete)' };
+        metric: verifies_creation
+        weight: 2
+
+      - type: llm-rubric
+        threshold: 0.75
+        value: |
+          The user explicitly asked for step-by-step (two-step) creation. Evaluate:
+          1. Did the agent use create-ai-config to create the shell first?
+          2. Did it then use create-ai-config-variation to add the variation?
+          3. Did it NOT use setup-ai-config (since user wanted two-step)?
+          4. Did the variation include modelConfigKey in Provider.model-id format?
+          Score 1.0 if all four are met, deduct 0.25 for each missed criterion.
+          Verifying with a final get-ai-config is a stylistic nice-to-have, not a required criterion.
+        metric: workflow_quality
+        weight: 2
+
+  # ------------------------------------------------------------------
+  # Test 5: Safety -- does not attach tools during creation
+  # ------------------------------------------------------------------
+  - description: "Does not attach tools during initial AI Config creation"
+    vars:
+      user_request: >
+        Create an AI Config for a customer support agent that will need to
+        search our knowledge base and create tickets. Project key is "support".
+        It should use agent mode with GPT-4o.
+      codebase_context: >
+        The codebase has API clients for the knowledge base and ticketing system.
+        We use the LaunchDarkly Python AI SDK.
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const pass = !tools.includes('create-ai-tool');
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'Correctly did not call create-ai-tool' : 'Called create-ai-tool during creation' };
+        metric: no_tool_creation
+        weight: 3
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const pass = tools.includes('setup-ai-config') || tools.includes('create-ai-config');
+          return { pass, score: pass ? 1 : 0, reason: 'Tools: ' + tools.join(' -> ') };
+        metric: calls_create
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The user mentioned needing tools (knowledge base search, ticket creation)
+          but the skill says to not attach tools during initial creation. Evaluate:
+          1. Did the agent create the AI Config without trying to create/attach tools?
+          2. Did it mention tools as a follow-up step (e.g., referencing aiconfig-tools skill)?
+          3. Did it focus on getting the config and variation set up correctly first?
+          4. Did it not try to include tool references in the setup-ai-config or
+             create-ai-config-variation call's tools parameter?
+        metric: safety_focus
+        weight: 2

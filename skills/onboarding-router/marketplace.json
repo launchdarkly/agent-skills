@@ -1,0 +1,19 @@
+{
+  "name": "onboarding-router",
+  "description": "Pick the right LaunchDarkly onboarding path (Feature Flags, AI Configs, Experiments, or Observability) before any product-specific setup runs. Routes based on stated intent and codebase signals; asks one structured question only when no signal exists.",
+  "version": "0.1.0",
+  "author": "LaunchDarkly",
+  "repository": "https://github.com/launchdarkly/ai-tooling",
+  "skills": ["./"],
+  "tags": [
+    "launchdarkly",
+    "onboarding",
+    "router",
+    "dispatch",
+    "feature-flags",
+    "ai-configs",
+    "experiments",
+    "observability",
+    "getting-started"
+  ]
+}
