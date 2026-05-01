@@ -29,7 +29,7 @@ Grep the source tree for provider SDK imports so you know which one the app actu
 | Bedrock | `import boto3`, `bedrock-runtime` | `@aws-sdk/client-bedrock-runtime` |
 | Gemini | `from google import genai`, `google.generativeai` | `@google/generative-ai` |
 | LangChain | `from langchain`, `langchain_openai`, `langchain_anthropic` | `langchain`, `@langchain/openai` |
-| LangGraph | `from langgraph`, `create_react_agent` | `@langchain/langgraph` |
+| LangGraph | `from langgraph`, `from langchain.agents import create_agent`, `create_react_agent` (deprecated) | `@langchain/langgraph`, `createReactAgent` |
 | CrewAI | `from crewai` | — |
 
 ### 3. Hardcoded model configs
@@ -44,7 +44,7 @@ Look for the three things that need to move into the AI Config:
 3. **System prompts / instructions** — grep for:
    - `"role": "system"` (OpenAI/Anthropic completion)
    - `system="` or `system:` (Anthropic top-level system)
-   - `instructions="` (agent frameworks, CrewAI, LangGraph `create_react_agent(prompt=)`)
+   - `instructions="` (agent frameworks, CrewAI, LangGraph Python `create_agent(system_prompt=)` or legacy `create_react_agent(prompt=)`, LangGraph.js `createReactAgent({ prompt })`)
    - Long triple-quoted strings above provider calls
 
 For each hit, record the file path, line number, and current value.
@@ -88,7 +88,8 @@ Walk the decision tree once per call site, using the call shape as the primary s
 | Call shape | Mode |
 |------------|------|
 | Direct provider call with `messages=[...]` (OpenAI, Anthropic, Bedrock Converse) | **completion** |
-| `create_react_agent(llm, tools, prompt=...)` | **agent** |
+| `create_agent(llm, tools, system_prompt=...)` (Python, `langchain.agents`) or `create_react_agent(llm, tools, prompt=...)` (Python, deprecated) | **agent** |
+| `createReactAgent({ llm, tools, prompt })` (Node, `@langchain/langgraph/prebuilt`) | **agent** |
 | CrewAI `Agent(role=..., goal=..., backstory=...)` | **agent** |
 | Custom react loop: LLM-call → tool-call → LLM-call | **agent** |
 

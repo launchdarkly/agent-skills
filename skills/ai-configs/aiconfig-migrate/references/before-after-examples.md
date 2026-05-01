@@ -176,21 +176,23 @@ export async function answer(userId: string, userQuestion: string): Promise<stri
 
 ## Example 3: Python + LangGraph — agent mode
 
-`create_react_agent` takes `model`, `tools`, and `prompt` as inputs — a natural fit for **agent mode**. The `instructions` string replaces the hardcoded `prompt` argument. Tools remain hardcoded for now (Stage 3 will move them into the config too).
+`create_agent` (in `langchain.agents`) takes a model, tools, and `system_prompt` — a natural fit for **agent mode**. The `instructions` string replaces the hardcoded `system_prompt` argument. Tools remain hardcoded for now (Stage 3 will move them into the config too).
+
+> **API note.** Use `from langchain.agents import create_agent`. The earlier `from langgraph.prebuilt import create_react_agent` is deprecated in LangGraph 1.0 and removed in 2.0. Same return shape; the only rename you'll feel at the call site is `prompt=` → `system_prompt=`. Node.js still uses `createReactAgent` from `@langchain/langgraph/prebuilt` — no JS deprecation.
 
 ### Before
 
 ```python
 from langchain_openai import ChatOpenAI
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 from my_tools import search_kb, calculator
 
 llm = ChatOpenAI(model="gpt-4o", temperature=0.3)
 
-agent = create_react_agent(
-    model=llm,
-    tools=[search_kb, calculator],
-    prompt=(
+agent = create_agent(
+    llm,
+    [search_kb, calculator],
+    system_prompt=(
         "You are a technical support assistant. Use the search_kb tool to look up "
         "documentation, and the calculator tool for math. Always cite sources."
     ),
@@ -209,7 +211,7 @@ from ldclient import Context
 from ldclient.config import Config
 from ldai.client import LDAIClient, AIAgentConfigDefault, ModelConfig, ProviderConfig
 from ldai_langchain import create_langchain_model
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 from my_tools import search_kb, calculator
 
 ldclient.set_config(Config(os.environ["LD_SDK_KEY"]))
@@ -236,10 +238,10 @@ def run_support(user_id: str, user_question: str) -> str:
     # ChatOpenAI(model=...) — it drops unnamed parameters silently.
     llm = create_langchain_model(config)
 
-    agent = create_react_agent(
-        model=llm,
-        tools=[search_kb, calculator],   # Stage 3 will replace this with config.tools loader
-        prompt=config.instructions,
+    agent = create_agent(
+        llm,
+        [search_kb, calculator],          # Stage 3 will replace this with config.tools loader
+        system_prompt=config.instructions,
     )
 
     result = agent.invoke({"messages": [{"role": "user", "content": user_question}]})
@@ -251,7 +253,7 @@ def run_support(user_id: str, user_question: str) -> str:
 - `agent_config()` is called instead of `completion_config()` because the framework expects an `instructions` string
 - `FALLBACK` is an `AIAgentConfigDefault` (note the different type — same fields as completion except `instructions` instead of `messages`)
 - Model construction goes through `create_langchain_model(config)` from the `ldai_langchain` helper package — forwards every variation parameter. The alternative of hand-rolling `ChatOpenAI(model=config.model.name, temperature=...)` would silently drop every parameter not explicitly named.
-- `create_react_agent(prompt=...)` reads from `config.instructions`
+- `create_agent(..., system_prompt=...)` reads from `config.instructions`
 - Tool list is still hardcoded — Stage 3 handles that move (see [agent-mode-frameworks.md](agent-mode-frameworks.md) for the tool-factory pattern that closes over per-run config)
 - **Stage 4 will add a run-scoped tracker** (mint in a `setup_run` entry node, consume in `call_model` and `finalize`) — see [agent-mode-frameworks.md § Custom `StateGraph`](agent-mode-frameworks.md) for the full architecture
 - Provider-side logic (LangGraph, ReAct loop) is unchanged

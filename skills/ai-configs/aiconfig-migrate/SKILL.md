@@ -33,7 +33,7 @@ The skill is optimized for Python and Node.js / TypeScript; other languages are 
 | One-shot completion (direct OpenAI / Anthropic / Bedrock / Gemini call) | ✅ Worked example | ✅ Worked example | [before-after-examples.md](references/before-after-examples.md), per-provider docs in `aiconfig-ai-metrics/references/` |
 | Chat loop via managed runner (`ManagedModel` / `TrackedChat`) | ✅ Tier 1 pattern | ✅ Tier 1 pattern | [aiconfig-ai-metrics SKILL.md](../aiconfig-ai-metrics/SKILL.md) |
 | LangChain single-call | ✅ Worked example | ✅ Worked example | [langchain-tracking.md](../aiconfig-ai-metrics/references/langchain-tracking.md) |
-| LangGraph `create_react_agent` / `createReactAgent` (prebuilt) | ✅ Worked example | ✅ Worked example | [agent-mode-frameworks.md § LangGraph](references/agent-mode-frameworks.md) |
+| LangGraph prebuilt agent (Python `langchain.agents.create_agent`, Node `createReactAgent`) | ✅ Worked example | ✅ Worked example | [agent-mode-frameworks.md § LangGraph](references/agent-mode-frameworks.md) |
 | LangGraph custom `StateGraph` with run-scoped tracker (setup_run + call_model + finalize) | ✅ Deep worked example | ⚠️ Mentioned — translate from Python | [agent-mode-frameworks.md § Custom `StateGraph`](references/agent-mode-frameworks.md) |
 | CrewAI `Agent` | ✅ Worked example | — (not a Node framework) | [agent-mode-frameworks.md § CrewAI](references/agent-mode-frameworks.md) |
 | Strands `Agent` | ✅ Worked example | ⚠️ BedrockModel + OpenAIModel only (no Anthropic) | [agent-mode-frameworks.md § Strands](references/agent-mode-frameworks.md) |
@@ -284,11 +284,13 @@ This is the first stage that writes code. It has nine sub-steps.
    params = config.model.parameters or {}
 
    # Pass model_name + instructions into your framework's agent constructor.
-   # Example: LangGraph create_react_agent
-   # agent = create_react_agent(
-   #     model=load_chat_model(model_name),
-   #     tools=TOOLS,               # Stage 3 will replace this with a config.tools loader
-   #     prompt=instructions,
+   # Example: LangGraph prebuilt agent (Python — `from langchain.agents import create_agent`;
+   # this replaces `langgraph.prebuilt.create_react_agent`, deprecated in LangGraph 1.0
+   # and removed in 2.0. Same return shape; `prompt=` was renamed to `system_prompt=`.)
+   # agent = create_agent(
+   #     create_langchain_model(config),  # forwards every variation parameter
+   #     TOOLS,                            # Stage 3 will replace this with a config.tools loader
+   #     system_prompt=instructions,
    # )
    ```
 
@@ -308,7 +310,8 @@ Skip this step if the audited app has no function calling / tools. Otherwise:
 
    - `openai.chat.completions.create(tools=[...])` — OpenAI direct
    - `anthropic.messages.create(tools=[...])` — Anthropic direct
-   - `create_react_agent(tools=[...])` — LangGraph prebuilt ReAct
+   - `create_agent(llm, tools=[...], system_prompt=...)` — LangGraph prebuilt (Python, `langchain.agents`; replaces deprecated `langgraph.prebuilt.create_react_agent`)
+   - `createReactAgent({ llm, tools: [...] })` — LangGraph.js prebuilt (Node, `@langchain/langgraph/prebuilt`)
    - `Agent(tools=[...])` — CrewAI
    - `Agent(tools=[...])` — Strands (Python `@tool`-decorated callables passed through the constructor; TS SDK uses Zod-schema tools)
    - **Custom `StateGraph`** — module-level `TOOLS = [...]` list referenced in **both** `model.bind_tools(TOOLS)` and `ToolNode(TOOLS)`. This is the `langchain-ai/react-agent` template shape; the list is usually in a `tools.py` module. Grep for `bind_tools(` and `ToolNode(` together — they will point at the same list.
@@ -479,7 +482,7 @@ Delegate: **`aiconfig-online-evals`** (sub-step 3, optional — only for UI-atta
 | App uses LangChain `ChatOpenAI(model=...)` | Replace the hand-rolled model construction with `create_langchain_model(config)` (Python) or `LangChainProvider.createLangChainModel(config)` (Node). Do not read `config.model.name` and pass it to `ChatOpenAI(model=...)` by hand — that pattern drops every variation parameter except the ones you explicitly name |
 | Retry wrapper around the provider call | The tracker is minted once at the top of the user turn; the retry loop is inside that scope. Every retry attempt shares the same `runId`. Tracker calls (`track_duration` / `track_tokens` / `track_success` / `track_error`) live *outside* the retry body — one call at the end of the turn, on the success path or the final-failure path |
 | App has no tools — Stage 3 skipped | Move directly from Stage 2 verification to Stage 4 (tracking) |
-| Mode mismatch: user said agent, audit shows one-shot chat | Choose completion mode unless the app uses LangGraph `create_react_agent`, CrewAI `Agent`, Strands `Agent`, or a similar goal-driven framework |
+| Mode mismatch: user said agent, audit shows one-shot chat | Choose completion mode unless the app uses a LangGraph prebuilt agent (`langchain.agents.create_agent` in Python or `createReactAgent` in Node), CrewAI `Agent`, Strands `Agent`, or a similar goal-driven framework |
 | App uses Strands Agents (Python) | Agent mode. Build a `create_strands_model` dispatcher keyed on `agent_config.provider.name` that returns `AnthropicModel(model_id=..., max_tokens=...)` or `OpenAIModel(model_id=..., params=...)`. Drop `parameters.tools` before passing params to the model class — Strands receives tools via `Agent(tools=[...])`. Tracking is Tier 3: wrap `invoke_async` with `tracker.track_duration_of(...)` and record tokens from `result.metrics.accumulated_usage`. See [agent-mode-frameworks.md § Strands Agent](references/agent-mode-frameworks.md) and [strands-tracking.md](../aiconfig-ai-metrics/references/strands-tracking.md) |
 | Strands app on TypeScript | TS SDK ships `BedrockModel` and `OpenAIModel` only — cannot serve Anthropic-backed variations. Use the Python SDK if multi-provider variations are required |
 | TypeScript app using Anthropic SDK | No `trackAnthropicMetrics` helper exists. Use Tier 3: `trackMetricsOf` with a small custom extractor that reads `response.usage.input_tokens` / `response.usage.output_tokens` and returns `LDAIMetrics`. See [anthropic-tracking.md](../aiconfig-ai-metrics/references/anthropic-tracking.md) in the `aiconfig-ai-metrics` skill for the exact extractor |

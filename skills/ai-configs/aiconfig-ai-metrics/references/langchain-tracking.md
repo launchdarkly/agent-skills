@@ -131,14 +131,20 @@ You will see examples in the wild that build the model by hand with `init_chat_m
 
 ## Tier 2 — LangGraph (agent workflows)
 
-LangGraph's `create_react_agent` takes a `model`, `tools`, and `prompt`. Build the model the same way as the single-LangChain case — `create_langchain_model` — and pass it in. The tracker wraps the whole agent invocation, and the extractor aggregates token usage across every message the agent produced.
+LangGraph's prebuilt agent takes a model, tools, and a system prompt. Build the model with `create_langchain_model` (Python) or `LangChainProvider.createLangChainModel` (Node) and pass it in. The tracker wraps the whole agent invocation; the extractor aggregates token usage across every message the agent produced, and tool-call telemetry is read off the result after the wrapped call returns.
 
-**Python** — agent mode with a `MemorySaver` checkpointer:
+> **API note (Python).** Use `from langchain.agents import create_agent`. The earlier `from langgraph.prebuilt import create_react_agent` is deprecated in LangGraph 1.0 and removed in 2.0 — same return shape; the only call-site rename is `prompt=` → `system_prompt=`. Node still uses `createReactAgent` from `@langchain/langgraph/prebuilt`.
+
+**Python** — agent mode with a `MemorySaver` checkpointer. The Python helper package ships `sum_token_usage_from_messages` (token aggregation across the agent's output messages) and `get_tool_calls_from_response` (tool-call name extraction per message); use them inside the `track_metrics_of_async` extractor / loop instead of hand-rolling either:
 
 ```python
-from ldai.tracker import TokenUsage
-from ldai_langchain import create_langchain_model, get_ai_metrics_from_response
-from langgraph.prebuilt import create_react_agent
+from ldai.providers.types import LDAIMetrics
+from ldai_langchain import (
+    create_langchain_model,
+    get_tool_calls_from_response,
+    sum_token_usage_from_messages,
+)
+from langchain.agents import create_agent
 from langgraph.checkpoint.memory import MemorySaver
 
 agent_config = ai_client.agent_config("my-agent-key", context)
@@ -149,40 +155,34 @@ llm = create_langchain_model(agent_config)
 
 # MemorySaver gives the ReAct agent short-term memory per thread_id.
 checkpointer = MemorySaver()
-agent = create_react_agent(
+agent = create_agent(
     llm,
-    tools=[...],                     # application-owned tool handlers
-    prompt=agent_config.instructions,
+    [...],                                # application-owned tool handlers
+    system_prompt=agent_config.instructions,
     checkpointer=checkpointer,
 )
 
-async def track_langgraph_metrics(tracker, func):
-    """Aggregate token usage across every message the agent produced.
-    wraps track_duration_of + manual success/tokens/error tracking."""
-    try:
-        result = await tracker.track_duration_of(func)
-        tracker.track_success()
-        total_in = total_out = total = 0
-        for message in result.get("messages", []):
-            metrics = get_ai_metrics_from_response(message)
-            if metrics.usage:
-                total_in += metrics.usage.input
-                total_out += metrics.usage.output
-                total += metrics.usage.total
-        if total > 0:
-            tracker.track_tokens(TokenUsage(input=total_in, output=total_out, total=total))
-        return result
-    except Exception:
-        tracker.track_error()
-        raise
-
-result = await track_langgraph_metrics(
-    agent_config.create_tracker(),
-    lambda: agent.ainvoke(
-        {"messages": [{"role": "user", "content": user_prompt}]},
-        config={"configurable": {"thread_id": thread_id}},
-    ),
-)
+# track_metrics_of_async records duration + success/error itself; the
+# extractor only returns LDAIMetrics. The surrounding try/except is for
+# local logging, not for tracker bookkeeping.
+tracker = agent_config.create_tracker()
+try:
+    result = await tracker.track_metrics_of_async(
+        lambda: agent.ainvoke(
+            {"messages": [{"role": "user", "content": user_prompt}]},
+            config={"configurable": {"thread_id": thread_id}},
+        ),
+        lambda res: LDAIMetrics(
+            success=True,
+            usage=sum_token_usage_from_messages(res.get("messages", [])),
+        ),
+    )
+    for msg in result.get("messages", []):
+        for name in get_tool_calls_from_response(msg):
+            tracker.track_tool_call(name)
+except Exception as e:
+    # Already recorded by track_metrics_of_async — log locally if needed.
+    raise
 ```
 
 **Node** — same pattern with `trackMetricsOf` + a custom aggregator:
@@ -219,6 +219,8 @@ const langgraphMetrics = (result: any): LDAIMetrics => {
   return { success: true, usage: total > 0 ? { input, output, total } : undefined };
 };
 
+// trackMetricsOf records duration + success/error itself; do not call
+// trackError after this — it would be a redundant second event.
 const agentTracker = agentConfig.createTracker!();
 const result = await agentTracker.trackMetricsOf(
   langgraphMetrics,
@@ -227,6 +229,14 @@ const result = await agentTracker.trackMetricsOf(
     { configurable: { thread_id: threadId } },
   ),
 );
+
+// Tool-call telemetry: walk the result messages. Once the JS SDK ships
+// `LangChainProvider.getToolCallsFromResponse`, this collapses to one helper call.
+for (const msg of result.messages ?? []) {
+  for (const tc of (msg as any).tool_calls ?? []) {
+    agentTracker.trackToolCall(tc.name);
+  }
+}
 ```
 
 ### Why aggregate per message
