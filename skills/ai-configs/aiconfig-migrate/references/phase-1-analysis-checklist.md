@@ -49,7 +49,39 @@ Look for the three things that need to move into the AI Config:
 
 For each hit, record the file path, line number, and current value.
 
-### 4. Template placeholders in prompts
+### 4. External prompt files & registries
+
+Prompts often live outside `.py` / `.ts` source. **Open every plausible config file and read it before declaring the audit complete** — code-only grep will miss prompts loaded from YAML, prompt-template registries, or framework-specific manifests, and the resulting AI Config will not cover the real prompt surface area.
+
+**File-extension scan targets** (run from repo root):
+
+- `**/*.yaml`, `**/*.yml`
+- `**/*.json` (exclude `package.json`, `package-lock.json`, `tsconfig.json`, `*.lock`)
+- `**/*.toml` (exclude `pyproject.toml` already covered in §1)
+- `**/*.md` under `prompts/`, `templates/`, `agents/`, `personas/`
+- `**/*.prompt`, `**/*.prompty`, `**/*.j2`, `**/*.jinja`, `**/*.tmpl`
+
+**Content signals to grep inside those files**:
+
+- Keys named `system`, `system_prompt`, `instructions`, `prompt`, `template`, `role`, `goal`, `backstory`, `persona`, `messages`
+- Mustache (`{{ }}`) or Jinja (`{% %}`) blocks suggesting a prompt template
+- Long multi-line string values (>200 chars) under any of those keys
+
+**Framework-specific shapes to call out by name**:
+
+| Framework | Where prompts live |
+|-----------|---------------------|
+| **CrewAI** | `agents.yaml` and `tasks.yaml` carry `role` / `goal` / `backstory` / `description` / `expected_output` per agent or task |
+| **LangChain** | `.prompt` files (Promptfile format); any `langchain.hub.pull("name/key")` call — pulled prompts are remote and must either be inlined into the AI Config or replaced with a `messages` array sourced from the hub at audit time |
+| **LangSmith** | `client.pull_prompt(...)` calls referencing a remote prompt repo |
+| **Pydantic / Settings** | classes with `prompt_*` fields backed by env vars or YAML overlays (Hydra / OmegaConf / Dynaconf) |
+| **Helm / k8s ConfigMap** | prompts stored as values overrides — search `values*.yaml` and `templates/*configmap*.yaml` |
+
+**For each hit, record**: file path, line range, the key holding the prompt, the loader call site that reads it, and any template placeholder syntax (Mustache vs Jinja vs Python `.format()`). The placeholder rewrite in Stage 2 sub-step 5 needs to know the source syntax to convert it to Mustache.
+
+If a fallback file is already in use (see [fallback-defaults-pattern.md](fallback-defaults-pattern.md) — JSON/YAML loaded at startup), distinguish it from prompts that flow into the provider call. The fallback path is intentional infrastructure; only the latter migrates into the AI Config.
+
+### 5. Template placeholders in prompts
 
 Anything the app currently interpolates into a prompt at runtime must be rewritten to Mustache `{{ variable }}` syntax in Stage 2 so the fallback path renders identically to the LD-served path. Grep for:
 
@@ -63,7 +95,7 @@ Anything the app currently interpolates into a prompt at runtime must be rewritt
 
 Record placeholder name + where the runtime value comes from (env var, function arg, `datetime.now()`, etc.). These get routed through `variables={...}` on `completion_config` / `agent_config` calls in Stage 2, and the literal prompt string gets rewritten to `{{ placeholder }}`. Leaving a non-Mustache placeholder in the fallback is a silent regression mode: LaunchDarkly-served prompts interpolate correctly, the fallback ships unrendered.
 
-### 5. Hardcoded app-scoped knobs
+### 6. Hardcoded app-scoped knobs
 
 Configuration that governs *tool* or *app* behavior rather than *model* behavior — easy to miss in an audit because it looks like ordinary application config. Common shapes:
 
@@ -73,7 +105,7 @@ Configuration that governs *tool* or *app* behavior rather than *model* behavior
 
 If a value changes agent behavior between variations — it belongs in the AI Config. Stage 2 sub-step 5 (fallback) puts these in `ModelConfig(custom={...})`, **not** `parameters` (which is forwarded to the provider SDK and will crash on unknown kwargs). Tools read them via `ai_config.model.get_custom("key")`.
 
-### 6. Existing LaunchDarkly SDK usage
+### 7. Existing LaunchDarkly SDK usage
 
 If `LDClient` / `ldclient` is already initialized in the codebase, **reuse it** — do not create a second base client in Stage 2. Grep for:
 
@@ -81,7 +113,7 @@ If `LDClient` / `ldclient` is already initialized in the codebase, **reuse it** 
 - TypeScript/JS: `@launchdarkly/node-server-sdk`, `init(LD_SDK_KEY)`, `@launchdarkly/react-client-sdk`
 - Environment variables: `LD_SDK_KEY`, `LAUNCHDARKLY_SDK_KEY`, `LAUNCHDARKLY_API_KEY`
 
-### 7. Mode decision: completion or agent
+### 8. Mode decision: completion or agent
 
 Walk the decision tree once per call site, using the call shape as the primary signal:
 
@@ -95,7 +127,7 @@ Walk the decision tree once per call site, using the call shape as the primary s
 
 **Default to completion mode** when unclear — it is more flexible and is the only mode that supports judges attached via the LaunchDarkly UI (Stage 5).
 
-### 8. Monorepo / multi-service scope
+### 9. Monorepo / multi-service scope
 
 If the repo contains multiple services, **ask the user which service to instrument**. Do not migrate every service in one pass.
 
@@ -138,11 +170,15 @@ Hardcoded migration targets:
   - <file>:<line>   temperature=0.7, max_tokens=2000
   - <file>:<line>   system="You are... {system_time}"  (27 lines, Python .format placeholder)
 
-Template placeholders:  [{system_time} (Python .format, source=datetime.now().isoformat())]
-App-scoped knobs:       [Context.max_search_results=10 (tools.py:24, reads from runtime.context)]
-Tools detected:         <none / ['search', 'calculator'] at file.py:LN>
-Retry wrapper:          <none / @retry(3) at file.py:LN>
-Scope:                  <single service / monorepo: picked "service-x">
+Externalized prompt files:   <none / 3 files: prompts/agents.yaml (CrewAI), prompts/system.md, config/prompts.json>
+Prompt-template registries:  <none / langchain.hub.pull("rlm/rag-prompt") at app.py:14>
+Template placeholders:       [{system_time} (Python .format, source=datetime.now().isoformat())]
+App-scoped knobs:            [Context.max_search_results=10 (tools.py:24, reads from runtime.context)]
+Tools detected:              <none / ['search', 'calculator'] at file.py:LN>
+Retry wrapper:               <none / @retry(3) at file.py:LN>
+Scope:                       <single service / monorepo: picked "service-x">
+
+Coverage totals:             N hardcoded code targets · M externalized prompt files · K registry pulls
 
 Proposed plan:
   Stage 1 (Audit):    Read-only manifest of hardcoded targets; flag placeholders for Mustache rewrite and knobs for model.custom
@@ -154,11 +190,19 @@ Proposed plan:
 
 ## STOP
 
-Do not proceed to Stage 1 (Step 2 in the main workflow) until the user confirms:
+Do not proceed to Stage 2 until the user confirms all of:
 
 1. The service boundary is right
 2. The hardcoded targets list is complete
 3. The mode choice matches their intent
 4. The stage plan is acceptable (e.g. skip tools? skip evals for now?)
+5. **Coverage check.** State the totals out loud: "I scanned the repo and found **N** hardcoded code targets, **M** externalized prompt files, and **K** registry pulls. If you expected more (e.g. you know there's a `prompts/` directory, a CrewAI `agents.yaml`, or a config service I didn't reach), tell me where to look before we proceed." A number the user can react to surfaces under-detection that a yes/no on a list cannot.
 
-If the user corrects anything, update the summary and ask again. Do not proceed under ambiguity.
+**Reply with one of:**
+
+- **`confirm`** — the audit looks complete; proceed to Stage 2.
+- **`add: <files or paths>`** — I missed something; here's where to look. (Re-run the audit with the new locations and present an updated summary.)
+- **`fix: <correction>`** — a target in the list is wrong (provider, mode, prompt content, etc.). (Update the summary and ask again.)
+- **`stop`** — pause the migration here.
+
+Do not interpret any other word — including `skip`, `next`, `go`, `ok`, `proceed` — as confirmation. If the reply doesn't match one of the four forms above, ask the user to pick one. Do not proceed under ambiguity.

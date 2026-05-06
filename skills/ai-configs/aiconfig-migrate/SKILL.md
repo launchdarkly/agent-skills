@@ -93,8 +93,9 @@ Use [phase-1-analysis-checklist.md](references/phase-1-analysis-checklist.md) to
 3. **Existing LaunchDarkly usage** — any pre-existing `LDClient` or `ldclient` initialization to reuse
 4. **Hardcoded model configs** — model name string literals, temperature / max_tokens / top_p, system prompts, instruction strings
 5. **Template placeholders in prompts** — `.format()` calls, f-strings in prompt constants, JS/TS template literals, `%(var)s`, hand-rolled `str.replace("__VAR__", ...)`. Flag each placeholder name and its runtime-value source; all get rewritten to Mustache `{{ variable }}` in Stage 2.
-6. **Hardcoded app-scoped knobs** — search-result limits, retry budgets, tool-timeout overrides, feature toggles, any config-dataclass field that isn't a prompt or model parameter but still governs agent behavior. These belong in `model.custom` on the variation (not `model.parameters`, which is forwarded to the provider SDK and will crash on unknown kwargs).
-7. **Mode decision** — completion mode (chat messages array) or agent mode (single instructions string). Completion mode is the default and the only mode that supports judges attached in the UI.
+6. **Externalized prompt files** — scan YAML / JSON / TOML / Markdown / `.prompt` / `.j2` files **and** prompt-template registries (`langchain.hub.pull(...)`, LangSmith `client.pull_prompt(...)`) for prompts loaded at runtime. Common shapes: CrewAI `agents.yaml` / `tasks.yaml`, LangChain Promptfiles, k8s ConfigMap overlays, Pydantic Settings classes with `prompt_*` fields. Same Mustache rewrite (sub-step 5 of Stage 2) applies if the placeholder syntax differs. See [phase-1-analysis-checklist.md § 4](references/phase-1-analysis-checklist.md).
+7. **Hardcoded app-scoped knobs** — search-result limits, retry budgets, tool-timeout overrides, feature toggles, any config-dataclass field that isn't a prompt or model parameter but still governs agent behavior. These belong in `model.custom` on the variation (not `model.parameters`, which is forwarded to the provider SDK and will crash on unknown kwargs).
+8. **Mode decision** — completion mode (chat messages array) or agent mode (single instructions string). Completion mode is the default and the only mode that supports judges attached in the UI.
 
 For each hardcoded target the audit finds, record:
 
@@ -118,10 +119,20 @@ Hardcoded targets:
   - src/chat.py:42   model="gpt-4o"
   - src/chat.py:43   temperature=0.7, max_tokens=2000
   - src/chat.py:45   system="You are a helpful assistant..."
+Externalized prompt files: none (or e.g. "prompts/agents.yaml — CrewAI role/goal/backstory")
+Prompt-template registries: none (or e.g. langchain.hub.pull("rlm/rag-prompt") at app.py:14)
+Coverage totals: 3 hardcoded code targets · 0 externalized prompt files · 0 registry pulls
 Proposed plan: single AI Config key `chat-assistant`, mirror fallback, Stage 3 (tools) skipped (no function calling), Stage 4 (tracking) inline, Stage 5 (evals) attach built-in accuracy judge.
 ```
 
-**STOP.** Present this summary and wait for the user to confirm before proceeding to Stage 2. **This is the most important checkpoint in the workflow** — if the audit is wrong, every stage after this will be wrong. The user should cross-check the hardcoded-targets list against what they know is in the code before giving the go-ahead.
+**STOP.** Present this summary, state the coverage totals out loud (e.g. "I found **N** hardcoded code targets and **M** externalized prompt files — does that match what you expected?"), and wait for the user to reply with one of four explicit forms:
+
+- **`confirm`** — proceed to Stage 2.
+- **`add: <files or paths>`** — re-run the audit with the new locations and present an updated summary.
+- **`fix: <correction>`** — update a target in the list (provider, mode, prompt content, etc.) and ask again.
+- **`stop`** — pause the migration here.
+
+Do not interpret any other word — including `skip`, `next`, `go`, `ok`, `proceed` — as confirmation; ask the user to pick one of the four forms. **This is the most important checkpoint in the workflow** — if the audit is wrong, every stage after this will be wrong. The user should cross-check the hardcoded-targets list against what they know is in the code before giving the go-ahead.
 
 ### Step 2: Wrap the call in the AI SDK (Stage 2)
 
