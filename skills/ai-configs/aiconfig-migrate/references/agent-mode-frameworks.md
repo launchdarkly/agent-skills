@@ -8,7 +8,7 @@ Completion mode is the default and covers direct provider calls (OpenAI, Anthrop
 
 | Signal | Framework | Example |
 |--------|-----------|---------|
-| Takes a `prompt` or `instructions` string as a single argument | LangGraph `create_react_agent` | `create_react_agent(model, tools, prompt="You are...")` |
+| Takes a `system_prompt` / `prompt` / `instructions` string as a single argument | LangGraph prebuilt agent | Python: `create_agent(llm, tools, system_prompt="You are...")` (`langchain.agents`); Node: `createReactAgent({ llm, tools, prompt: "You are..." })` (`@langchain/langgraph/prebuilt`) |
 | Takes `role`, `goal`, `backstory` | CrewAI `Agent` | `Agent(role="researcher", goal="...", backstory="...")` |
 | Custom ReAct loop with a system instruction separated from messages | hand-rolled | `system = "You can use search..."; while not done: ...` |
 | Multi-step tool use with persistent instructions across turns | LangGraph / LangChain `AgentExecutor` | The system prompt stays stable across a long interaction |
@@ -18,7 +18,7 @@ Agent mode returns an `instructions` string. Completion mode returns a `messages
 
 **Caveat:** judges cannot be attached to agent-mode variations via the LaunchDarkly UI. Agent mode evaluations must go through the programmatic judge API (`create_judge(...).evaluate(input, output)`). See `aiconfig-online-evals` for the programmatic path.
 
-**Model construction for LangChain / LangGraph.** When the framework runs on top of LangChain (which includes LangGraph's `create_react_agent` and most custom graphs), build the chat model with `create_langchain_model(ai_config)` (Python) or `LangChainProvider.createLangChainModel(aiConfig)` (Node). These helpers forward every variation parameter (`temperature`, `max_tokens`, `top_p`, …) and handle LaunchDarkly→LangChain provider-name mapping internally. Do not hand-roll `init_chat_model(model=..., model_provider=...)` — it silently drops every variation parameter. See [langchain-tracking.md](../../aiconfig-ai-metrics/references/langchain-tracking.md) for the canonical single-model and LangGraph patterns, including the per-message token-aggregation extractor used with `track_metrics_of_async` / `trackMetricsOf`.
+**Model construction for LangChain / LangGraph.** When the framework runs on top of LangChain (which includes LangGraph's prebuilt agent and most custom graphs), build the chat model with `create_langchain_model(ai_config)` (Python) or `LangChainProvider.createLangChainModel(aiConfig)` (Node). These helpers forward every variation parameter (`temperature`, `max_tokens`, `top_p`, …) and handle LaunchDarkly→LangChain provider-name mapping internally. Do not hand-roll `init_chat_model(model=..., model_provider=...)` — it silently drops every variation parameter. See [langchain-tracking.md](../../aiconfig-ai-metrics/references/langchain-tracking.md) for the canonical single-model and LangGraph patterns, including the SDK helpers `sum_token_usage_from_messages` / `get_tool_calls_from_response` (Python, `ldai_langchain`) used inside the `track_metrics_of_async` / `trackMetricsOf` extractor.
 
 ## Framework-agnostic invariants for the run-scoped pattern
 
@@ -34,7 +34,7 @@ What "one user turn" means differs by app shape:
 |-----------|--------------|
 | Request/response HTTP handler | One request |
 | Chat loop (one session across many user inputs) | One user input (not the whole session) |
-| LangGraph `app.ainvoke(...)` / `createReactAgent().invoke(...)` | One call to `ainvoke` / `invoke` |
+| LangGraph `app.ainvoke(...)` / `create_agent().invoke(...)` (Python) / `createReactAgent().invoke(...)` (Node) | One call to `ainvoke` / `invoke` |
 | Custom ReAct loop with its own `for` iteration | The full loop run, not one iteration |
 | Batch job / dataset walk | One row — each sample is its own run |
 | Streaming response (SSE / WebSocket) | The full stream (open → last chunk), not one chunk |
@@ -117,11 +117,13 @@ The only legitimate reason to re-fetch inside a tool is if the tool's behavior n
 
 ## Wiring `agent_config` into each framework
 
-### LangGraph `create_react_agent`
+### LangGraph prebuilt agent (Python — `langchain.agents.create_agent`)
+
+> **API note.** Use `from langchain.agents import create_agent`. The earlier `from langgraph.prebuilt import create_react_agent` is deprecated in LangGraph 1.0 and removed in 2.0. Same return shape; the only call-site rename is `prompt=` → `system_prompt=`. Node.js still uses `createReactAgent` from `@langchain/langgraph/prebuilt`.
 
 ```python
-from langchain_openai import ChatOpenAI
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
+from ldai_langchain import create_langchain_model
 from ldai.client import LDAIClient, AIAgentConfigDefault, ModelConfig, ProviderConfig
 
 FALLBACK = AIAgentConfigDefault(
@@ -138,23 +140,21 @@ def build_agent(ai_client: LDAIClient, user_id: str, tools: list):
     if not config.enabled:
         return None, None
 
-    params = config.model.parameters or {}
-    llm = ChatOpenAI(
-        model=config.model.name,
-        temperature=params.get("temperature", 0.3),
-    )
+    # create_langchain_model forwards every variation parameter — do NOT hand-roll
+    # ChatOpenAI(model=..., temperature=...). It silently drops unnamed parameters.
+    llm = create_langchain_model(config)
 
-    agent = create_react_agent(
-        model=llm,
-        tools=tools,
-        prompt=config.instructions,
+    agent = create_agent(
+        llm,
+        tools,
+        system_prompt=config.instructions,
     )
     return agent, config.create_tracker()
 ```
 
 **Key points:**
-- `prompt=config.instructions` — the instructions string replaces the hardcoded prompt
-- `model=` and `temperature=` come from `config.model`
+- `system_prompt=config.instructions` — the instructions string replaces the hardcoded prompt
+- Model + parameters come from `create_langchain_model(config)` — forwards the whole `model.parameters` dict
 - A fresh tracker is minted via `config.create_tracker()` and returned alongside the agent so the caller can wire Stage 4 tracking around `agent.invoke(...)`. Each call to `create_tracker()` produces a new `runId`; the caller should treat the returned tracker as owning the execution.
 
 ### CrewAI `Agent`
@@ -298,9 +298,9 @@ async def run_turn(ai_client, user_id: str, user_input: str):
 
 ### Custom `StateGraph` (bind_tools + ToolNode)
 
-The most common LangGraph pattern in the wild is not `create_react_agent` — it's a custom `StateGraph` with a `call_model` node that does `model.bind_tools(TOOLS)`, a separate `"tools"` node that runs `ToolNode(TOOLS)`, and a conditional edge between them. This is the shape of the `langchain-ai/react-agent` template.
+The most common LangGraph pattern in the wild is not the prebuilt agent — it's a custom `StateGraph` with a `call_model` node that does `model.bind_tools(TOOLS)`, a separate `"tools"` node that runs `ToolNode(TOOLS)`, and a conditional edge between them. This is the shape of the `langchain-ai/react-agent` template.
 
-Two things make it different from `create_react_agent`:
+Two things make it different from the prebuilt `create_agent`:
 
 1. **Tools appear in two places** — `bind_tools(TOOLS)` (so the LLM knows which tools exist) and `ToolNode(TOOLS)` (so the executor knows how to run them). Both must read from the same source.
 2. **The system prompt is injected manually** in the `call_model` node body (usually as the first message in the `ainvoke([{"role": "system", ...}, *state.messages])` call), not passed as a constructor argument.
@@ -790,10 +790,10 @@ Then at the call site:
 config = ai_client.agent_config("support-agent", context, FALLBACK)
 tools = create_dynamic_tools_from_launchdarkly(config)
 
-agent = create_react_agent(
-    model=build_llm(config),
-    tools=tools,
-    prompt=config.instructions,
+agent = create_agent(
+    build_llm(config),
+    tools,
+    system_prompt=config.instructions,
 )
 ```
 
