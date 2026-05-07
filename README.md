@@ -16,6 +16,7 @@ Agent Skills are modular, text-based playbooks that teach an agent how to perfor
 | `feature-flags/launchdarkly-flag-create` | Create new feature flags in a way that fits existing codebase patterns |
 | `feature-flags/launchdarkly-flag-targeting` | Control targeting, rollouts, rules, and cross-environment config |
 | `feature-flags/launchdarkly-flag-cleanup` | Safely remove flags from code using LaunchDarkly as the source of truth |
+| `feature-flags/launchdarkly-guarded-rollout` | Configure guarded rollouts with progressive traffic, metric monitoring, and rollback |
 
 ### AI Configs
 
@@ -29,6 +30,14 @@ Agent Skills are modular, text-based playbooks that teach an agent how to perfor
 | `ai-configs/aiconfig-projects` | Create and manage projects to organize AI Configs |
 | `ai-configs/aiconfig-online-evals` | Attach LLM-as-a-judge evaluators to AI Configs |
 | `ai-configs/aiconfig-targeting` | Configure targeting rules for AI Config rollouts |
+| `ai-configs/aiconfig-snippets` | Create and manage reusable prompt snippets across AI Configs |
+| `ai-configs/aiconfig-agent-graphs` | Create and manage multi-agent graphs with routing and handoffs |
+
+### Experiments
+
+| Skill | Description |
+|-------|-------------|
+| `experiments/launchdarkly-experiment-setup` | Set up experiments with metrics, treatments, and data collection |
 
 ### Metrics
 

@@ -1,6 +1,14 @@
 {
   "skills": [
     {
+      "name": "aiconfig-agent-graphs",
+      "description": "Create and manage agent graphs \u2014 directed graphs of AI Configs connected by edges with handoff logic. Use when building multi-agent workflows where configs route to each other.",
+      "path": "skills/ai-configs/aiconfig-agent-graphs",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
+    },
+    {
       "name": "aiconfig-ai-metrics",
       "description": "Instrument an existing codebase with LaunchDarkly AI Config tracking. Walks the four-tier ladder (managed runner \u2192 provider package \u2192 custom extractor + trackMetricsOf \u2192 raw manual) and picks the lowest-ceremony option that still captures duration, tokens, and success/error.",
       "path": "skills/ai-configs/aiconfig-ai-metrics",
@@ -45,6 +53,14 @@
       "path": "skills/ai-configs/aiconfig-projects",
       "version": "0.4.0",
       "compatibility": "Requires LaunchDarkly API access token with projects:write permission or LaunchDarkly MCP server."
+    },
+    {
+      "name": "aiconfig-snippets",
+      "description": "Create and manage prompt snippets \u2014 reusable text blocks referenced inside AI Config variation prompts. Keeps common instructions, personas, and guardrails consistent across multiple configs.",
+      "path": "skills/ai-configs/aiconfig-snippets",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
     },
     {
       "name": "aiconfig-targeting",
@@ -100,6 +116,14 @@
       "version": "0.1.0",
       "license": "Apache-2.0",
       "compatibility": "Requires SDK installed (parent Step 5) and LaunchDarkly project access"
+    },
+    {
+      "name": "launchdarkly-experiment-setup",
+      "description": "Set up and run experiments in LaunchDarkly. Create experiments with metrics and treatments, start iterations to collect data, and monitor results.",
+      "path": "skills/experiments/launchdarkly-experiment-setup",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
     },
     {
       "name": "launchdarkly-flag-cleanup",
@@ -175,6 +199,14 @@
         "devops",
         "mcp"
       ]
+    },
+    {
+      "name": "launchdarkly-guarded-rollout",
+      "description": "Configure guarded rollouts with progressive traffic increases, metric monitoring, and automatic rollback. Use when releasing features gradually with safety thresholds.",
+      "path": "skills/feature-flags/launchdarkly-guarded-rollout",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
     },
     {
       "name": "launchdarkly-metric-choose",
