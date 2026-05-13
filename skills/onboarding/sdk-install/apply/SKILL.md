@@ -81,7 +81,7 @@ If the user **declines** broader changes: keep only the LD package addition if p
 3. Ensure `.env` is in `.gitignore` before writing any real values
 
 **If the user chooses option 4 ("I don't have an account yet"):**
-1. Point them to the resolved signup URL (see [Source Attribution](../../../SKILL.md#source-attribution); default `https://app.launchdarkly.com/signup?source=agent`)
+1. Point them to the resolved signup URL (see [Source Attribution](../../SKILL.md#source-attribution); default `https://app.launchdarkly.com/signup?source=agent`)
 2. Explain that SDK key setup requires an account -- they can complete setup after signing up
 3. Ensure `.env` is in `.gitignore` before writing (same check as option 3 / [Write to `.env`](#write-to-env-when-the-user-consents))
 4. Write placeholder variable names to `.env` (no real values) so the code compiles
