@@ -16,7 +16,7 @@ This skill is nested under [LaunchDarkly onboarding](../SKILL.md); the parent sk
 
 ## Prerequisites
 
-- A LaunchDarkly account (sign up at [https://app.launchdarkly.com/signup?source=agent](https://app.launchdarkly.com/signup?source=agent))
+- A LaunchDarkly account (sign up at the resolved signup URL — see [Source Attribution](../SKILL.md#source-attribution) in the parent skill; default: `https://app.launchdarkly.com/signup?source=agent`)
 - An MCP-compatible coding agent
 
 ## Hosted MCP Servers
