@@ -18,7 +18,7 @@ Orchestrates LaunchDarkly setup in an existing codebase: on kickoff, show a **ro
 - **LaunchDarkly account (deferred -- inferred, not asked upfront):** Do NOT ask whether the user has a LaunchDarkly account at the start. Instead, let the workflow reveal account status naturally:
   - **Steps 0-3** (log, explore, detect, install skills) do not require an account. Run them first.
   - **Step 4 (MCP):** Present the MCP install link. If the user completes OAuth successfully, they have an account -- confirmed, no question needed.
-  - **Step 5 (SDK keys):** If MCP is not configured (or the user declined it), account status becomes relevant at D7 when the user needs to provide keys. If they cannot provide keys, offer the signup link: https://app.launchdarkly.com/signup?source=agent.
+  - **Step 5 (SDK keys):** If MCP is not configured (or the user declined it), account status becomes relevant at D7 when the user needs to provide keys. If they cannot provide keys, offer the resolved signup link (see [Source Attribution](#source-attribution)).
   - This eliminates the upfront "Do you have an account?" question and lets the workflow itself surface whether the user needs to sign up.
 - **Keys and tokens (defer until needed):** Collect these only when the path requires them.
   - **Step 4 -- MCP:** **Hosted MCP** uses OAuth; no API token or SDK key needed to configure it. **Local `npx` MCP** (federal/EU, etc.): API access token per [mcp-configure](mcp-configure/SKILL.md) and [MCP Config Templates](mcp-configure/references/mcp-config-templates.md).
@@ -36,6 +36,15 @@ Orchestrates LaunchDarkly setup in an existing codebase: on kickoff, show a **ro
 **Other MCP tools you may use if present** (not required): `list-feature-flags`, `get-feature-flag`, `get-flag-status-across-environments`.
 
 ## Agent Behavior Directives
+
+### Source Attribution
+
+The signup URL used throughout onboarding includes a `source` query parameter for attribution. The default value is `agent`, producing `https://app.launchdarkly.com/signup?source=agent`. However, the source is **dynamic** based on the user's original prompt:
+
+- If the user's initial message (the prompt that triggered onboarding) contains the marker **`source-launchdarkly`**, set the source to **`ldwebsite`** → `https://app.launchdarkly.com/signup?source=ldwebsite`.
+- Otherwise, keep the default source **`agent`** → `https://app.launchdarkly.com/signup?source=agent`.
+
+Detect this **once** at kickoff (before Step 0) by scanning the user's original message for the substring `source-launchdarkly`. Store the resolved signup URL for the session and use it wherever this skill or any nested skill directs the user to sign up. The marker is metadata for the agent — do not echo it back to the user or include it in any user-facing output.
 
 ### Progress Tracking
 
