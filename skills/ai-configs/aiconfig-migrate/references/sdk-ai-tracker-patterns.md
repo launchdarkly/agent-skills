@@ -2,18 +2,18 @@
 
 The main novel content of this skill — a per-method reference for the LaunchDarkly AI Config tracker in Python and Node side by side. **No existing skill covers this.** The `launchdarkly-metric-instrument` skill is for `ldClient.track()` feature metrics, which is a different API.
 
-All method names and signatures below are verified against `launchdarkly-server-sdk-ai` v0.18.0 (Python) and `@launchdarkly/server-sdk-ai` v0.17.0 (`js-core/packages/sdk/server-ai`). If a method is not listed, it does not exist — do not invent it.
+All method names and signatures below are verified against `launchdarkly-server-sdk-ai` v0.18.0 (Python) and `@launchdarkly/server-sdk-ai` v0.20.0 (`js-core/packages/sdk/server-ai`). If a method is not listed, it does not exist — do not invent it.
 
-## Breaking changes in v0.17.0 (Node) / v0.18.0 (Python)
+## Tracker lifetime
 
-Both SDKs replaced the `config.tracker` property with a **`create_tracker` / `createTracker` factory**. Each call to the factory mints a fresh tracker with a unique `runId` for that execution. The `runId` tags every event emitted by that tracker so events from a single run can be correlated downstream (via exported events / analytics pipelines). The Monitoring tab aggregates events rather than grouping them by run today, but the `runId` also scopes the SDK's at-most-once guards on `track_duration` / `track_tokens` / `track_success` — minting a fresh tracker resets the guard, so accidental per-iteration factory calls don't just fragment downstream views, they also defeat the at-most-once semantics the 0.18.0 release was designed to enforce. **Call the factory once at the start of each execution and reuse the returned tracker for all calls within that execution.**
+Both SDKs obtain a tracker via the **`create_tracker` / `createTracker` factory** on the resolved config. Each call to the factory mints a fresh tracker with a unique `runId` for that execution. The `runId` tags every event emitted by that tracker so events from a single run can be correlated downstream (via exported events / analytics pipelines). The Monitoring tab aggregates events rather than grouping them by run today, but the `runId` also scopes the SDK's at-most-once guards on `track_duration` / `track_tokens` / `track_success` — minting a fresh tracker resets the guard, so accidental per-iteration factory calls don't just fragment downstream views, they also defeat the at-most-once semantics those guards enforce. **Call the factory once at the start of each execution and reuse the returned tracker for all calls within that execution.**
 
 **What counts as one "execution":**
 
 | Shape | One execution = | Where to call `create_tracker()` |
 |-------|-----------------|----------------------------------|
 | Single provider call (one-shot completion) | the function that handles one request | Right after `completion_config(...)` returns |
-| Chat loop via `ManagedModel` / `TrackedChat` | one `invoke()` call | Never — the managed runner handles it |
+| Chat loop via `ManagedModel` | one `run()` / `invoke()` call | Never — the managed runner handles it |
 | Multi-step ReAct / LangGraph loop (model → tool → model → tool → model) | one full user turn, including every loop iteration | A `setup_run` entry node that executes once before the loop; stash the tracker on state |
 | Custom ReAct loop in application code | one call to your turn handler | Top of the handler, before the `for` loop |
 | Streaming response | the streaming call + its consumer | Before the stream is opened; reuse across chunks |
@@ -22,7 +22,7 @@ The common mistake: calling `create_tracker()` inside a function that runs more 
 
 ### At-most-once guards on `track_duration` / `track_tokens` / `track_success`
 
-As of Python v0.18.0 / Node v0.17.0, the tracker's methods split into two groups by whether repeated calls are safe. Knowing which is which is the difference between a correctly-instrumented agent loop and one that silently drops data:
+The tracker's methods split into two groups by whether repeated calls are safe. Knowing which is which is the difference between a correctly-instrumented agent loop and one that silently drops data:
 
 | Method | Category | Safe to call per loop step? | What happens if you exceed |
 |---|---|---|---|
@@ -40,32 +40,30 @@ As of Python v0.18.0 / Node v0.17.0, the tracker's methods split into two groups
 The pattern for an agent loop follows from the split: accumulate `usage_metadata` across iterations (sum into a `TokenUsage` running total) and stash `time.perf_counter_ns()` up top; emit the four **at-most-once** methods exactly once in a terminal / finalize node. Per-step metadata like `track_tool_calls` goes inside the loop body where it belongs.
 
 ```python
-# Python v0.18.0+
 tracker = ai_config.create_tracker()   # one call, one runId
 tracker.track_success()
 tracker.track_tokens(usage)
 ```
 ```typescript
-// Node v0.17.0+
-const tracker = aiConfig.createTracker!();   // ! because it's optional on the interface
+const tracker = aiConfig.createTracker();   // one call, one runId
 tracker.trackSuccess();
-tracker.trackTokens(usage);
+tracker.trackTokens(tokens);
 ```
 
-Other breaking changes in the same release you will see referenced below:
+Other API notes you will see referenced below:
 
-- **Python:** `AIGraphTracker.track_latency` renamed to `track_duration`. The `graph_key` keyword argument was removed from all `LDAIConfigTracker.track_*()` methods — trackers obtained inside a graph traversal are already bound to the right graph key.
-- **Python:** `track_eval_scores()` and `track_judge_response()` merged into `track_judge_result()`; `JudgeResponse` and `EvalScore` merged into `JudgeResult`. `Judge.evaluate()` / `evaluate_messages()` now always return a `JudgeResult` — check `result.sampled` instead of a `None` return.
-- **Node:** `trackEvalScores()` and `trackJudgeResponse()` merged into `trackJudgeResult()`; `JudgeResponse` + `EvalScore` merged into `LDJudgeResult`. `Judge.evaluate()` / `evaluateMessages()` always return `LDJudgeResult` — check `result.sampled`.
-- **Both:** managed-runner constructors (`ManagedModel`, `ManagedAgent`, `Judge`, `ManagedAgentGraph` / `TrackedChat`) no longer accept a tracker parameter; they create one internally from the factory.
-- **Both:** cross-process tracker resumption is now supported. Python exposes `LDAIConfigTracker.resumption_token` + `from_resumption_token(...)`; Node exposes `LDAIClient.createTracker()` / `createGraphTracker()` that accept the same token.
+- **Python:** `AIGraphTracker.track_latency` is `track_duration`. The `LDAIConfigTracker.track_*()` methods do not take a `graph_key` keyword — trackers obtained inside a graph traversal are already bound to the right graph key.
+- **Python:** `Judge.evaluate()` / `evaluate_messages()` return a `JudgeResult`; check `result.sampled` to know whether the evaluation ran. Record it with `tracker.track_judge_result(result)`.
+- **Node:** `Judge.evaluate()` / `evaluateMessages()` return `LDJudgeResult`; check `result.sampled`. Record it with `tracker.trackJudgeResult(result)`.
+- **Both:** managed-runner constructors (`ManagedModel`, `ManagedAgent`, `Judge`, `ManagedAgentGraph`) do not accept a tracker parameter; they create one internally from the factory.
+- **Both:** cross-process tracker resumption is supported. Python exposes `LDAIConfigTracker.resumption_token` + `from_resumption_token(...)`; Node exposes `LDAIClient.createTracker()` / `createGraphTracker()` that accept the same token.
 
 ## Two tracker classes
 
 | Class | Where it lives | When you use it |
 |-------|----------------|-----------------|
 | `LDAIConfigTracker` (Python) / `LDAIConfigTracker` (Node) | Returned from `config.create_tracker()` / `aiConfig.createTracker()` | **Per-request tracking.** Call the factory once per execution; reuse the returned tracker for all calls in that execution. This is the one this skill wires in Stage 4. |
-| `AIGraphTracker` (Python) / graph tracker (Node) | Created alongside a graph-definition traversal | **Graph-level tracking.** Covers path, handoffs, total tokens, total duration for a multi-node traversal. See [agent-graph-reference.md](agent-graph-reference.md). Node now supports agent graph definitions as of v0.17.0. |
+| `AIGraphTracker` (Python) / graph tracker (Node) | Created alongside a graph-definition traversal | **Graph-level tracking.** Covers path, handoffs, total tokens, total duration for a multi-node traversal. See [agent-graph-reference.md](agent-graph-reference.md). |
 
 This doc focuses on `LDAIConfigTracker`. For graph tracking, see the graph reference.
 
@@ -76,7 +74,7 @@ All examples assume you have already obtained `tracker` via:
 tracker = ai_config.create_tracker()
 ```
 ```typescript
-const tracker = aiConfig.createTracker!();
+const tracker = aiConfig.createTracker();
 ```
 
 ### `track_success` / `trackSuccess`
@@ -178,7 +176,7 @@ Wire this only when the app has a UI that captures the signal — e.g. thumbs-up
 
 ### `track_tool_call` / `trackToolCall`
 
-Record a tool invocation on the config that issued it. Available on **both** SDKs as of v0.18.0 (Python) / v0.17.0 (Node).
+Record a tool invocation on the config that issued it.
 
 ```python
 tracker.track_tool_call("search_kb")
@@ -187,7 +185,7 @@ tracker.track_tool_call("search_kb")
 tracker.trackToolCall('search_kb');
 ```
 
-The `graph_key` keyword argument was removed in v0.18.0 (Python); if the tracker was obtained inside a graph traversal it is already bound to the right graph key. Nothing else to do at the call site.
+If the tracker was obtained inside a graph traversal it is already bound to the right graph key. Nothing else to do at the call site.
 
 ### `track_tool_calls` / `trackToolCalls`
 
@@ -202,7 +200,7 @@ Iterable variant. Call once per request with the full list of tools invoked.
 
 ### `track_judge_result` / `trackJudgeResult`
 
-Record a judge evaluation (scores + reasoning, consolidated). Replaces `track_eval_scores` / `trackEvalScores` **and** `track_judge_response` / `trackJudgeResponse` from earlier SDK versions.
+Record a judge evaluation (scores + reasoning).
 
 The full programmatic direct-judge pattern (Python):
 
@@ -228,9 +226,9 @@ if judge and judge.enabled:
 **Rules for the Python shape:**
 
 - `create_judge` returns `Optional[Judge]` — guard with `if judge and judge.enabled:` before calling `.evaluate`. A direct `.evaluate()` on a `None` return raises `AttributeError`.
-- The `default` argument is typed `Optional[AIJudgeConfigDefault]`. Do not pass `AICompletionConfigDefault` even though some older examples show it — the type is strict.
+- The `default` argument is typed `Optional[AIJudgeConfigDefault]`. Pass `AIJudgeConfigDefault`, not `AICompletionConfigDefault` — the type is strict.
 - `sampling_rate` is a parameter on `Judge.evaluate()`, **not** on `create_judge`. It defaults to `1.0` (evaluate every call).
-- As of v0.18.0, `evaluate()` **always returns a `JudgeResult` object** (never `None`). If the evaluation was skipped by sampling, `result.sampled` is `False`. Guard `track_judge_result` with `if result.sampled:`.
+- `evaluate()` returns a `JudgeResult` object (never `None`). If the evaluation was skipped by sampling, `result.sampled` is `False`. Guard `track_judge_result` with `if result.sampled:`.
 
 Node equivalent:
 
@@ -245,21 +243,17 @@ Only needed when you call `create_judge(...).evaluate(...)` directly. Automatic 
 
 ## Auto-tracking helpers
 
-The canonical tracking surface is **`trackMetricsOf` composed with a provider-package `getAIMetricsFromResponse` extractor** (Tier 2) — or, one level up, the managed runners (`ManagedModel` / `TrackedChat`) which track everything automatically and don't require any tracker calls at all (Tier 1). Both Python and Node SDK READMEs document this tiering exclusively as of this writing.
-
-Legacy single-purpose helpers (`track_openai_metrics`, `track_bedrock_converse_metrics`, `trackVercelAISDKGenerateTextMetrics`) still exist in the SDK source, but no current README uses them. **Do not introduce them in new code.** They're listed below with a `[legacy]` tag so you can recognize them in existing codebases, not so you'll reach for them.
+The canonical tracking surface is **`trackMetricsOf` composed with a provider-package `getAIMetricsFromResponse` extractor** (Tier 2) — or, one level up, the managed runners (`ManagedModel`) which track everything automatically and don't require any tracker calls at all (Tier 1). Both Python and Node SDK READMEs document this tiering exclusively.
 
 ### Python
 
 | Helper | Signature | Tier | Notes |
 |--------|-----------|------|-------|
-| `track_metrics_of(func, extractor)` | `tracker.track_metrics_of(func, extractor)` | **2 / 3** | **Canonical generic wrapper.** Sync. Calls `extractor(result)` to get an `LDAIMetrics` object; records tokens + duration + success. Use a provider package's `Provider.get_ai_metrics_from_response` as the extractor for Tier 2, or write a small custom function for Tier 3. |
+| `track_metrics_of(func, extractor)` | `tracker.track_metrics_of(func, extractor)` | **2 / 3** | **Canonical generic wrapper.** Sync. Calls `extractor(result)` to get an `LDAIMetrics` object; records tokens + duration + success. Use a provider package's `get_ai_metrics_from_response` as the extractor for Tier 2, or write a small custom function for Tier 3. |
 | `track_metrics_of_async(func, extractor)` | `await tracker.track_metrics_of_async(async_func, extractor)` | 2 / 3 | Async variant. |
 | `track_duration_of(func)` | `tracker.track_duration_of(lambda: provider_call())` | 4 | Wraps a sync callable; captures duration only. Pair with explicit `track_tokens` + `track_success`. Useful when the response shape makes `track_metrics_of` awkward. |
-| `track_openai_metrics(func)` | `tracker.track_openai_metrics(lambda: openai_client.chat.completions.create(...))` | **[legacy]** | Predates the `ldai_openai` provider package. Replace with `track_metrics_of(call_openai, OpenAIProvider.get_ai_metrics_from_response)`. |
-| `track_bedrock_converse_metrics(res)` | `tracker.track_bedrock_converse_metrics(bedrock_response)` | **[legacy]** | Predates `track_metrics_of`. Replace with a Converse extractor passed to `track_metrics_of`. See [bedrock-tracking.md](../../aiconfig-ai-metrics/references/bedrock-tracking.md). |
 
-Example — OpenAI via `track_metrics_of` + the provider package extractor (current pattern):
+Example — OpenAI via `track_metrics_of` + the provider package extractor:
 ```python
 from ldai_openai import OpenAIProvider
 
@@ -305,17 +299,13 @@ response = tracker.track_metrics_of(
 | `trackMetricsOf<T>(extractor, func)` | `await tracker.trackMetricsOf((result) => extractor(result), async () => ...)` | **2 / 3** | **Canonical generic wrapper.** `extractor` maps provider response → `LDAIMetrics`. Use a provider package's `Provider.getAIMetricsFromResponse` for Tier 2 (`@launchdarkly/server-sdk-ai-openai`, `-langchain`, `-vercel`) or a small custom function for Tier 3. |
 | `trackStreamMetricsOf<T>(extractor, streamCreator)` | `tracker.trackStreamMetricsOf(async (chunks) => extractor(chunks), () => createStream())` | 2 / 3 | Stream variant. Does **not** capture TTFT automatically — if you need TTFT, use the manual pattern in [streaming-tracking.md](../../aiconfig-ai-metrics/references/streaming-tracking.md). |
 | `trackDurationOf<T>(func)` | `await tracker.trackDurationOf(async () => ...)` | 4 | Wraps an async callable; captures duration only. Pair with explicit `trackTokens` + `trackSuccess`. |
-| `trackOpenAIMetrics<T>(func)` | `await tracker.trackOpenAIMetrics(async () => openai.chat.completions.create(...))` | **[legacy]** | Predates `@launchdarkly/server-sdk-ai-openai`. Replace with `trackMetricsOf(OpenAIProvider.getAIMetricsFromResponse, () => ...)`. |
-| `trackBedrockConverseMetrics<T>(res)` | `tracker.trackBedrockConverseMetrics(bedrockResponse)` | **[legacy]** | Replace with a Converse extractor passed to `trackMetricsOf`. |
-| `trackVercelAISDKGenerateTextMetrics<T>(func)` | `await tracker.trackVercelAISDKGenerateTextMetrics(async () => generateText({...}))` | **[legacy]** | Replace with `trackMetricsOf` + `VercelAISDKProvider.getAIMetricsFromResponse` from `@launchdarkly/server-sdk-ai-vercel`. |
-
-Example — OpenAI via `trackMetricsOf` + the provider package (current pattern):
+Example — OpenAI via `trackMetricsOf` + the provider package:
 ```typescript
-import { OpenAIProvider } from '@launchdarkly/server-sdk-ai-openai';
+import { getAIMetricsFromResponse } from '@launchdarkly/server-sdk-ai-openai';
 
-const tracker = aiConfig.createTracker!();
+const tracker = aiConfig.createTracker();
 const response = await tracker.trackMetricsOf(
-  OpenAIProvider.getAIMetricsFromResponse,
+  getAIMetricsFromResponse,
   () => openai.chat.completions.create({
     model: aiConfig.model?.name ?? 'gpt-4o',
     messages: [...(aiConfig.messages ?? []), { role: 'user', content: userPrompt }],
@@ -325,12 +315,15 @@ const response = await tracker.trackMetricsOf(
 
 Example — LangChain via `trackMetricsOf` (works for any model LangChain wraps, including Anthropic and Bedrock):
 ```typescript
-import { LangChainProvider } from '@launchdarkly/server-sdk-ai-langchain';
+import {
+  createLangChainModel,
+  getAIMetricsFromResponse,
+} from '@launchdarkly/server-sdk-ai-langchain';
 
-const llm = await LangChainProvider.createLangChainModel(aiConfig);
-const tracker = aiConfig.createTracker!();
+const llm = await createLangChainModel(aiConfig);
+const tracker = aiConfig.createTracker();
 const response = await tracker.trackMetricsOf(
-  LangChainProvider.getAIMetricsFromResponse,
+  getAIMetricsFromResponse,
   () => llm.invoke(messages),
 );
 ```
@@ -340,7 +333,7 @@ const response = await tracker.trackMetricsOf(
 For chat-loop applications, both SDKs expose a higher-level API that handles tracking end-to-end with no tracker calls at all:
 
 - Python: `ai_client.create_model(...)` → `ManagedModel`, then `await model.invoke(user_input)`
-- Node: `aiClient.initChat(...)` / `aiClient.createChat(...)` → `TrackedChat`, then `await chat.invoke(userInput)`
+- Node: `aiClient.createModel(...)` → `ManagedModel`, then `await model.run(userInput)`
 
 The managed runner handles message history, provider dispatch (via the installed provider package — OpenAI, LangChain, Vercel), and tracker wiring. The runner creates its own tracker internally via the factory — you do **not** pass a tracker in. If the migration target is conversational, this is the right tier and you don't need anything from the tables above.
 
@@ -352,9 +345,9 @@ Neither `@launchdarkly/server-sdk-ai-anthropic` nor `launchdarkly-server-sdk-ai-
 
 | Situation | Tier | Pattern |
 |-----------|------|---------|
-| Chat loop (history, turn-based), any provider with a package | **1** | `ManagedModel` / `TrackedChat` / `initChat` — no tracker calls |
-| OpenAI direct SDK, non-chat shape | **2** | `trackMetricsOf(OpenAIProvider.getAIMetricsFromResponse, fn)` |
-| LangChain / LangGraph (any underlying model), non-chat shape | **2** | `trackMetricsOf(LangChainProvider.getAIMetricsFromResponse, fn)` |
+| Chat loop (history, turn-based), any provider with a package | **1** | `ManagedModel` / `createModel` — no tracker calls |
+| OpenAI direct SDK, non-chat shape | **2** | `trackMetricsOf(getAIMetricsFromResponse, fn)` (extractor from `@launchdarkly/server-sdk-ai-openai`) |
+| LangChain / LangGraph (any underlying model), non-chat shape | **2** | `trackMetricsOf(getAIMetricsFromResponse, fn)` (extractor from `@launchdarkly/server-sdk-ai-langchain`) |
 | Vercel AI SDK, non-chat shape (Node only) | **2** | `trackMetricsOf` with the Vercel provider package's extractor |
 | Anthropic direct SDK | **3** | Custom extractor reading `response.usage.input_tokens` / `output_tokens` |
 | Bedrock Converse (no provider package) | **3** | Custom extractor reading `response.usage.inputTokens` / `outputTokens` (or route via LangChain for Tier 2) |
@@ -391,7 +384,7 @@ tracker.track_success()
 
 **Node — use `trackStreamMetricsOf`:**
 ```typescript
-const tracker = aiConfig.createTracker!();
+const tracker = aiConfig.createTracker();
 const stream = await tracker.trackStreamMetricsOf(
   () => openai.chat.completions.create({ stream: true, /* ... */ }),
   async (s) => {
@@ -422,7 +415,7 @@ if result.success:
 **Node:**
 ```typescript
 // Producer process: persist the token (accessor on the tracker)
-const tracker = aiConfig.createTracker!();
+const tracker = aiConfig.createTracker();
 const response = await callProvider(...);
 await saveMessage(messageId, response.content, { resumptionToken: tracker.resumptionToken });
 
@@ -451,13 +444,13 @@ Run the checklist in order. Each step rules out one cause.
 5. **Mode match** — if the code calls `completion_config` but the AI Config in LaunchDarkly is in agent mode (or vice versa), the SDK call will error out. Check the mode in the UI.
 6. **Flush on shutdown** — on short-lived processes (tests, scripts), call `ld_client.flush()` before exit. Long-running servers flush automatically on an interval.
 7. **Data delay** — the Monitoring tab updates within 1–2 minutes. If you just deployed, wait and retry before debugging further.
-8. **SDK version** — current releases are Python `launchdarkly-server-sdk-ai` v0.18.0 and Node `@launchdarkly/server-sdk-ai` v0.17.0. The `create_tracker` / `createTracker` factory, `runId`-grouped metrics, `track_judge_result`, and `trackToolCall` / `trackToolCalls` (Node) all require these versions.
+8. **SDK version** — current releases are Python `launchdarkly-server-sdk-ai` v0.18.0 and Node `@launchdarkly/server-sdk-ai` v0.20.0. The `create_tracker` / `createTracker` factory, `runId`-grouped metrics, `track_judge_result`, and `trackToolCall` / `trackToolCalls` (Node) all require these versions.
 9. **Debug logging** — enable SDK debug logging (`LD_LOG_LEVEL=debug` / `setLevel('debug')`) to see evaluation results and tracker calls in stdout.
 10. **Error path silent** — are you catching exceptions that swallow tracker errors? The tracker should never raise, but if a custom wrapper catches everything, confirm the call fires by logging before and after.
 
 ## Common gotchas
 
-- **`model.parameters` vs `model.custom`.** `create_langchain_model` / `LangChainProvider.createLangChainModel` forwards every key in `model.parameters` to the provider SDK. App-scoped knobs (search result limits, retry budgets, feature toggles) **must** live in `model.custom` or the provider will crash at runtime with an unexpected-keyword-argument error. Read them with `ai_config.model.get_custom("key")`. Full walk-through with the MCP/REST-API caveat in [langchain-tracking.md § `model.parameters` vs `model.custom`](../../aiconfig-ai-metrics/references/langchain-tracking.md).
+- **`model.parameters` vs `model.custom`.** `create_langchain_model` (Python) / `createLangChainModel` (Node) forwards every key in `model.parameters` to the provider SDK. App-scoped knobs (search result limits, retry budgets, feature toggles) **must** live in `model.custom` or the provider will crash at runtime with an unexpected-keyword-argument error. Read them with `ai_config.model.get_custom("key")`. Full walk-through with the MCP/REST-API caveat in [langchain-tracking.md § `model.parameters` vs `model.custom`](../../aiconfig-ai-metrics/references/langchain-tracking.md).
 - **`track_tokens` token shape.** The Python `TokenUsage` dataclass requires `total` to be set — it is not derived. Compute `total = input + output` if the provider doesn't return one.
 - **`track_feedback` lifecycle.** The feedback call must be made on a tracker bound to the same `runId` that produced the response. If the thumbs-up comes in a later process, use the cross-process resumption pattern above — do **not** call `create_tracker()` again in the consumer, because that mints a *new* `runId`.
 - **OpenAI streaming tokens.** OpenAI only emits `usage` in the final chunk when `stream_options={"include_usage": True}` is passed. Without that flag, you have to tokenize manually — `tiktoken` for OpenAI models.

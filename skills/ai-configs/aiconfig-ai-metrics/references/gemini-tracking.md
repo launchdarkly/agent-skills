@@ -4,7 +4,7 @@
 
 ## Tier 1 is not available
 
-`ManagedModel` / `TrackedChat` do not currently ship a Gemini provider. If you need Tier 1 for a chat app, route via the LangChain provider package (`ChatGoogleGenerativeAI` under the hood), which restores the zero-tracker-call experience. See [langchain-tracking.md](langchain-tracking.md).
+`ManagedModel` does not currently ship a Gemini provider. If you need Tier 1 for a chat app, route via the LangChain provider package (`ChatGoogleGenerativeAI` under the hood), which restores the zero-tracker-call experience. See [langchain-tracking.md](langchain-tracking.md).
 
 ## Tier 3 — Custom extractor + `trackMetricsOf` (primary)
 
@@ -97,7 +97,7 @@ const geminiMetrics = (response: any): LDAIMetrics => {
   const usage = response.usageMetadata;
   return {
     success: true,
-    usage: usage
+    tokens: usage
       ? {
           total: usage.totalTokenCount ?? 0,
           input: usage.promptTokenCount ?? 0,
@@ -147,7 +147,7 @@ async function callWithTracking(
 
   const params = (aiConfig.model?.parameters ?? {}) as Record<string, unknown>;
 
-  const tracker = aiConfig.createTracker!();
+  const tracker = aiConfig.createTracker();
   // Exceptions are tracked automatically — trackMetricsOf catches
   // exceptions, records tracker.trackError(), and re-throws.
   const response = await tracker.trackMetricsOf(
@@ -195,7 +195,7 @@ Tool handlers stay in your application code — LaunchDarkly stores the schema, 
 
 ## Tier 2 option — route via LangChain
 
-If the app can adopt LangChain, the LangChain provider package handles Gemini (via `@langchain/google-genai` / `langchain-google-genai`) through the standard `trackMetricsOf(LangChainProvider.getAIMetricsFromResponse, ...)` pattern. The provider package handles LaunchDarkly→LangChain provider-name mapping (for example, `"gemini"` → `"google_genai"`) and forwards all variation parameters automatically, so you do not need your own mapping helper. See [langchain-tracking.md](langchain-tracking.md).
+If the app can adopt LangChain, the LangChain provider package handles Gemini (via `@langchain/google-genai` / `langchain-google-genai`) through the standard `trackMetricsOf(getAIMetricsFromResponse, ...)` pattern. The provider package handles LaunchDarkly→LangChain provider-name mapping (for example, `"gemini"` → `"google_genai"`) and forwards all variation parameters automatically, so you do not need your own mapping helper. See [langchain-tracking.md](langchain-tracking.md).
 
 ## Tier 4 — Manual (streaming only)
 

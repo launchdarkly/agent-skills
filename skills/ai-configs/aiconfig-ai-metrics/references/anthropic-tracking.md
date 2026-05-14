@@ -4,13 +4,13 @@
 
 Three viable paths, in order of preference:
 
-1. **Route Anthropic through LangChain.** If the app already uses LangChain (or can adopt it cheaply), install the LangChain provider package and use it as Tier 2. LangChain's `ChatAnthropic` wrapper exposes the standardized `usage_metadata` that `LangChainProvider.getAIMetricsFromResponse` reads.
+1. **Route Anthropic through LangChain.** If the app already uses LangChain (or can adopt it cheaply), install the LangChain provider package and use it as Tier 2. LangChain's `ChatAnthropic` wrapper exposes the standardized `usage_metadata` that `getAIMetricsFromResponse` reads.
 2. **Route Anthropic through Bedrock Converse.** If the app can switch to Bedrock Converse (Claude is available on Bedrock), you inherit Bedrock's Converse response shape and a custom-extractor pattern that's slightly cleaner. See [bedrock-tracking.md](bedrock-tracking.md).
 3. **Custom extractor on the direct SDK** (this file's primary pattern).
 
 ## Tier 1 is not available
 
-`ManagedModel` / `TrackedChat` do not currently ship an Anthropic provider. If you need Tier 1 for a chat app, use option 1 or 2 above — the LangChain provider package lets `ManagedModel` wrap a `ChatAnthropic` under the hood, which restores the zero-tracker-call experience.
+`ManagedModel` does not currently ship an Anthropic provider. If you need Tier 1 for a chat app, use option 1 or 2 above — the LangChain provider package lets `ManagedModel` wrap a `ChatAnthropic` under the hood, which restores the zero-tracker-call experience.
 
 ## Tier 3 — Custom extractor + `trackMetricsOf` (primary)
 
@@ -66,7 +66,7 @@ const client = new Anthropic();
 
 const anthropicExtractor = (response: Anthropic.Message): LDAIMetrics => ({
   success: true,
-  usage: {
+  tokens: {
     total: response.usage.input_tokens + response.usage.output_tokens,
     input: response.usage.input_tokens,
     output: response.usage.output_tokens,
@@ -81,7 +81,7 @@ async function callWithTracking(
 
   const systemContent = aiConfig.messages?.[0]?.content ?? '';
 
-  const tracker = aiConfig.createTracker!();
+  const tracker = aiConfig.createTracker();
   // Exceptions are tracked automatically: trackMetricsOf catches exceptions,
   // records tracker.trackError(), and re-throws. Do NOT add
   // catch (err) { tracker.trackError(); throw err } on top — it's a noop
@@ -108,18 +108,18 @@ Notes on the extractor shape:
 
 ## Tier 2 option — route via LangChain
 
-If the app can adopt LangChain, the LangChain provider package handles Anthropic (via `@langchain/anthropic`) through the same `trackMetricsOf(LangChainProvider.getAIMetricsFromResponse, ...)` pattern used for any other LangChain model. This is often the cleanest answer if the app already uses or is open to LangChain, because the extractor is built in and shared with every other LangChain-wrapped model.
+If the app can adopt LangChain, the LangChain provider package handles Anthropic (via `@langchain/anthropic`) through the same `trackMetricsOf(getAIMetricsFromResponse, ...)` pattern used for any other LangChain model. This is often the cleanest answer if the app already uses or is open to LangChain, because the extractor is built in and shared with every other LangChain-wrapped model.
 
 ```python
-from ldai_langchain import LangChainProvider
+from ldai_langchain import create_langchain_model, get_ai_metrics_from_response
 
 ai_config = ai_client.completion_config("my-config-key", context, default_config)
-llm = await LangChainProvider.create_langchain_model(ai_config)  # ChatAnthropic under the hood
+llm = create_langchain_model(ai_config)  # ChatAnthropic under the hood
 
 tracker = ai_config.create_tracker()
 response = tracker.track_metrics_of(
     lambda: llm.invoke(messages),
-    LangChainProvider.get_ai_metrics_from_response,
+    get_ai_metrics_from_response,
 )
 ```
 

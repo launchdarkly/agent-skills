@@ -1,7 +1,7 @@
 ---
 name: aiconfig-online-evals
 description: Attach judges to AI Config variations for automatic LLM-as-a-judge evaluation. Create custom judges, configure sampling rates, and monitor quality scores.
-compatibility: Requires LaunchDarkly API access token with ai-configs:write permission. SDK versions Python v0.18.0+ or Node.js v0.17.0+ for automatic metric recording and the consolidated `track_judge_result` / `trackJudgeResult` API.
+compatibility: Requires LaunchDarkly API access token with ai-configs:write permission. SDK versions Python v0.18.0+ or Node.js v0.20.0+ for automatic metric recording and the consolidated `track_judge_result` / `trackJudgeResult` API.
 metadata:
   author: launchdarkly
   version: "0.1.0"
@@ -16,7 +16,7 @@ Attach judges to AI Config variations for automatic quality scoring using LLM-as
 - LaunchDarkly account with AI Configs enabled
 - API access token with write permissions
 - Existing AI Config with variations (use `aiconfig-create` skill)
-- For automatic metric recording and the consolidated judge-result API: Python AI SDK v0.18.0+ or Node.js AI SDK v0.17.0+
+- For automatic metric recording and the consolidated judge-result API: Python AI SDK v0.18.0+ or Node.js AI SDK v0.20.0+
 
 ## API Key Detection
 
@@ -375,7 +375,7 @@ async def async_main():
     input_text = 'You are a helpful assistant. How can you help me?'
     output_text = 'I can answer any question you have.'
 
-    # Evaluate the input/output pair — always returns a JudgeResult in v0.18.0+
+    # Evaluate the input/output pair — returns a JudgeResult.
     judge_result = await judge.evaluate(input_text, output_text)
 
     if not judge_result.sampled:
@@ -395,7 +395,7 @@ async def async_main():
     ldclient.get().close()
 ```
 
-> **Note:** Direct evaluation does not automatically record metrics. Obtain a tracker via `ai_config.create_tracker()` / `aiConfig.createTracker!()` and call `tracker.track_judge_result(result)` / `tracker.trackJudgeResult(result)` to record scores for the AI Config you're evaluating. (This consolidates the earlier `track_eval_scores` + `track_judge_response` pair that was removed in Python v0.18.0 / Node v0.17.0.)
+> **Note:** Direct evaluation does not automatically record metrics. Obtain a tracker via `ai_config.create_tracker()` / `aiConfig.createTracker()` and call `tracker.track_judge_result(result)` / `tracker.trackJudgeResult(result)` to record scores for the AI Config you're evaluating.
 
 ## Sampling Rates
 

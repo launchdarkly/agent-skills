@@ -3,15 +3,16 @@
 LangChain is covered by a first-class LaunchDarkly provider package in both Python and Node. The same package is what LangGraph rides on — there is no separate LangGraph helper.
 
 - Python: `launchdarkly-server-sdk-ai-langchain` (imported as `ldai_langchain`)
-- Node: `@launchdarkly/server-sdk-ai-langchain` (exports `LangChainProvider`)
+- Node: `@launchdarkly/server-sdk-ai-langchain`
 
 Three helpers do the heavy lifting. Use them — skipping any silently drops value that the provider package would otherwise give you.
 
 | Helper | Purpose |
 |---|---|
-| `create_langchain_model(config)` (Python) / `LangChainProvider.createLangChainModel(config)` (Node) | Build a LangChain chat model from the AI Config. Forwards **all** variation parameters (temperature, max_tokens, top_p, and so on), picks the correct LangChain chat class based on `config.provider.name`, and handles provider-name mapping internally (for example, LaunchDarkly's `"gemini"` → LangChain's `"google_genai"`). |
+| `create_langchain_model(config)` (Python) / `createLangChainModel(config)` (Node, bare export) | Build a LangChain chat model from the AI Config. Forwards **all** variation parameters (temperature, max_tokens, top_p, and so on), picks the correct LangChain chat class based on `config.provider.name`, and handles provider-name mapping internally (for example, LaunchDarkly's `"gemini"` → LangChain's `"google_genai"`). |
 | `build_structured_tools(config, registry)` (Python, `ldai_langchain.langchain_helper`) | Read `config.model.parameters.tools` and wrap the matching entries in your `{name: callable}` registry as LangChain `StructuredTool` instances ready for `bind_tools`. This is the first-class replacement for hand-rolled `resolve_tools` / `TOOL_REGISTRY` / `ALL_TOOLS` patterns — it handles async callables via `coroutine=` and uses the LD tool key as the `StructuredTool.name`, so `ToolNode` lookup works without extra mapping. |
-| `get_ai_metrics_from_response` (top-level import) / `LangChainProvider.getAIMetricsFromResponse` (Node class method) | Extract token usage from a LangChain response. Pass as the extractor argument to `track_metrics_of` / `trackMetricsOf`. Both import forms are supported in Node; the top-level import is how Python exposes it. |
+| `get_ai_metrics_from_response` (Python top-level import) / `getAIMetricsFromResponse` (Node, bare export) | Extract token usage from a LangChain response. Pass as the extractor argument to `track_metrics_of` / `trackMetricsOf`. |
+| `LangChainRunnerFactory` (Node) | Managed-runner factory: `new LangChainRunnerFactory().createModel(aiConfig)` wires the chat model into a `ManagedModel` that handles tracking end-to-end (Tier 1). |
 
 ## `model.parameters` vs `model.custom` — the biggest gotcha
 
@@ -100,7 +101,11 @@ return completion.content
 **Node:**
 
 ```typescript
-import { LangChainProvider } from '@launchdarkly/server-sdk-ai-langchain';
+import {
+  createLangChainModel,
+  convertMessagesToLangChain,
+  getAIMetricsFromResponse,
+} from '@launchdarkly/server-sdk-ai-langchain';
 import { HumanMessage } from '@langchain/core/messages';
 
 const aiConfig = await aiClient.completionConfig('my-config-key', context);
@@ -108,22 +113,22 @@ if (!aiConfig.enabled) return null;
 
 // createLangChainModel picks the right chat class (ChatOpenAI, ChatAnthropic, …)
 // and forwards all variation parameters.
-const llm = await LangChainProvider.createLangChainModel(aiConfig);
+const llm = await createLangChainModel(aiConfig);
 
-const messages = LangChainProvider.convertMessagesToLangChain(aiConfig.messages ?? []);
+const messages = convertMessagesToLangChain(aiConfig.messages ?? []);
 messages.push(new HumanMessage(userPrompt));
 
-const tracker = aiConfig.createTracker!();
+const tracker = aiConfig.createTracker();
 // Exceptions are tracked automatically — trackMetricsOf catches
 // exceptions, records tracker.trackError(), and re-throws.
 const completion = await tracker.trackMetricsOf(
-  LangChainProvider.getAIMetricsFromResponse,
+  getAIMetricsFromResponse,
   () => llm.invoke(messages),
 );
 return completion.content;
 ```
 
-Both `create_langchain_model` and `LangChainProvider.createLangChainModel` raise at model-creation time if the matching LangChain provider integration is not installed. For example, if the variation's `provider.name` is `anthropic`, your environment needs `langchain-anthropic` (Python) or `@langchain/anthropic` (Node). The error surface is LangChain's, not LaunchDarkly's — install the missing integration and re-run.
+Both `create_langchain_model` (Python) and `createLangChainModel` (Node) raise at model-creation time if the matching LangChain provider integration is not installed. For example, if the variation's `provider.name` is `anthropic`, your environment needs `langchain-anthropic` (Python) or `@langchain/anthropic` (Node). The error surface is LangChain's, not LaunchDarkly's — install the missing integration and re-run.
 
 ### Why not `init_chat_model` + a custom provider-name mapping helper?
 
@@ -131,7 +136,7 @@ You will see examples in the wild that build the model by hand with `init_chat_m
 
 ## Tier 2 — LangGraph (agent workflows)
 
-LangGraph's prebuilt agent takes a model, tools, and a system prompt. Build the model with `create_langchain_model` (Python) or `LangChainProvider.createLangChainModel` (Node) and pass it in. The tracker wraps the whole agent invocation; the extractor aggregates token usage across every message the agent produced, and tool-call telemetry is read off the result after the wrapped call returns.
+LangGraph's prebuilt agent takes a model, tools, and a system prompt. Build the model with `create_langchain_model` (Python) or `createLangChainModel` (Node) and pass it in. The tracker wraps the whole agent invocation; the extractor aggregates token usage across every message the agent produced, and tool-call telemetry is read off the result after the wrapped call returns.
 
 > **API note (Python).** Use `from langchain.agents import create_agent`. The earlier `from langgraph.prebuilt import create_react_agent` is deprecated in LangGraph 1.0 and removed in 2.0 — same return shape; the only call-site rename is `prompt=` → `system_prompt=`. Node still uses `createReactAgent` from `@langchain/langgraph/prebuilt`.
 
@@ -188,7 +193,10 @@ except Exception as e:
 **Node** — same pattern with `trackMetricsOf` + a custom aggregator:
 
 ```typescript
-import { LangChainProvider } from '@launchdarkly/server-sdk-ai-langchain';
+import {
+  createLangChainModel,
+  getAIMetricsFromResponse,
+} from '@launchdarkly/server-sdk-ai-langchain';
 import type { LDAIMetrics } from '@launchdarkly/server-sdk-ai';
 import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import { MemorySaver } from '@langchain/langgraph';
@@ -196,7 +204,7 @@ import { MemorySaver } from '@langchain/langgraph';
 const agentConfig = await aiClient.agentConfig('my-agent-key', context);
 if (!agentConfig.enabled) return null;
 
-const llm = await LangChainProvider.createLangChainModel(agentConfig);
+const llm = await createLangChainModel(agentConfig);
 const checkpointer = new MemorySaver();
 const agent = createReactAgent({
   llm,
@@ -209,19 +217,19 @@ const agent = createReactAgent({
 const langgraphMetrics = (result: any): LDAIMetrics => {
   let input = 0, output = 0, total = 0;
   for (const message of result.messages ?? []) {
-    const m = LangChainProvider.getAIMetricsFromResponse(message);
-    if (m.usage) {
-      input += m.usage.input ?? 0;
-      output += m.usage.output ?? 0;
-      total += m.usage.total ?? 0;
+    const m = getAIMetricsFromResponse(message);
+    if (m.tokens) {
+      input += m.tokens.input ?? 0;
+      output += m.tokens.output ?? 0;
+      total += m.tokens.total ?? 0;
     }
   }
-  return { success: true, usage: total > 0 ? { input, output, total } : undefined };
+  return { success: true, tokens: total > 0 ? { input, output, total } : undefined };
 };
 
 // trackMetricsOf records duration + success/error itself; do not call
 // trackError after this — it would be a redundant second event.
-const agentTracker = agentConfig.createTracker!();
+const agentTracker = agentConfig.createTracker();
 const result = await agentTracker.trackMetricsOf(
   langgraphMetrics,
   () => agent.invoke(
@@ -230,8 +238,7 @@ const result = await agentTracker.trackMetricsOf(
   ),
 );
 
-// Tool-call telemetry: walk the result messages. Once the JS SDK ships
-// `LangChainProvider.getToolCallsFromResponse`, this collapses to one helper call.
+// Tool-call telemetry: walk the result messages.
 for (const msg of result.messages ?? []) {
   for (const tc of (msg as any).tool_calls ?? []) {
     agentTracker.trackToolCall(tc.name);

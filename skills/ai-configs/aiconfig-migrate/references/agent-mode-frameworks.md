@@ -18,14 +18,14 @@ Agent mode returns an `instructions` string. Completion mode returns a `messages
 
 **Caveat:** judges cannot be attached to agent-mode variations via the LaunchDarkly UI. Agent mode evaluations must go through the programmatic judge API (`create_judge(...).evaluate(input, output)`). See `aiconfig-online-evals` for the programmatic path.
 
-**Model construction for LangChain / LangGraph.** When the framework runs on top of LangChain (which includes LangGraph's prebuilt agent and most custom graphs), build the chat model with `create_langchain_model(ai_config)` (Python) or `LangChainProvider.createLangChainModel(aiConfig)` (Node). These helpers forward every variation parameter (`temperature`, `max_tokens`, `top_p`, …) and handle LaunchDarkly→LangChain provider-name mapping internally. Do not hand-roll `init_chat_model(model=..., model_provider=...)` — it silently drops every variation parameter. See [langchain-tracking.md](../../aiconfig-ai-metrics/references/langchain-tracking.md) for the canonical single-model and LangGraph patterns, including the SDK helpers `sum_token_usage_from_messages` / `get_tool_calls_from_response` (Python, `ldai_langchain`) used inside the `track_metrics_of_async` / `trackMetricsOf` extractor.
+**Model construction for LangChain / LangGraph.** When the framework runs on top of LangChain (which includes LangGraph's prebuilt agent and most custom graphs), build the chat model with `create_langchain_model(ai_config)` (Python) or `createLangChainModel(aiConfig)` (Node). These helpers forward every variation parameter (`temperature`, `max_tokens`, `top_p`, …) and handle LaunchDarkly→LangChain provider-name mapping internally. Do not hand-roll `init_chat_model(model=..., model_provider=...)` — it silently drops every variation parameter. See [langchain-tracking.md](../../aiconfig-ai-metrics/references/langchain-tracking.md) for the canonical single-model and LangGraph patterns, including the SDK helpers `sum_token_usage_from_messages` / `get_tool_calls_from_response` (Python, `ldai_langchain`) used inside the `track_metrics_of_async` / `trackMetricsOf` extractor.
 
 ## Framework-agnostic invariants for the run-scoped pattern
 
 The concrete examples below use specific frameworks (LangGraph, CrewAI, Strands) and specific node names (`setup_run`, `call_model`, `finalize`). Treat those as incidentals. The three invariants below apply to **any** agent framework — DSPy, AutoGen, Pydantic AI, Haystack, LlamaIndex agents, or a hand-rolled tool loop in pure Python/TypeScript. If the framework has its own idioms, translate these three rules onto them:
 
 1. **Resolve `agent_config()` / `agentConfig()` once per user turn.** Every call is a flag evaluation and emits a `$ld:ai:agent:config` event. Re-fetching inside a loop step or a tool body amplifies the event count per turn and lets a mid-turn targeting change swap the variation between LLM calls. Do the resolve at the highest scope that corresponds to "one user-input-to-final-response cycle" — a handler function, a LangGraph entry node, a CrewAI `kickoff`, whatever the framework exposes.
-2. **Mint one tracker via `create_tracker()` / `createTracker!()` per user turn.** Same scope as the `agent_config` call. The `runId` ties every event from one turn together; per-step factory calls fragment the correlation and reset the SDK's at-most-once guards. If the framework has a multi-turn session (chat thread), each turn inside the session still gets its own fresh tracker — sessions share a `thread_id`, not a `runId`.
+2. **Mint one tracker via `create_tracker()` / `createTracker()` per user turn.** Same scope as the `agent_config` call. The `runId` ties every event from one turn together; per-step factory calls fragment the correlation and reset the SDK's at-most-once guards. If the framework has a multi-turn session (chat thread), each turn inside the session still gets its own fresh tracker — sessions share a `thread_id`, not a `runId`.
 3. **Emit the five at-most-once methods once at the end of the turn.** `track_duration` / `track_tokens` / `track_success` / `track_error` / `track_time_to_first_token` each fire at most once per tracker. Accumulate inside the loop body (sum token usage across steps, stash a `perf_counter_ns` timer up top), emit once after the loop exits or in a dedicated finalize node. `track_tool_calls` / `track_feedback` / `track_judge_result` are per-event — call them as many times as the agent does those things.
 
 What "one user turn" means differs by app shape:
@@ -51,7 +51,7 @@ If the Stage 1 audit identified configuration that isn't a native model paramete
 - `enable_reranking`, `use_cache`, any boolean feature toggle the agent consumes
 - any value that governs **tool behavior** or **app behavior** rather than **model behavior**
 
-`create_langchain_model` / `LangChainProvider.createLangChainModel` forwards every key in `parameters` wholesale to the provider SDK. Anthropic, OpenAI, and Gemini all raise on unknown kwargs — a `max_search_results` entry in `parameters` crashes the request with `AsyncMessages.create() got an unexpected keyword argument 'max_search_results'`. Put the same field in `custom` and the helper leaves it alone; the app reads it where it's needed.
+`create_langchain_model` (Python) / `createLangChainModel` (Node) forwards every key in `parameters` wholesale to the provider SDK. Anthropic, OpenAI, and Gemini all raise on unknown kwargs — a `max_search_results` entry in `parameters` crashes the request with `AsyncMessages.create() got an unexpected keyword argument 'max_search_results'`. Put the same field in `custom` and the helper leaves it alone; the app reads it where it's needed.
 
 ```python
 # Fallback: mirror the hardcoded knob shape using custom
@@ -337,13 +337,13 @@ builder.add_edge("tools", "call_model")
 graph = builder.compile()
 ```
 
-After — **run-scoped** architecture. The critical shape for the v0.18.0+ tracker factory is that **one user turn = one `runId` = one tracker**, not one LLM call = one tracker. A ReAct loop that calls `call_model` three times in a single turn must not mint three trackers, or billing and the Monitoring tab will treat the turn as three separate executions. The fix is to resolve the AI Config and mint the tracker once, in a dedicated entry node, and thread both through graph state for every subsequent node.
+After — **run-scoped** architecture. The critical shape for the tracker factory is that **one user turn = one `runId` = one tracker**, not one LLM call = one tracker. A ReAct loop that calls `call_model` three times in a single turn must not mint three trackers, or billing and the Monitoring tab will treat the turn as three separate executions. The fix is to resolve the AI Config and mint the tracker once, in a dedicated entry node, and thread both through graph state for every subsequent node.
 
 Three nodes, in order:
 
 1. **`setup_run`** (entry) — resolves `agent_config`, mints the tracker with `create_tracker()`, builds `model` with `create_langchain_model(ai_config)`, builds tools via the factory pattern below, starts a `perf_counter_ns()` timer, and stashes all of it on `State`. Runs exactly once per turn.
 2. **`call_model`** — reads model / tools / tracker / accumulator from `State`, runs `model.ainvoke(...)`, accumulates token usage, calls `tracker.track_tool_calls([...])` per step. **Does not** call `track_metrics_of_async` here — that wrapper records duration + success on every invocation and would fire once per iteration. On exception: call `tracker.track_duration` + `tracker.track_error` and re-raise (the finalize node will not run).
-3. **`finalize`** (terminal) — runs exactly once at the end of the turn on the success path. Calls `tracker.track_duration(elapsed_ms)` + `tracker.track_tokens(accumulated)` + `tracker.track_success()`. Each of these now fires exactly once per run, which is what the at-most-once guards in 0.18.0 enforce.
+3. **`finalize`** (terminal) — runs exactly once at the end of the turn on the success path. Calls `tracker.track_duration(elapsed_ms)` + `tracker.track_tokens(accumulated)` + `tracker.track_success()`. Each of these fires exactly once per run, which is what the at-most-once guards enforce.
 
 ```python
 # tools.py — tool factories close over per-run config, so tools never re-fetch
@@ -572,7 +572,7 @@ For apps built on `@langchain/langgraph`'s prebuilt `createReactAgent`, the loop
 ```typescript
 import { init } from '@launchdarkly/node-server-sdk';
 import { initAi, type LDAIAgentConfig, type LDAIMetrics } from '@launchdarkly/server-sdk-ai';
-import { LangChainProvider } from '@launchdarkly/server-sdk-ai-langchain';
+import { createLangChainModel } from '@launchdarkly/server-sdk-ai-langchain';
 import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import { MemorySaver } from '@langchain/langgraph';
 
@@ -593,7 +593,7 @@ function langgraphMetrics(result: any): LDAIMetrics {
     total += usage.total_tokens ?? usage.totalTokens ?? 0;
   }
   if (total === 0) total = input + output;
-  return { success: true, usage: total > 0 ? { input, output, total } : undefined };
+  return { success: true, tokens: total > 0 ? { input, output, total } : undefined };
 }
 
 async function runTurn(userInput: string, threadId: string): Promise<string | null> {
@@ -607,7 +607,7 @@ async function runTurn(userInput: string, threadId: string): Promise<string | nu
   if (!agentConfig.enabled) return null;
 
   // Build everything once per user turn.
-  const llm = await LangChainProvider.createLangChainModel(agentConfig);
+  const llm = await createLangChainModel(agentConfig);
   const agent = createReactAgent({
     llm,
     tools: buildTools(agentConfig),      // factory pattern — see below
@@ -616,7 +616,7 @@ async function runTurn(userInput: string, threadId: string): Promise<string | nu
   });
 
   // One tracker per user turn. Fresh runId. At-most-once guards reset.
-  const tracker = agentConfig.createTracker!();
+  const tracker = agentConfig.createTracker();
 
   // Exceptions are tracked automatically — trackMetricsOf catches
   // exceptions, records tracker.trackError(), and re-throws.
@@ -673,7 +673,6 @@ function buildTools(agentConfig: LDAIAgentConfig) {
 
 - Because LangGraph.js's `createReactAgent` is prebuilt, you don't write a `setup_run` / `call_model` / `finalize` graph — `agent.invoke(...)` is the single call that represents the turn, so wrapping it in one `trackMetricsOf` call is sufficient. The at-most-once guards are naturally satisfied by the single wrapping call.
 - No dynamic `ToolNode` wrapper needed. `createReactAgent` takes a tool list at construction; construct the agent per-turn (inside `runTurn`) so the tools can close over the current `agentConfig`.
-- `agentConfig.createTracker!()` uses the TypeScript non-null assertion `!` because `createTracker` is typed optional on `LDAIConfig` (it's absent when the config is disabled, which you've already guarded above via `if (!agentConfig.enabled)`).
 - Multi-turn chat: if you want `runTurn` to be called three times in a row for one session (shared `threadId` / `MemorySaver`), each call still mints its own tracker inside `runTurn`. The `threadId` threads conversation memory through `checkpointer`; the `runId` identifies each turn independently.
 
 **Custom `StateGraph` in Node.js.** If the app uses a hand-rolled `StateGraph` with its own `call_model` / tool nodes (uncommon in Node compared to Python, but possible), the same run-scoped architecture from the Python section above applies — `setup_run` as an entry node, `tools_node` wrapper around `new ToolNode(state.tools).invoke(...)`, `finalize` as a terminal node. The TypeScript syntax differs but the node responsibilities are identical. Prefer `createReactAgent` unless the app genuinely needs graph-level control.
@@ -743,7 +742,7 @@ def run_turn(ai_client, user_id: str, user_input: str):
 
 The call site stays in your control; the AI Config just delivers `instructions`, `model.name`, `model.parameters`, and `tools`. Everything that's stable across the turn (model name, instructions, tool bindings, tracker) is hoisted out of the loop body — the loop itself only does message passing and tool dispatch.
 
-**Do not** call `track_duration` / `track_tokens` / `track_success` inside the `for` body. The at-most-once guards added in 0.18.0 will warn and drop the second-and-later calls on the same tracker, so per-step tracker calls will silently lose data. Accumulate inside the loop, emit once after.
+**Do not** call `track_duration` / `track_tokens` / `track_success` inside the `for` body. The at-most-once guards will warn and drop the second-and-later calls on the same tracker, so per-step tracker calls will silently lose data. Accumulate inside the loop, emit once after.
 
 ## Dynamic tool loading — the "tools factory" pattern
 

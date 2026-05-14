@@ -8,7 +8,7 @@ The key names inside `accumulated_usage` are camelCase even in Python: `inputTok
 
 ## Tier 1 is not available
 
-`ManagedModel` / `TrackedChat` do not currently ship a Strands runner. Strands owns its own agent loop and short-term memory (`SlidingWindowConversationManager`), so wrapping it in a LaunchDarkly managed runner would fight against the framework. Stay on Tier 3.
+`ManagedModel` does not currently ship a Strands runner. Strands owns its own agent loop and short-term memory (`SlidingWindowConversationManager`), so wrapping it in a LaunchDarkly managed runner would fight against the framework. Stay on Tier 3.
 
 ## Tier 3 — Explicit `track_duration_of` + manual `track_tokens` (primary)
 
