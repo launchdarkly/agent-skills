@@ -2,7 +2,7 @@
 name: aiconfig-ai-metrics
 description: "Instrument an existing codebase with LaunchDarkly AI Config tracking. Walks the four-tier ladder (managed runner → provider package → custom extractor + trackMetricsOf → raw manual) and picks the lowest-ceremony option that still captures duration, tokens, and success/error."
 license: Apache-2.0
-compatibility: Requires the LaunchDarkly server-side AI SDK (`launchdarkly-server-sdk-ai>=0.18.0` for Python or `@launchdarkly/server-sdk-ai>=0.20.0` for Node) and an existing AI Config.
+compatibility: Requires the LaunchDarkly server-side AI SDK (`launchdarkly-server-sdk-ai>=0.20.0` for Python or `@launchdarkly/server-sdk-ai>=0.20.0` for Node) and an existing AI Config.
 metadata:
   author: launchdarkly
   version: "1.0.0-experimental"
