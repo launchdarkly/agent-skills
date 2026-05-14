@@ -181,6 +181,7 @@ messages = [{"role": "user", "content": initial_input}]
 MAX_STEPS = 5
 for _ in range(MAX_STEPS):
     response = tracker.track_metrics_of(
+        anthropic_metrics,
         lambda: anthropic_client.messages.create(
             model=agent.model.name,
             system=agent.instructions,
@@ -188,7 +189,6 @@ for _ in range(MAX_STEPS):
             tools=anthropic_tools,
             **params,
         ),
-        anthropic_metrics,
     )
     if response.stop_reason != "tool_use":
         break

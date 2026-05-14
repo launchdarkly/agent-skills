@@ -249,13 +249,13 @@ The canonical tracking surface is **`trackMetricsOf` composed with a provider-pa
 
 | Helper | Signature | Tier | Notes |
 |--------|-----------|------|-------|
-| `track_metrics_of(func, extractor)` | `tracker.track_metrics_of(func, extractor)` | **2 / 3** | **Canonical generic wrapper.** Sync. Calls `extractor(result)` to get an `LDAIMetrics` object; records tokens + duration + success. Use a provider package's `get_ai_metrics_from_response` as the extractor for Tier 2, or write a small custom function for Tier 3. |
-| `track_metrics_of_async(func, extractor)` | `await tracker.track_metrics_of_async(async_func, extractor)` | 2 / 3 | Async variant. |
+| `track_metrics_of(extractor, func)` | `tracker.track_metrics_of(extractor, func)` | **2 / 3** | **Canonical generic wrapper.** Sync. Calls `extractor(result)` to get an `LDAIMetrics` object; records tokens + duration + success. Use a provider package's `get_ai_metrics_from_response` as the extractor for Tier 2, or write a small custom function for Tier 3. |
+| `track_metrics_of_async(extractor, func)` | `await tracker.track_metrics_of_async(extractor, async_func)` | 2 / 3 | Async variant. |
 | `track_duration_of(func)` | `tracker.track_duration_of(lambda: provider_call())` | 4 | Wraps a sync callable; captures duration only. Pair with explicit `track_tokens` + `track_success`. Useful when the response shape makes `track_metrics_of` awkward. |
 
 Example — OpenAI via `track_metrics_of` + the provider package extractor:
 ```python
-from ldai_openai import OpenAIProvider
+from ldai_openai import get_ai_metrics_from_response
 
 tracker = ai_config.create_tracker()
 
@@ -265,10 +265,7 @@ def call_openai():
         messages=[m.to_dict() for m in ai_config.messages or []],
     )
 
-completion = tracker.track_metrics_of(
-    call_openai,
-    OpenAIProvider.get_ai_metrics_from_response,
-)
+completion = tracker.track_metrics_of(get_ai_metrics_from_response, call_openai)
 ```
 
 Example — custom extractor for Anthropic direct (Tier 3):
@@ -287,8 +284,8 @@ def anthropic_extractor(response) -> LDAIMetrics:
 
 tracker = ai_config.create_tracker()
 response = tracker.track_metrics_of(
-    lambda: anthropic_client.messages.create(...),
     anthropic_extractor,
+    lambda: anthropic_client.messages.create(...),
 )
 ```
 
@@ -296,7 +293,7 @@ response = tracker.track_metrics_of(
 
 | Helper | Signature | Tier | Notes |
 |--------|-----------|------|-------|
-| `trackMetricsOf<T>(extractor, func)` | `await tracker.trackMetricsOf((result) => extractor(result), async () => ...)` | **2 / 3** | **Canonical generic wrapper.** `extractor` maps provider response → `LDAIMetrics`. Use a provider package's `Provider.getAIMetricsFromResponse` for Tier 2 (`@launchdarkly/server-sdk-ai-openai`, `-langchain`, `-vercel`) or a small custom function for Tier 3. |
+| `trackMetricsOf<T>(extractor, func)` | `await tracker.trackMetricsOf((result) => extractor(result), async () => ...)` | **2 / 3** | **Canonical generic wrapper.** `extractor` maps provider response → `LDAIMetrics`. Use a provider package's bare `getAIMetricsFromResponse` for Tier 2 (`@launchdarkly/server-sdk-ai-openai`, `-langchain`, `-vercel`) or a small custom function for Tier 3. |
 | `trackStreamMetricsOf<T>(extractor, streamCreator)` | `tracker.trackStreamMetricsOf(async (chunks) => extractor(chunks), () => createStream())` | 2 / 3 | Stream variant. Does **not** capture TTFT automatically — if you need TTFT, use the manual pattern in [streaming-tracking.md](../../aiconfig-ai-metrics/references/streaming-tracking.md). |
 | `trackDurationOf<T>(func)` | `await tracker.trackDurationOf(async () => ...)` | 4 | Wraps an async callable; captures duration only. Pair with explicit `trackTokens` + `trackSuccess`. |
 Example — OpenAI via `trackMetricsOf` + the provider package:

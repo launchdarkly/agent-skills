@@ -50,7 +50,7 @@ def call_with_tracking(ai_config, user_prompt: str) -> str | None:
     tracker = ai_config.create_tracker()
     # Exceptions are tracked automatically — track_metrics_of catches
     # exceptions, records tracker.track_error(), and re-raises.
-    response = tracker.track_metrics_of(call_bedrock, bedrock_converse_extractor)
+    response = tracker.track_metrics_of(bedrock_converse_extractor, call_bedrock)
     return response["output"]["message"]["content"][0]["text"]
 ```
 
@@ -130,8 +130,8 @@ llm = create_langchain_model(ai_config)  # ChatBedrockConverse when provider=bed
 
 tracker = ai_config.create_tracker()
 response = tracker.track_metrics_of(
-    lambda: llm.invoke(messages),
     get_ai_metrics_from_response,
+    lambda: llm.invoke(messages),
 )
 ```
 

@@ -92,8 +92,8 @@ tracker = config.create_tracker()
 # Exceptions are tracked automatically — track_metrics_of_async catches
 # exceptions, records tracker.track_error(), and re-raises.
 completion = await tracker.track_metrics_of_async(
-    lambda: llm.ainvoke(messages),
     get_ai_metrics_from_response,
+    lambda: llm.ainvoke(messages),
 )
 return completion.content
 ```
@@ -173,13 +173,13 @@ agent = create_agent(
 tracker = agent_config.create_tracker()
 try:
     result = await tracker.track_metrics_of_async(
-        lambda: agent.ainvoke(
-            {"messages": [{"role": "user", "content": user_prompt}]},
-            config={"configurable": {"thread_id": thread_id}},
-        ),
         lambda res: LDAIMetrics(
             success=True,
             usage=sum_token_usage_from_messages(res.get("messages", [])),
+        ),
+        lambda: agent.ainvoke(
+            {"messages": [{"role": "user", "content": user_prompt}]},
+            config={"configurable": {"thread_id": thread_id}},
         ),
     )
     for msg in result.get("messages", []):
@@ -273,8 +273,8 @@ from ldai_langchain.langchain_helper import build_structured_tools
 model = create_langchain_model(ai_config)
 tools = build_structured_tools(ai_config, TOOL_REGISTRY)
 response = await tracker.track_metrics_of_async(
-    lambda: model.bind_tools(tools).ainvoke(messages),
     get_ai_metrics_from_response,
+    lambda: model.bind_tools(tools).ainvoke(messages),
 )
 ```
 

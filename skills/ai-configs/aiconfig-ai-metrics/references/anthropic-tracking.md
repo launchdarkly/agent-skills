@@ -52,7 +52,7 @@ def call_with_tracking(ai_config, user_prompt: str) -> str | None:
     # except: tracker.track_error() on top — it's a noop that trips the
     # at-most-once guard. Wrap in your own try/except only if you need
     # local handling (logging, fallback, alert); the error is already tracked.
-    response = tracker.track_metrics_of(call_anthropic, anthropic_extractor)
+    response = tracker.track_metrics_of(anthropic_extractor, call_anthropic)
     return response.content[0].text
 ```
 
@@ -118,8 +118,8 @@ llm = create_langchain_model(ai_config)  # ChatAnthropic under the hood
 
 tracker = ai_config.create_tracker()
 response = tracker.track_metrics_of(
-    lambda: llm.invoke(messages),
     get_ai_metrics_from_response,
+    lambda: llm.invoke(messages),
 )
 ```
 

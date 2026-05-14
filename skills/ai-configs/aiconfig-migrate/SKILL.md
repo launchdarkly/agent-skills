@@ -361,7 +361,7 @@ Hand off: print the AI Config key, variation key, provider, and whether the call
 
    **Python:**
    ```python
-   from ldai_openai import OpenAIProvider
+   from ldai_openai import get_ai_metrics_from_response
    import openai
 
    client = openai.OpenAI()
@@ -378,10 +378,7 @@ Hand off: print the AI Config key, variation key, provider, and whether the call
    # Exceptions are tracked automatically — track_metrics_of catches
    # exceptions, records tracker.track_error(), and re-raises. Wrap your
    # own try/except only for local handling (logging, fallback).
-   response = tracker.track_metrics_of(
-       call_openai,
-       OpenAIProvider.get_ai_metrics_from_response,
-   )
+   response = tracker.track_metrics_of(get_ai_metrics_from_response, call_openai)
    ```
 
    **Node:**
@@ -523,7 +520,7 @@ These are ordered by how likely they are to show up as a first-run failure. The 
 - **Same rule applies to hand-rolled `resolve_tools` / `TOOL_REGISTRY` / `ALL_TOOLS` helpers.** If the template already has a `resolve_tools(tool_keys)` or an `ALL_TOOLS` module-level list, import `build_structured_tools` from `ldai_langchain.langchain_helper` and delete the hand-rolled version. `build_structured_tools(ai_config, TOOL_REGISTRY_DICT)` reads `ai_config.model.parameters.tools` and wraps the matching callables as LangChain `StructuredTool`s with the LD tool key as the `StructuredTool.name` — so `ToolNode` lookup works without a second mapping. Don't leave both in the repo.
 - Don't put app-scoped knobs directly in `model.parameters`. `create_langchain_model` forwards every key in `parameters` to the provider SDK via `init_chat_model`, so a `max_search_results` / `retry_budget` / `feature_toggle` entry will crash the provider with an unexpected-keyword-argument error. The correct home is `model.custom`, which the provider helpers ignore and the app reads via `ai_config.model.get_custom("key")`. The MCP `update-ai-config-variation` tool does not currently expose top-level `custom`, so pick one of two paths: (a) PATCH the variation via the REST API to set `model.custom` directly, or (b) set it via MCP inside `parameters.custom` (as a nested dict) and use a defensive accessor that reads both locations. Full walk-through with code samples in [langchain-tracking.md § MCP caveat](../aiconfig-ai-metrics/references/langchain-tracking.md).
 - Don't re-encode tool schemas inside the fallback. When LaunchDarkly is unreachable the fallback should run without tools (or with whatever minimal provider-bound parameters the app needs to keep operating). Building a `_FALLBACK_TOOLS` array that duplicates the AI Config's tool schema re-introduces the hardcoded config the migration was supposed to move out of code.
-- Don't import `LaunchDarklyCallbackHandler` from `ldai.langchain` — neither the class nor the dotted module path exists. The Python LangChain helper package is `ldai_langchain` (top-level module, underscore). Use `create_langchain_model(config)` + `track_metrics_of_async(lambda: llm.ainvoke(messages), get_ai_metrics_from_response)` as the canonical pattern.
+- Don't import `LaunchDarklyCallbackHandler` from `ldai.langchain` — neither the class nor the dotted module path exists. The Python LangChain helper package is `ldai_langchain` (top-level module, underscore). Use `create_langchain_model(config)` + `track_metrics_of_async(get_ai_metrics_from_response, lambda: llm.ainvoke(messages))` as the canonical pattern.
 
 ### Stage / handoff discipline
 

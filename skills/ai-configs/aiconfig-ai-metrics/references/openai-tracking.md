@@ -66,22 +66,17 @@ Use this when the call isn't a chat loop (one-shot completion, structured output
 **Python** — `launchdarkly-server-sdk-ai-openai`:
 
 ```python
-from ldai_openai import OpenAIProvider
-
-ai_config = ai_client.completion_config("my-config-key", context, default_config)
-if not ai_config.enabled:
-    return None
-
-provider = await OpenAIProvider.create(ai_config)
-response = await provider.invoke_model(ai_config.messages)
-return response.message.content
+managed = await ai_client.create_model("my-config-key", context, default_config)
+if managed:
+    result = await managed.run(user_prompt)
+    return result.content
 ```
 
-`OpenAIProvider.invoke_model()` also tracks automatically. If you need finer-grained control (e.g., you want to supply your own OpenAI client with custom retries), use the raw SDK + `track_metrics_of`:
+`managed.run()` tracks automatically — the managed runner handles duration, tokens, and success/error end-to-end. If you need finer-grained control (e.g., you want to supply your own OpenAI client with custom retries), use the raw SDK + `track_metrics_of` with the bare extractor:
 
 ```python
 import openai
-from ldai_openai import OpenAIProvider
+from ldai_openai import get_ai_metrics_from_response
 
 client = openai.OpenAI()
 
@@ -100,10 +95,7 @@ def call_openai():
         ],
     )
 
-response = tracker.track_metrics_of(
-    call_openai,
-    OpenAIProvider.get_ai_metrics_from_response,
-)
+response = tracker.track_metrics_of(get_ai_metrics_from_response, call_openai)
 return response.choices[0].message.content
 ```
 
@@ -163,7 +155,7 @@ def my_openai_extractor(response) -> LDAIMetrics:
     )
 
 tracker = ai_config.create_tracker()
-response = tracker.track_metrics_of(call_openai, my_openai_extractor)
+response = tracker.track_metrics_of(my_openai_extractor, call_openai)
 ```
 
 ## Tier 4 — Manual (streaming only)

@@ -81,7 +81,7 @@ def call_with_tracking(ai_config, user_prompt: str) -> str | None:
     tracker = ai_config.create_tracker()
     # Exceptions are tracked automatically — track_metrics_of catches
     # exceptions, records tracker.track_error(), and re-raises.
-    response = tracker.track_metrics_of(call_gemini, gemini_metrics)
+    response = tracker.track_metrics_of(gemini_metrics, call_gemini)
     return response.text
 ```
 
