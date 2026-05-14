@@ -2,7 +2,7 @@
 
 The main novel content of this skill — a per-method reference for the LaunchDarkly AI Config tracker in Python and Node side by side. **No existing skill covers this.** The `launchdarkly-metric-instrument` skill is for `ldClient.track()` feature metrics, which is a different API.
 
-All method names and signatures below are verified against `launchdarkly-server-sdk-ai` v0.18.0 (Python) and `@launchdarkly/server-sdk-ai` v0.20.0 (`js-core/packages/sdk/server-ai`). If a method is not listed, it does not exist — do not invent it.
+All method names and signatures below are verified against `launchdarkly-server-sdk-ai` v0.20.0 (Python) and `@launchdarkly/server-sdk-ai` v0.20.0 (`js-core/packages/sdk/server-ai`). If a method is not listed, it does not exist — do not invent it.
 
 ## Tracker lifetime
 
@@ -441,7 +441,7 @@ Run the checklist in order. Each step rules out one cause.
 5. **Mode match** — if the code calls `completion_config` but the AI Config in LaunchDarkly is in agent mode (or vice versa), the SDK call will error out. Check the mode in the UI.
 6. **Flush on shutdown** — on short-lived processes (tests, scripts), call `ld_client.flush()` before exit. Long-running servers flush automatically on an interval.
 7. **Data delay** — the Monitoring tab updates within 1–2 minutes. If you just deployed, wait and retry before debugging further.
-8. **SDK version** — current releases are Python `launchdarkly-server-sdk-ai` v0.18.0 and Node `@launchdarkly/server-sdk-ai` v0.20.0. The `create_tracker` / `createTracker` factory, `runId`-grouped metrics, `track_judge_result`, and `trackToolCall` / `trackToolCalls` (Node) all require these versions.
+8. **SDK version** — current releases are Python `launchdarkly-server-sdk-ai` v0.20.0 and Node `@launchdarkly/server-sdk-ai` v0.20.0. The `create_tracker` / `createTracker` factory, `runId`-grouped metrics, `track_judge_result`, and `trackToolCall` / `trackToolCalls` (Node) all require these versions.
 9. **Debug logging** — enable SDK debug logging (`LD_LOG_LEVEL=debug` / `setLevel('debug')`) to see evaluation results and tracker calls in stdout.
 10. **Error path silent** — are you catching exceptions that swallow tracker errors? The tracker should never raise, but if a custom wrapper catches everything, confirm the call fires by logging before and after.
 

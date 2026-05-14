@@ -1,7 +1,7 @@
 ---
 name: aiconfig-online-evals
 description: Attach judges to AI Config variations for automatic LLM-as-a-judge evaluation. Create custom judges, configure sampling rates, and monitor quality scores.
-compatibility: Requires LaunchDarkly API access token with ai-configs:write permission. SDK versions Python v0.18.0+ or Node.js v0.20.0+ for automatic metric recording and the consolidated `track_judge_result` / `trackJudgeResult` API.
+compatibility: Requires LaunchDarkly API access token with ai-configs:write permission. SDK versions Python v0.20.0+ or Node.js v0.20.0+ for automatic metric recording and the consolidated `track_judge_result` / `trackJudgeResult` API.
 metadata:
   author: launchdarkly
   version: "0.1.0"
@@ -16,7 +16,7 @@ Attach judges to AI Config variations for automatic quality scoring using LLM-as
 - LaunchDarkly account with AI Configs enabled
 - API access token with write permissions
 - Existing AI Config with variations (use `aiconfig-create` skill)
-- For automatic metric recording and the consolidated judge-result API: Python AI SDK v0.18.0+ or Node.js AI SDK v0.20.0+
+- For automatic metric recording and the consolidated judge-result API: Python AI SDK v0.20.0+ or Node.js AI SDK v0.20.0+
 
 ## API Key Detection
 
