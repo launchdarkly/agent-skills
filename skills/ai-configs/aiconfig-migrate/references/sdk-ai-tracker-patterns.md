@@ -2,7 +2,10 @@
 
 The main novel content of this skill — a per-method reference for the LaunchDarkly AI Config tracker in Python and Node side by side. **No existing skill covers this.** The `launchdarkly-metric-instrument` skill is for `ldClient.track()` feature metrics, which is a different API.
 
-All method names and signatures below are verified against `launchdarkly-server-sdk-ai` v0.20.0 (Python) and `@launchdarkly/server-sdk-ai` v0.20.0 (`js-core/packages/sdk/server-ai`). If a method is not listed, it does not exist — do not invent it.
+All method names and signatures below describe the current public surface of `launchdarkly-server-sdk-ai` (Python) and `@launchdarkly/server-sdk-ai` (Node). If a method is not listed, it does not exist — do not invent it. For per-release breaking changes and renames, consult the SDK CHANGELOGs:
+
+- Python: https://github.com/launchdarkly/python-server-sdk-ai/blob/main/packages/sdk/server-ai/CHANGELOG.md
+- Node: https://github.com/launchdarkly/js-core/blob/main/packages/sdk/server-ai/CHANGELOG.md
 
 ## Tracker lifetime
 
@@ -50,7 +53,7 @@ tracker.trackSuccess();
 tracker.trackTokens(tokens);
 ```
 
-Other API notes you will see referenced below:
+Other API notes worth knowing:
 
 - **Python:** `AIGraphTracker.track_latency` is `track_duration`. The `LDAIConfigTracker.track_*()` methods do not take a `graph_key` keyword — trackers obtained inside a graph traversal are already bound to the right graph key.
 - **Python:** `Judge.evaluate()` / `evaluate_messages()` return a `JudgeResult`; check `result.sampled` to know whether the evaluation ran. Record it with `tracker.track_judge_result(result)`.
@@ -441,7 +444,7 @@ Run the checklist in order. Each step rules out one cause.
 5. **Mode match** — if the code calls `completion_config` but the AI Config in LaunchDarkly is in agent mode (or vice versa), the SDK call will error out. Check the mode in the UI.
 6. **Flush on shutdown** — on short-lived processes (tests, scripts), call `ld_client.flush()` before exit. Long-running servers flush automatically on an interval.
 7. **Data delay** — the Monitoring tab updates within 1–2 minutes. If you just deployed, wait and retry before debugging further.
-8. **SDK version** — current releases are Python `launchdarkly-server-sdk-ai` v0.20.0 and Node `@launchdarkly/server-sdk-ai` v0.20.0. The `create_tracker` / `createTracker` factory, `runId`-grouped metrics, `track_judge_result`, and `trackToolCall` / `trackToolCalls` (Node) all require these versions.
+8. **SDK version** — confirm the installed `launchdarkly-server-sdk-ai` (Python) / `@launchdarkly/server-sdk-ai` (Node) version supports the API the code is calling. Methods like `create_tracker` / `createTracker`, `runId`-grouped metrics, `track_judge_result`, and `trackToolCall` / `trackToolCalls` (Node) were added in recent releases — see the SDK CHANGELOGs linked at the top of this file for the version they landed in.
 9. **Debug logging** — enable SDK debug logging (`LD_LOG_LEVEL=debug` / `setLevel('debug')`) to see evaluation results and tracker calls in stdout.
 10. **Error path silent** — are you catching exceptions that swallow tracker errors? The tracker should never raise, but if a custom wrapper catches everything, confirm the call fires by logging before and after.
 

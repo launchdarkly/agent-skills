@@ -57,6 +57,13 @@ This skill requires the remotely hosted LaunchDarkly MCP server to be configured
 
 **MCP tools used directly by this skill:** none — every LaunchDarkly write happens in a focused sibling skill.
 
+**Check the SDK CHANGELOG before applying any pattern.** The API surface described throughout this skill targets the SDK behavior at the time of the skill's last update; SDK releases can rename, remove, or split methods after that. Before you start, fetch the latest CHANGELOG for the SDK(s) you'll target and skim for anything that contradicts the pattern you're about to apply:
+
+- Python: https://github.com/launchdarkly/python-server-sdk-ai/blob/main/packages/sdk/server-ai/CHANGELOG.md (and per-provider CHANGELOGs under `packages/ai-providers/server-ai-{openai,langchain}/CHANGELOG.md`)
+- Node: https://github.com/launchdarkly/js-core/blob/main/packages/sdk/server-ai/CHANGELOG.md (and per-provider CHANGELOGs under `packages/ai-providers/server-ai-{openai,langchain,vercel}/CHANGELOG.md`)
+
+If a CHANGELOG entry post-dates this skill and changes an API you're about to use, the CHANGELOG wins — and the skill should be updated.
+
 **Hand-off model.** This skill does **not** auto-invoke other skills. At each stage that needs a LaunchDarkly write, this skill prepares the inputs (config key, mode, model, prompt, tool schemas, judge keys) and then **tells the user to run the next slash-command themselves**. After the user finishes that sibling skill, return to the next step here. Treat the "Delegate" lines below as next-step instructions, not auto-handoffs.
 
 **Sibling skills the user runs at each stage:**
