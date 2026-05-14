@@ -20,7 +20,7 @@ You're using a skill that will guide you through adding capabilities to your AI 
 ## Core Principles
 
 1. **Start with Capabilities**: Think about what your AI needs to do before creating tools
-2. **Framework Matters**: LangGraph/CrewAI often auto-generate schemas; OpenAI SDK needs manual schemas
+2. **Framework Matters**: LangGraph/CrewAI often auto-generate schemas; OpenAI SDK and Strands need manual schemas. For Strands, see [strands.md](references/strands.md) for the `TOOL_REGISTRY` runtime-resolution pattern that lets LaunchDarkly drive the active tool list per variation.
 3. **Create Before Attach**: Tools must exist before you can attach them to variations
 4. **Verify**: The agent fetches tools and config to confirm attachment
 
@@ -38,7 +38,7 @@ What should the AI be able to do?
 
 - Query databases, call APIs, perform calculations, send notifications
 - Check what exists in the codebase (API clients, functions)
-- Consider framework: LangGraph/LangChain auto-generate schemas; direct SDK needs manual schemas
+- Consider framework: LangGraph/LangChain auto-generate schemas; direct SDK + Strands (`@tool` decorator with manual schema in LD) need manual schemas — for Strands see [references/strands.md](references/strands.md)
 
 ### Step 2: Create Tools
 

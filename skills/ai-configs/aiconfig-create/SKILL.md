@@ -35,7 +35,7 @@ You're using a skill that will guide you through setting up AI configuration in 
 
 Before creating, identify what you're building:
 
-- **What framework?** LangGraph, LangChain, CrewAI, OpenAI SDK, Anthropic SDK, custom
+- **What framework?** LangGraph, LangChain, CrewAI, Strands ([references/strands.md](references/strands.md)), OpenAI SDK, Anthropic SDK, custom
 - **What does the AI need?** Just text, or tools/function calling?
 - **Agent or completion?** See decision below
 
@@ -44,7 +44,7 @@ Before creating, identify what you're building:
 | Your Need | Mode |
 |-----------|------|
 | Persistent instructions across interactions | **Agent** |
-| LangGraph, CrewAI, AutoGen | **Agent** |
+| LangGraph, CrewAI, AutoGen, Strands | **Agent** |
 | Direct OpenAI/Anthropic API calls | **Completion** |
 | Full control of message structure | **Completion** |
 | One-off text generation | **Completion** |
