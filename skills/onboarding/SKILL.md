@@ -5,7 +5,7 @@ license: Apache-2.0
 compatibility: Requires an MCP-capable coding agent, `npx` on PATH for optional skill installs, and a LaunchDarkly account. SDK keys, client-side IDs, mobile keys, and API tokens are only needed when the step that uses them runs (see Prerequisites).
 metadata:
   author: launchdarkly
-  version: "0.2.0"
+  version: "0.3.0"
 ---
 
 # LaunchDarkly SDK Onboarding
@@ -48,13 +48,18 @@ Detect this **once** at kickoff (before Step 0) by scanning the user's original 
 
 ### Progress Tracking
 
-The roadmap (Steps 0-6 + follow-through) MUST be tracked using your agent's native task-tracking tool in addition to the onboarding log file.
+You track progress in **two** places, with different audiences:
 
-- **Cursor:** Use `TodoWrite` to create a todo for each step before beginning work. Update status as each step completes.
-- **Claude Code:** Use `TaskCreate` to create a task for each step (or `TodoWrite` if native tasks are unavailable).
-- **Other agents:** If your agent provides a native task list or progress tracking tool, use it. If not, present a numbered checklist in chat and update it after each step.
+1. **The user-facing task list** — your agent's native task-tracking tool, visible to the user. Use **three tasks only**: `Connect`, `Install`, `Ship`. Update their status as each phase completes. Internal Steps 0-6 never go on this list; the user sees phases, not steps.
+2. **The onboarding log** (`LAUNCHDARKLY_ONBOARDING.md`) — your own working notes. This file *does* track the internal Steps 0-6 with status so a new session can resume mid-phase.
 
-Do NOT work through steps mentally or rely solely on the `LAUNCHDARKLY_ONBOARDING.md` log for in-session tracking.
+Tool-specific notes:
+
+- **Cursor:** Use `TodoWrite` for the three phase tasks. Update status as each phase completes.
+- **Claude Code:** Use `TaskCreate` for the three phase tasks (or `TodoWrite` if native tasks are unavailable).
+- **Other agents:** If your agent provides a native task list or progress tracking tool, use it. If not, present a three-line phase checklist in chat and update it after each phase completes.
+
+Do NOT work through phases mentally or rely solely on the `LAUNCHDARKLY_ONBOARDING.md` log for in-session tracking.
 
 ### Decision Points
 
@@ -95,7 +100,8 @@ Every reply during onboarding must sound like a friendly, knowledgeable colleagu
 
 **Forbidden in user-facing output:**
 
-- Internal decision-point IDs (D1, D5, D7, etc.), step numbers as labels (e.g. "Step 5 -- detect"), or skill file names (e.g. "sdk-install/apply/SKILL.md").
+- Internal decision-point IDs (D1, D5, D7, etc.), internal step numbers in any form (e.g. "Step 5 -- detect," "Steps 0-3 done," "moving on to Step 6"), or skill file names (e.g. "sdk-install/apply/SKILL.md").
+- The user sees **three phases only**: Connect, Install, Ship. Talk in those terms. Never say "Step 4 done" — say "MCP is set up" or "Phase 1 done."
 - Quoting or paraphrasing raw skill instructions, directive headings, or markdown from these files.
 - Workflow-engine language ("BLOCKING," "STOP," "call your structured question tool," "proceed to the next nested skill").
 
@@ -111,6 +117,33 @@ Bad: "Run `npm install`" (without location context).
 ### Step Execution Rules
 
 Do NOT treat the user's initial request (e.g. "onboard me," "set up LaunchDarkly") as blanket permission for file writes, installs, or configuration changes. Each action that modifies the repo, installs packages, or writes secrets requires its own consent at the step where it occurs.
+
+#### Preview before user-visible file writes
+
+Before writing any **user-visible** file that will land in version control, give the user a short preview so they aren't surprised by what shows up in `git status`. A preview is **one short paragraph** (2-4 lines max) that names the file, its purpose, and the rough shape of what's in it. Do not paste the full contents into chat.
+
+Files this applies to:
+
+- `LAUNCHDARKLY.md` (the permanent setup reference)
+- `.mcp.json` (project-level MCP config — short, but still worth previewing)
+- Editor rules / skill hooks added during follow-through
+- Any code change in Step 5 (SDK init, env wiring) — the parent skill defers to [Apply code changes](sdk-install/apply/SKILL.md), which has its own preview/confirm flow
+
+Files this does **not** apply to (write silently):
+
+- `LAUNCHDARKLY_ONBOARDING.md` — internal working log, deleted before finish
+- Files inside `.agents/` or `.claude/` skill-install output the user did not author
+
+**Preview shape (good):**
+
+> About to write `LAUNCHDARKLY.md` (~110 lines) — covers your dual SDK setup, env var conventions, dashboard links for project `default`, and an example flag evaluation in Python matching your existing `track_events.py` pattern. Land it?
+
+**Preview shape (avoid):**
+
+> Writing `LAUNCHDARKLY.md`. (no detail — defeats the purpose)
+> Here is the full content of LAUNCHDARKLY.md: [...200 lines...] (too long — pastes content into chat)
+
+If the user wants to see the full contents before approving, they will ask. Default to a summary.
 
 **Blocking decision points** (you MUST halt and wait for the user's response before continuing):
 
@@ -140,10 +173,13 @@ Do NOT treat the user's initial request (e.g. "onboard me," "set up LaunchDarkly
    | What you need to show | URL pattern |
    |-----------------------|-------------|
    | Project flags list | `https://app.launchdarkly.com/projects/{projectKey}/flags` |
-   | Specific flag | `https://app.launchdarkly.com/projects/{projectKey}/flags/{flagKey}` |
+   | Specific flag (no env scope) | `https://app.launchdarkly.com/projects/{projectKey}/flags/{flagKey}` |
+   | Specific flag, scoped to an environment | `https://app.launchdarkly.com/projects/{projectKey}/flags/{flagKey}/targeting?env={envKey}&selected-env={envKey}` |
    | Environment keys / SDK keys | `https://app.launchdarkly.com/projects/{projectKey}/settings/environments/{envKey}/keys` |
    | Project environments list | `https://app.launchdarkly.com/projects/{projectKey}/settings/environments` |
    | All projects | `https://app.launchdarkly.com/projects` |
+
+   **Prefer the env-scoped flag URL** whenever you know which environment the user just acted in (e.g. the environment you just toggled the flag on in). It lands them on the targeting page with the correct env already selected, so they don't have to switch from the dashboard's default environment.
 
    Only generate deep links when the required keys are known from tool responses or confirmed user input. If they are unknown, use the most specific generic path available and tell the user how to navigate from there (e.g. "Open your project in the LaunchDarkly dashboard, then go to **Settings > Environments** to find your SDK key").
 
@@ -151,25 +187,58 @@ Do NOT treat the user's initial request (e.g. "onboard me," "set up LaunchDarkly
 
 When the user invokes this onboarding flow (for example by asking you to follow this skill, run LaunchDarkly onboarding, or set up feature flags in the project), treat it as a **fresh kickoff** unless you are clearly resuming (see **Resuming** below).
 
+### The three phases the user sees
+
+The user-facing experience has **three phases**, and only three. The internal Steps 0-6 exist for your bookkeeping — the user never sees them.
+
+| Phase the user sees | What it covers internally |
+|---------------------|---------------------------|
+| **1. Connect** | Steps 0-4 — onboarding log, project exploration, agent detection, companion-skill install, MCP setup |
+| **2. Install** | Step 5 — SDK detect / plan / apply |
+| **3. Ship** | Step 6 (first flag) + follow-through (`LAUNCHDARKLY.md`, editor rules) |
+
+When you talk to the user about progress, talk in phases. Never say "Step 4" or "Step 0-3" in chat — those labels are forbidden in user-facing output ([User-Facing Communication](#user-facing-communication)).
+
 ### Kickoff sequence (new run — before any numbered step)
 
-Perform these in **order** in the **same assistant turn**, then proceed directly into Steps 0-3:
+Perform these in **order** in the **same assistant turn**, then proceed directly into Phase 1 work:
 
-1. **Task list:** Call your native task tool ([Progress Tracking](#progress-tracking)) and create **one task per step for Steps 0 through 6** (seven tasks minimum — one each for Steps 0, 1, 2, 3, 4, 5, and 6, even though Steps 0-3 are grouped as a single row below). Do this **before** rendering the roadmap so progress tracking is in place.
-2. **Roadmap:** Give the user a brief, friendly preview of what you are about to do. Keep it conversational -- a short paragraph or a compact list is fine. Do not render a large table by default (the table below is your internal reference). The user should understand the arc (explore the project, set up tooling, install the SDK, create a first flag) without seeing step numbers or internal labels.
-3. **Begin Steps 0-3 immediately.** These steps do not require a LaunchDarkly account or any user action. Run them in the background and surface only the results: what you found (language, framework, agent) and what you installed (companion skills). Do not narrate each step as a separate heading -- summarize them together when presenting findings to the user. Account status is inferred later (see [Prerequisites](#prerequisites)).
+1. **Task list:** Call your native task tool ([Progress Tracking](#progress-tracking)) and create **one task per phase the user sees** (three tasks: Connect, Install, Ship). Internally you may still track Steps 0-6 in your own notes/log, but the task list the user sees is the three phases. Do this **before** rendering the roadmap.
+2. **Roadmap:** Render the user-facing roadmap exactly in the shape below (substitute the project name and a one-line stack guess if you can infer it cheaply). Keep it short. Do **not** add a table of internal steps, do not list Steps 0-6, do not say "first I'll explore the project."
+3. **Begin Phase 1 immediately.** Steps 0-3 require no user input or account; run them silently and surface only the result as a single combined finding (stack, agent, companion skills). Account status is inferred later (see [Prerequisites](#prerequisites)).
 
-- **Resuming:** If `LAUNCHDARKLY_ONBOARDING.md` already exists, read it first per [Steps 0-3](#steps-0-3-setup-run-silently----do-not-narrate-each-step). Show a shorter "where we are" summary. Refresh the task list to match the log; continue from the log's **Next step**.
+#### Roadmap render template
 
-| Step | What happens | You get |
-|------|--------------|---------|
-| **0-3** -- Setup | Create onboarding log, explore project, detect agent, install companion skills (`npx skills add` from `launchdarkly/ai-tooling`) | Stack summary, agent ID, `launchdarkly-flag-*` skills available |
-| **4** -- MCP | Configure LaunchDarkly MCP; user restarts; agent auto-verifies on next turn | MCP tools (or ldcli/API fallback); account confirmed via OAuth |
-| **5** -- SDK install | detect -> plan -> apply ([sdk-install](sdk-install/SKILL.md)) | Packages + init wired to env vars |
-| **6** -- First flag | Create boolean flag, evaluate, toggle, add interactive demo ([first-flag](first-flag/SKILL.md)) | End-to-end proof + visible "wow" moment |
-| **Follow-through** | `LAUNCHDARKLY.md`, editor rules ([1.8-summary](references/1.8-summary.md), [1.9-editor-rules](references/1.9-editor-rules.md)) | Durable docs for the repo |
+Render something close to this, adapted to the project. Keep it under ~6 lines of chat output. Use plain markdown — no emoji unless the user has used them first.
 
-After presenting the roadmap preview, proceed directly into Steps 0-3 (they require no user input or account). Then continue with [Step 4](#step-4-configure-the-mcp-server).
+```
+Here's how this will go:
+
+  1. Connect    — I'll explore the repo and set up LaunchDarkly MCP so I can manage flags directly.
+  2. Install    — wire the right LaunchDarkly SDK into your code (skipped if you're already set up).
+  3. Ship       — create your first flag and toggle it live so you can see it work end-to-end.
+
+Starting Phase 1 now — I'll come back with a stack summary in one shot.
+```
+
+If the project clearly has LaunchDarkly already integrated, swap line 2 for `Install — already done; skipping.` so the user sees up front that you noticed.
+
+- **Resuming:** If `LAUNCHDARKLY_ONBOARDING.md` already exists, read it first per [Steps 0-3](#steps-0-3-setup-run-silently----do-not-narrate-each-step). Show a shorter "where we are" summary scoped to the **current phase** (not the current step). Refresh the task list to match the log; continue from the log's **Next step**.
+
+### Internal step-to-phase map (do not show to user)
+
+| Internal step | User-facing phase |
+|---------------|-------------------|
+| 0 — onboarding log | Phase 1 (silent) |
+| 1 — explore project | Phase 1 (silent) |
+| 2 — detect agent | Phase 1 (silent) |
+| 3 — install companion skills | Phase 1 (silent) |
+| 4 — MCP setup | Phase 1 (user-visible — restart + OAuth) |
+| 5 — SDK install (detect/plan/apply) | Phase 2 |
+| 6 — first flag | Phase 3 |
+| Follow-through — `LAUNCHDARKLY.md`, editor rules | Phase 3 |
+
+After presenting the roadmap, proceed directly into Phase 1's silent steps (0-3). Then continue with [Step 4](#step-4-configure-the-mcp-server) — that's the first user-visible moment in Phase 1.
 
 ## Workflow
 
@@ -218,11 +287,18 @@ Deep detection details: [Detect repository stack](sdk-install/detect/SKILL.md) (
 
 **Step 3: Install companion skills.** Install flag-management skills from the public repo so later steps can delegate when appropriate.
 
+Run the install with output redirected to a temp log so the spinner doesn't dominate the chat. Surface a one-line confirmation; only show the log if the install fails. The `skills` CLI does not currently have a `--quiet` flag, so the redirect pattern below is the workaround.
+
 ```bash
-npx skills add launchdarkly/ai-tooling --skill launchdarkly-flag-create launchdarkly-flag-discovery launchdarkly-flag-targeting launchdarkly-flag-cleanup -y --agent <detected-agent>
+npx skills add launchdarkly/ai-tooling \
+  --skill launchdarkly-flag-create launchdarkly-flag-discovery launchdarkly-flag-targeting launchdarkly-flag-cleanup \
+  -y --agent <detected-agent> \
+  > /tmp/ld-skills-install.log 2>&1 \
+  && echo "Installed companion flag-management skills." \
+  || { echo "Skill install failed — see log below:"; cat /tmp/ld-skills-install.log; }
 ```
 
-Replace `<detected-agent>` with the value from Step 2. Confirm success; skip skills already installed.
+Replace `<detected-agent>` with the value from Step 2. Skip skills already installed. After running, the user should see at most one line of output for this step (the `echo` confirmation), unless something failed.
 
 **Bundled vs public:** Orchestration and setup for this flow live **in this folder** -- parent [SKILL.md](SKILL.md), nested [mcp-configure](mcp-configure/SKILL.md), [sdk-install](sdk-install/SKILL.md) (detect / plan / apply), [first-flag](first-flag/SKILL.md), and `references/` ([SDK recipes](references/sdk/recipes.md), [snippets](references/sdk/snippets/), summary, editor rules, etc.). The command above installs **flag-management** skills from the public [launchdarkly/ai-tooling](https://github.com/launchdarkly/ai-tooling) repo only.
 

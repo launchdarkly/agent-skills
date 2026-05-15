@@ -5,7 +5,7 @@ license: Apache-2.0
 compatibility: Requires SDK installed (parent Step 5) and LaunchDarkly project access
 metadata:
   author: launchdarkly
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
 # Create first feature flag
@@ -335,22 +335,65 @@ After adding the demo element:
 2. Have them verify it shows the current flag state
 3. Ask them to toggle the flag in the dashboard (provide the deep link: `https://app.launchdarkly.com/projects/{projectKey}/flags/my-first-flag`)
 4. Have them refresh/re-run to see the change
-5. Celebrate the successful integration
 
-## Congratulations
+Then close the loop with the celebration block in [Step 7](#step-7-celebrate--open-the-dashboard) below.
 
-The user has successfully:
+## Step 7: Celebrate + open the dashboard
 
-1. Installed the LaunchDarkly SDK
-2. Connected it to LaunchDarkly
-3. Created a feature flag
-4. Evaluated it in code
-5. Toggled it and seen the result
-6. Added an interactive demo they can show others
+This is the "wow moment" — make it feel like one. Two things to do, in this order:
 
-This is the "proof point" moment -- the user has a working feature flag they can toggle in real-time. The demo element makes it tangible and shareable.
+### 7a. Render a celebration card in chat
 
-**Encourage the next skill:** Suggest they **install or enable** the **`launchdarkly-flag-create`** skill from [github.com/launchdarkly/ai-tooling](https://github.com/launchdarkly/ai-tooling) (`npx skills add launchdarkly/ai-tooling --skill launchdarkly-flag-create -y --agent <agent>`) so future work -- creating flags that match repo conventions, wrapping features, and verifying wiring -- has a dedicated playbook. Offer to help them add it if they are unsure how.
+Render a single, scannable ASCII card summarizing what just happened. This is the user's visual proof point — replace the wall-of-bullets "Congratulations" with a card they could screenshot. Use the template below, substituting the real flag key and per-environment state from your toggle response. Use the **env-scoped URL** ([dashboard URL patterns](../SKILL.md#core-principles)) — drop the user on the targeting page of the environment they just toggled, not the dashboard's default.
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Your first flag is live                                │
+│                                                         │
+│  {FLAG_KEY}                                             │
+│                                                         │
+│  {ENV_1}        ●  ON   ← toggled here                  │
+│  {ENV_2}        ○  off                                  │
+│  {ENV_3}        ○  off                                  │
+│                                                         │
+│  → https://app.launchdarkly.com/projects/{PROJECT_KEY}  │
+│      /flags/{FLAG_KEY}/targeting                        │
+│      ?env={ENV_1}&selected-env={ENV_1}                  │
+└─────────────────────────────────────────────────────────┘
+```
+
+Rules:
+
+- Use the box-drawing characters above (`┌ ─ ┐ │ └ ┘`), not ASCII pipes — most terminals and chat UIs render them correctly.
+- Use `●` for ON and `○` for off (filled vs hollow circle). Do not use emoji.
+- One line per environment the flag exists in. Mark the environment you just toggled with `← toggled here` so the user knows which one the link will open.
+- Width should fit in ~60 characters so it doesn't wrap in narrow chat windows.
+- This is the **only** place in the entire onboarding flow where you render a decorative block. Don't sprinkle ASCII art elsewhere — it stays special.
+
+### 7b. Open the dashboard in the user's browser
+
+Immediately after rendering the card, open the flag's dashboard URL in the user's default browser so they can see it live without copy-pasting the link. **Use the env-scoped URL** so the dashboard opens on the same environment you just toggled the flag in — not whatever environment the dashboard defaults to:
+
+```
+https://app.launchdarkly.com/projects/{projectKey}/flags/{flagKey}/targeting?env={envKey}&selected-env={envKey}
+```
+
+Choose the right command for the platform you detected:
+
+| Platform                | Command                                              |
+|-------------------------|------------------------------------------------------|
+| macOS                   | `open "<env-scoped URL>"`                            |
+| Linux                   | `xdg-open "<env-scoped URL>"`                        |
+| Windows (PowerShell)    | `Start-Process "<env-scoped URL>"`                   |
+| Windows (cmd)           | `start "" "<env-scoped URL>"`                        |
+
+After opening it, say one line in chat — something like: "Opened the flag in your browser on the `{env}` environment. You should see targeting **ON** there — try the toggle to watch it flip live."
+
+Do **not** open the URL silently — always announce it first so the user isn't surprised by a new tab. If the user is on a remote/headless environment (no display), skip the auto-open and just print the link prominently.
+
+### 7c. Suggest the next skill
+
+After the celebration, suggest the **`launchdarkly-flag-create`** skill from [github.com/launchdarkly/ai-tooling](https://github.com/launchdarkly/ai-tooling) as the natural next step (`npx skills add launchdarkly/ai-tooling --skill launchdarkly-flag-create -y --agent <agent>`). Future flag work — wrapping features, matching repo conventions, verifying wiring — has a dedicated playbook there. Keep this to one sentence; do not turn it into a wall of links.
 
 ## Error handling
 
