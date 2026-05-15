@@ -29,7 +29,7 @@ def gemini_metrics(response) -> LDAIMetrics:
     usage = response.usage_metadata
     return LDAIMetrics(
         success=True,
-        usage=TokenUsage(
+        tokens=TokenUsage(
             total=usage.total_token_count or 0,
             input=usage.prompt_token_count or 0,
             output=usage.candidates_token_count or 0,

@@ -4,7 +4,7 @@ OpenAI is covered by a first-class LaunchDarkly provider package in both Python 
 
 ## Tier 1 — Managed runner (chat apps)
 
-The simplest path for conversational OpenAI calls. Zero tracker calls — duration, tokens, and success/error are all captured by `invoke()`.
+The simplest path for conversational OpenAI calls. Zero tracker calls — duration, tokens, and success/error are all captured by `run()`.
 
 **Python** — `ManagedModel` via `ai_client.create_model()`:
 
@@ -27,8 +27,8 @@ async def handle_turn(ai_client: LDAIClient, context: Context, user_input: str) 
     )
     if not model:
         return "Feature is currently unavailable."
-    response = await model.invoke(user_input)
-    return response.message.content
+    response = await model.run(user_input)
+    return response.content
 ```
 
 **Node** — `ManagedModel` via `aiClient.createModel()`:
@@ -147,7 +147,7 @@ from ldai.providers.types import LDAIMetrics, TokenUsage
 def my_openai_extractor(response) -> LDAIMetrics:
     return LDAIMetrics(
         success=True,
-        usage=TokenUsage(
+        tokens=TokenUsage(
             total=response.usage.total_tokens,
             input=response.usage.prompt_tokens,
             output=response.usage.completion_tokens,

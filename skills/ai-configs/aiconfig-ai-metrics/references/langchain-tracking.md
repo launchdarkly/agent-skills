@@ -175,7 +175,7 @@ try:
     result = await tracker.track_metrics_of_async(
         lambda res: LDAIMetrics(
             success=True,
-            usage=sum_token_usage_from_messages(res.get("messages", [])),
+            tokens=sum_token_usage_from_messages(res.get("messages", [])),
         ),
         lambda: agent.ainvoke(
             {"messages": [{"role": "user", "content": user_prompt}]},

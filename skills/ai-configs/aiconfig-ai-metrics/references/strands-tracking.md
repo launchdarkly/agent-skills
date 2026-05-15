@@ -61,7 +61,7 @@ def strands_extractor(result) -> LDAIMetrics:
     total = usage.get("totalTokens", 0) or (input_tokens + output_tokens)
     return LDAIMetrics(
         success=True,
-        usage=TokenUsage(input=input_tokens, output=output_tokens, total=total),
+        tokens=TokenUsage(input=input_tokens, output=output_tokens, total=total),
     )
 
 

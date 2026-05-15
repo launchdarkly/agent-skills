@@ -25,7 +25,7 @@ def bedrock_converse_extractor(response) -> LDAIMetrics:
     usage = response.get("usage", {})
     return LDAIMetrics(
         success=True,
-        usage=TokenUsage(
+        tokens=TokenUsage(
             total=usage.get("totalTokens", 0),
             input=usage.get("inputTokens", 0),
             output=usage.get("outputTokens", 0),
@@ -105,7 +105,7 @@ def invoke_model_extractor(response) -> LDAIMetrics:
     if "usage" in body:
         return LDAIMetrics(
             success=True,
-            usage=TokenUsage(
+            tokens=TokenUsage(
                 total=body["usage"]["input_tokens"] + body["usage"]["output_tokens"],
                 input=body["usage"]["input_tokens"],
                 output=body["usage"]["output_tokens"],
@@ -113,7 +113,7 @@ def invoke_model_extractor(response) -> LDAIMetrics:
         )
     # Llama / Titan — use the fields on the specific body shape
     # ...
-    return LDAIMetrics(success=True, usage=TokenUsage(total=0, input=0, output=0))
+    return LDAIMetrics(success=True, tokens=TokenUsage(total=0, input=0, output=0))
 ```
 
 This is a good reason to migrate to Converse if you can.

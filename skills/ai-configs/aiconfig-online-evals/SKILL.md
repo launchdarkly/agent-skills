@@ -280,7 +280,7 @@ class AIConfigJudges:
 
 ## SDK: Automatic Evaluation
 
-When using `create_chat()` + `invoke()`, attached judges evaluate automatically:
+When using `create_model()` + `run()`, attached judges evaluate automatically:
 
 ```python
 import os
@@ -307,25 +307,25 @@ async def async_main():
 
     default_value = AICompletionConfigDefault(enabled=False)
 
-    # create_chat() initializes with judges from AI Config
-    chat = await aiclient.create_chat(ai_config_key, context, default_value, {})
+    # create_model() initializes with judges from AI Config
+    model = await aiclient.create_model(ai_config_key, context, default_value, {})
 
-    if not chat:
-        print(f"AI chat configuration not enabled for: {ai_config_key}")
+    if not model:
+        print(f"AI configuration not enabled for: {ai_config_key}")
         return
 
     user_input = 'How can LaunchDarkly help me?'
 
-    # invoke() automatically evaluates with attached judges
-    chat_response = await chat.invoke(user_input)
-    print("Response:", chat_response.message.content)
+    # run() automatically evaluates with attached judges
+    result = await model.run(user_input)
+    print("Response:", result.content)
 
     # Await evaluation results
-    if chat_response.evaluations and len(chat_response.evaluations) > 0:
-        eval_results = await asyncio.gather(*chat_response.evaluations)
+    if result.evaluations and len(result.evaluations) > 0:
+        eval_results = await asyncio.gather(*result.evaluations)
         results_to_display = [
-            result.to_dict() if result is not None else "not evaluated"
-            for result in eval_results
+            r.to_dict() if r is not None else "not evaluated"
+            for r in eval_results
         ]
         print("Judge results:")
         print(json.dumps(results_to_display, indent=2, default=str))
@@ -448,7 +448,7 @@ After attaching judges:
 
 **Python SDK examples:**
 - [direct_judge_example.py](https://github.com/launchdarkly/hello-python-ai/blob/main/examples/direct_judge_example.py) - Evaluate input/output pairs directly
-- [chat_judge_example.py](https://github.com/launchdarkly/hello-python-ai/blob/main/examples/chat_judge_example.py) - Automatic evaluation with create_chat/invoke
+- [chat_judge_example.py](https://github.com/launchdarkly/hello-python-ai/blob/main/examples/chat_judge_example.py) - Automatic evaluation with create_model/run
 
 **Node.js SDK examples:**
 - [judge-evaluation](https://github.com/launchdarkly/js-core/blob/main/packages/sdk/server-ai/examples/judge-evaluation/src/index.ts) - Both direct evaluation and automatic chat-based evaluation

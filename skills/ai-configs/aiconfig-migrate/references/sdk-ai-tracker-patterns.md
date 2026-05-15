@@ -278,7 +278,7 @@ from ldai.providers.types import LDAIMetrics, TokenUsage
 def anthropic_extractor(response) -> LDAIMetrics:
     return LDAIMetrics(
         success=True,
-        usage=TokenUsage(
+        tokens=TokenUsage(
             total=response.usage.input_tokens + response.usage.output_tokens,
             input=response.usage.input_tokens,
             output=response.usage.output_tokens,
@@ -332,7 +332,7 @@ const response = await tracker.trackMetricsOf(
 
 For chat-loop applications, both SDKs expose a higher-level API that handles tracking end-to-end with no tracker calls at all:
 
-- Python: `ai_client.create_model(...)` → `ManagedModel`, then `await model.invoke(user_input)`
+- Python: `ai_client.create_model(...)` → `ManagedModel`, then `await model.run(user_input)`
 - Node: `aiClient.createModel(...)` → `ManagedModel`, then `await model.run(userInput)`
 
 The managed runner handles message history, provider dispatch (via the installed provider package — OpenAI, LangChain, Vercel), and tracker wiring. The runner creates its own tracker internally via the factory — you do **not** pass a tracker in. If the migration target is conversational, this is the right tier and you don't need anything from the tables above.

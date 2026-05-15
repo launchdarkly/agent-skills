@@ -25,7 +25,7 @@ client = anthropic.Anthropic()
 def anthropic_extractor(response) -> LDAIMetrics:
     return LDAIMetrics(
         success=True,
-        usage=TokenUsage(
+        tokens=TokenUsage(
             total=response.usage.input_tokens + response.usage.output_tokens,
             input=response.usage.input_tokens,
             output=response.usage.output_tokens,
