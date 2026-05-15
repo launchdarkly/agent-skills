@@ -39,6 +39,11 @@ Before picking a tier, find the provider call and answer these questions:
 - [ ] **Streaming?** If yes, you'll need TTFT tracking, which means Tier 4 for the TTFT part even if the rest is Tier 2.
 - [ ] **Language?** Python or Node? Provider-package coverage differs between them.
 - [ ] **Already using an AI Config?** If not, route to `aiconfig-create` first — tracking requires a tracker, which is obtained by calling `create_tracker()` / `createTracker()` on the config object returned by `completion_config()` / `completionConfig()` / `createModel()`.
+- [ ] **On the current SDK API?** If the call site uses `aiclient.config(...)` / `aiClient.config(...)` or constructs an `AIConfig(...)` / `LDAIConfig` default, it's on the pre-0.20 surface. Migrate it as part of this work before adding tracking:
+   - `aiclient.config(...)` → `aiclient.completion_config(...)` for one-shot/chat or `aiclient.agent_config(...)` for agent mode (mirror the call signature). Node is the same with camelCase.
+   - `AIConfig(...)` default → `AICompletionConfigDefault(...)` or `AIAgentConfigDefault(...)` (Node: `LDAICompletionConfigDefault` / `LDAIAgentConfigDefault`). `AIConfig` is the base class the SDK returns; it isn't a valid default-value constructor — the typed `*Default` variants are.
+   - If the result was being tuple-unpacked (`config, tracker = aiclient.config(...)`), drop the unpack — the new methods return a single config object. Obtain the tracker via `config.create_tracker()` / `aiConfig.createTracker()`.
+   - For deeper rewrites (call sites with hardcoded model/prompt as well), hand off to `aiconfig-migrate` instead of doing the full migration here.
 
 ### 2. Look up your Tier-2 option
 

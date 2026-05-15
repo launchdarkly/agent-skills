@@ -458,7 +458,7 @@ Hand off: print the AI Config key, variation key, provider, and whether the call
    ```python
    from ldai.client import AIJudgeConfigDefault
 
-   judge = await ai_client.create_judge(
+   judge = ai_client.create_judge(
        judge_key,                               # judge AI Config key in LD
        ld_context,
        AIJudgeConfigDefault(enabled=False),     # fallback: skip eval on SDK miss

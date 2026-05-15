@@ -347,7 +347,7 @@ import asyncio
 import ldclient
 from ldclient import Context
 from ldclient.config import Config
-from ldai import LDAIClient, AICompletionConfigDefault
+from ldai import LDAIClient, AIJudgeConfigDefault
 
 sdk_key = os.getenv('LAUNCHDARKLY_SDK_KEY')
 judge_key = os.getenv('LAUNCHDARKLY_AI_JUDGE_KEY', 'sample-ai-judge-accuracy')
@@ -363,10 +363,10 @@ async def async_main():
         .build()
     )
 
-    judge_default_value = AICompletionConfigDefault(enabled=False)
+    judge_default_value = AIJudgeConfigDefault(enabled=False)
 
     # Get judge configuration from LaunchDarkly
-    judge = await aiclient.create_judge(judge_key, context, judge_default_value)
+    judge = aiclient.create_judge(judge_key, context, judge_default_value)
 
     if not judge:
         print(f"AI judge configuration not enabled for key: {judge_key}")
