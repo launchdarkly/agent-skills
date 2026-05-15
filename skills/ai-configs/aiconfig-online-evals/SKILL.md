@@ -447,8 +447,9 @@ After attaching judges:
 - [Custom Judges](https://docs.launchdarkly.com/home/ai-configs/custom-judges)
 
 **Python SDK examples:**
-- [direct_judge_example.py](https://github.com/launchdarkly/hello-python-ai/blob/main/examples/direct_judge_example.py) - Evaluate input/output pairs directly
-- [chat_judge_example.py](https://github.com/launchdarkly/hello-python-ai/blob/main/examples/chat_judge_example.py) - Automatic evaluation with create_model/run
+- [create_judge_example.py](https://github.com/launchdarkly/hello-python-ai/blob/main/features/create_judge/create_judge_example.py) - Evaluate input/output pairs directly via `create_judge` + `evaluate`
+- [create_model_example.py](https://github.com/launchdarkly/hello-python-ai/blob/main/features/create_model/create_model_example.py) - Automatic evaluation with `create_model` + `run` (attached judges fire during the run)
 
 **Node.js SDK examples:**
-- [judge-evaluation](https://github.com/launchdarkly/js-core/blob/main/packages/sdk/server-ai/examples/judge-evaluation/src/index.ts) - Both direct evaluation and automatic chat-based evaluation
+- [features/create-judge](https://github.com/launchdarkly/js-core/blob/main/packages/sdk/server-ai/examples/features/create-judge/src/index.ts) - Evaluate input/output pairs directly via `createJudge` + `evaluate`
+- [features/create-model](https://github.com/launchdarkly/js-core/blob/main/packages/sdk/server-ai/examples/features/create-model/src/index.ts) - Automatic evaluation with `createModel` + `run` (attached judges fire during the run)
