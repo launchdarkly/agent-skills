@@ -19,14 +19,13 @@ This skill is nested under [LaunchDarkly onboarding](../SKILL.md); the parent sk
 - A LaunchDarkly account (sign up at the resolved signup URL — see [Source Attribution](../SKILL.md#source-attribution) in the parent skill; default: `https://app.launchdarkly.com/signup?source=agent`)
 - An MCP-compatible coding agent
 
-## Hosted MCP Servers
+## Hosted MCP Server
 
-LaunchDarkly provides two hosted MCP servers. For onboarding, only the feature management server is required.
+LaunchDarkly provides a unified hosted MCP server that handles feature management, AgentControl, and other LaunchDarkly capabilities.
 
-| Server             | URL                                          | Purpose              |
-| ------------------ | -------------------------------------------- | -------------------- |
-| Feature management | `https://mcp.launchdarkly.com/mcp/fm`        | Manage feature flags |
-| AI Configs         | `https://mcp.launchdarkly.com/mcp/aiconfigs` | Manage AI Configs    |
+| Server      | URL                                              | Purpose                                      |
+| ----------- | ------------------------------------------------ | -------------------------------------------- |
+| LaunchDarkly | `https://mcp.launchdarkly.com/mcp/launchdarkly` | Feature flags, AgentControl, and more |
 
 ## Workflow
 
@@ -38,9 +37,7 @@ If the parent onboarding skill already identified the agent, use that context. O
 
 The fastest path is the quick install link. Present it to the user:
 
-**Feature management:** [https://mcp.launchdarkly.com/mcp/fm/install](https://mcp.launchdarkly.com/mcp/fm/install)
-
-**AI Configs (optional):** [https://mcp.launchdarkly.com/mcp/aiconfigs/install](https://mcp.launchdarkly.com/mcp/aiconfigs/install)
+**LaunchDarkly MCP:** [https://mcp.launchdarkly.com/mcp/launchdarkly/install](https://mcp.launchdarkly.com/mcp/launchdarkly/install)
 
 **Important: tell the user what to expect after clicking the link.** The install link may open in the browser, but the authorization or "add server" prompt typically appears **back in the coding environment** (the editor or host app where the agent runs), not in the browser. Immediately after presenting the link, include guidance like:
 
@@ -61,7 +58,7 @@ Locate the MCP config file for the detected agent and add the hosted server entr
 | GitHub Copilot | Repo **Settings** on GitHub.com → Copilot → Cloud agent → MCP (see [MCP UI links](references/mcp-ui-links.md)) |
 | Windsurf       | Agent-specific MCP config                                  |
 
-**Only add the feature management server for onboarding.** Add the AI Configs server only if the user explicitly needs it.
+The unified server handles both feature management and AgentControl, so only one server entry is needed.
 
 ### Step 4: Agent-Specific Authorization
 
@@ -70,7 +67,7 @@ After writing the config, some agents need extra steps. **Do not** send users th
 **Cursor:**
 
 1. Open MCP in Cursor using the [Cursor MCP doc link and in-app shortcuts](references/mcp-ui-links.md#clients) (e.g. Settings search via `command:` link when clickable).
-2. Toggle on **LaunchDarkly feature management** (or the name from your config).
+2. Toggle on **LaunchDarkly** (or the name from your config).
 3. Click **Connect** to authorize with the LaunchDarkly account.
 
 **VS Code (when applicable):**
@@ -85,15 +82,16 @@ After writing the config, some agents need extra steps. **Do not** send users th
 
 - Click **Save** after adding the MCP configuration in repo settings. Use the [GitHub Copilot MCP doc](https://docs.github.com/en/copilot/customizing-copilot/extending-copilot-coding-agent-with-mcp) for the exact **Settings** path on github.com.
 
-### Step 5: Restart and Auto-Verify
+### Step 5: Enable and Verify
 
-MCP tools are only available to the agent after a restart or refresh — newly added MCP servers do not appear mid-session.
+After adding the config, the user needs to enable and authorize the server. MCP tools may become available immediately in some agents (Cursor, Claude Code) without a restart.
 
-1. **Tell the user to enable the server and restart.** Before restarting, they need to make sure the MCP server is toggled on and authorized in their editor's MCP settings (e.g. in Cursor: toggle on the LaunchDarkly server and click **Connect**). Then restart or refresh the agent — be specific about how: "Restart Cursor" / "reload Claude Code" / "refresh the Copilot agent" depending on what you detected in Step 1. After the user restarts, the conversation will resume in a new turn.
-2. **On the next turn, probe silently.** Call a lightweight MCP tool (e.g. `list-feature-flags` with the user's project key). Do not ask the user whether MCP is working — just try it.
+1. **Tell the user to enable the server.** They need to toggle on the LaunchDarkly server and complete OAuth in their editor's MCP settings (e.g. in Cursor: toggle on the server and click **Connect**).
+2. **Probe immediately.** After the user confirms they've enabled the server, call a lightweight MCP tool (e.g. `list-feature-flags` with the known project key). Do not ask the user whether MCP is working — just try it.
    - **Success** (normal response, even an empty flag list): MCP is live. Note it in the onboarding log and continue.
-   - **Failure** (tool not found, auth error, timeout): fall back to ldcli/API. Note the fallback in the onboarding log. Do **not** block the rest of onboarding — Steps 5-6 must still be completable without MCP.
-3. **If the probe fails**, briefly tell the user MCP isn't available yet and that you'll use ldcli/API instead. Offer a one-liner they can try later to re-enable MCP (e.g. "You can set up MCP anytime by clicking [quick install link] and restarting").
+   - **Failure** (tool not found, auth error, timeout): **update the onboarding log first** (set Step 4 to "in progress - pending restart", Next step to "Step 4: Verify MCP after restart"), then suggest a restart with clear resume instructions:
+     > "MCP tools aren't available yet. Try restarting your editor. When you come back, just say **'continue LaunchDarkly onboarding'** — I'll pick up where we left off using the onboarding log."
+3. **If restart doesn't help**, fall back to ldcli/API for Steps 5-6. Note the fallback in the onboarding log. Do **not** block the rest of onboarding.
 4. If the failure looks like a config issue (wrong file path, missing OAuth, server not enabled), mention the likely cause so the user can fix it on their own time — but do not block progress.
 
 For **local `npx` server** verification, see [MCP Config Templates — Verify (local server)](references/mcp-config-templates.md#verify-local-server).
@@ -119,27 +117,38 @@ Then ask how they want to add the token to the MCP config:
 1. Tell them the config file path for their agent (see [MCP Config Templates](references/mcp-config-templates.md))
 2. Tell them to set `LAUNCHDARKLY_ACCESS_TOKEN` as the value — either as an environment variable or directly in the config file
 3. Remind them to add the config file to `.gitignore` if the token is inline
-4. Wait for them to confirm, then proceed to Step 5 (Restart and Auto-Verify)
+4. Wait for them to confirm, then proceed to Step 5 (Enable and Verify)
 
 **If the user wants agent-assisted setup:**
 1. Ensure the config file is in `.gitignore` before writing
 2. Write the config per [MCP Config Templates](references/mcp-config-templates.md)
 3. Remind the user that the token will be visible in the config file and conversation history
-4. Proceed to Step 5 (Restart and Auto-Verify)
+4. Proceed to Step 5 (Enable and Verify)
 
 ## Edge Cases
 
-- **User already has MCP configured:** Verify by checking for existing LD MCP entries in the config. If present and working, skip configuration.
-- **User has the old npx-based local server:** Migrate them. Remove the old `npx @launchdarkly/mcp-server` entry and any `LD_ACCESS_TOKEN` env vars. Replace with the hosted server config.
+- **User already has MCP configured:** Verify by checking for existing LD MCP entries in the config.
+  - `mcp/launchdarkly` or `mcp/fm` → working, skip configuration (both point to the unified server)
+  - `mcp/aiconfigs` → deprecated, ask before migrating:
+    
+    **D-MIGRATE -- BLOCKING:** Call your structured question tool now.
+    - question: "I see you have the old AgentControl MCP server configured (`mcp/aiconfigs`). That endpoint is deprecated — the unified server at `mcp/launchdarkly` now handles both feature management and AgentControl. Want me to update your config?"
+    - options:
+      - "Yes, update my config to use the unified server"
+      - "No, leave it as is for now"
+    - STOP. Do not modify the MCP config before the user selects an option.
+    
+    If they agree, remove the `mcp/aiconfigs` entry and ensure the unified `mcp/launchdarkly` (or `mcp/fm`) config is present. See [MCP Config Templates](references/mcp-config-templates.md). If they decline, note the deprecation and continue.
+- **User has the old npx-based local server:** Migrate them. Remove the old `npx @launchdarkly/mcp-server` entry and any `LD_ACCESS_TOKEN` env vars. Replace with the hosted server config. See [MCP Config Templates — Migration](references/mcp-config-templates.md#migrating-from-old-configurations).
 - **Federal or EU instances:** The hosted MCP server is not available for federal or EU environments. Use [local MCP server docs](https://launchdarkly.com/docs/home/getting-started/mcp-local) and the **Local server via `npx`** section in [MCP Config Templates](references/mcp-config-templates.md). Follow the [Local MCP: Access Token Setup](#local-mcp-access-token-setup) flow for token handling.
-- **Agent not in known list:** Provide the generic pattern: the user needs to add an MCP server entry pointing to `https://mcp.launchdarkly.com/mcp/fm` using whatever format their agent expects.
+- **Agent not in known list:** Provide the generic pattern: the user needs to add an MCP server entry pointing to `https://mcp.launchdarkly.com/mcp/launchdarkly` using whatever format their agent expects.
 - **User opts out of MCP during onboarding:** Document that choice and continue with the parent skill's ldcli/API fallbacks for environments and flags; do not block SDK work.
 
 ## What NOT to Do
 
 - Don't configure the old npx-based local server by default. Prefer the hosted server for standard regions.
 - Don't ask for or store API keys for the hosted server. The hosted server uses OAuth.
-- Don't add both servers by default. Only add AI Configs if the user asks for it.
+- Don't configure the old separate FM/AgentControl servers. Use the unified `mcp/launchdarkly` server.
 - Don't handle the access token for local MCP without asking the user first via the D4-LOCAL decision point.
 
 ## References

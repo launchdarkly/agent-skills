@@ -1,6 +1,6 @@
 # MCP Config Templates
 
-Per-agent JSON snippets for configuring the LaunchDarkly hosted MCP server. All configurations use OAuth -- no API keys required.
+Per-agent JSON snippets for configuring the LaunchDarkly hosted MCP server. All configurations use OAuth — no API keys required.
 
 Source: https://launchdarkly.com/docs/home/getting-started/mcp-hosted
 
@@ -8,67 +8,29 @@ Source: https://launchdarkly.com/docs/home/getting-started/mcp-hosted
 
 Config file: `.cursor/mcp.json` in the project root.
 
-### Feature management only
-
 ```json
 {
   "mcpServers": {
-    "LaunchDarkly feature management": {
-      "url": "https://mcp.launchdarkly.com/mcp/fm",
+    "LaunchDarkly": {
+      "url": "https://mcp.launchdarkly.com/mcp/launchdarkly",
       "headers": {}
     }
   }
 }
 ```
 
-### Both servers
-
-```json
-{
-  "mcpServers": {
-    "LaunchDarkly feature management": {
-      "url": "https://mcp.launchdarkly.com/mcp/fm",
-      "headers": {}
-    },
-    "LaunchDarkly AI Configs": {
-      "url": "https://mcp.launchdarkly.com/mcp/aiconfigs",
-      "headers": {}
-    }
-  }
-}
-```
-
-**After adding the config:** enable the servers and complete OAuth in Cursor's MCP UI. Use [MCP UI links — Cursor](mcp-ui-links.md#clients) (HTTPS doc + optional `command:` links); do not rely only on nested Settings menu paths.
+**After adding the config:** enable the server and complete OAuth in Cursor's MCP UI. Use [MCP UI links — Cursor](mcp-ui-links.md#clients) (HTTPS doc + optional `command:` links); do not rely only on nested Settings menu paths.
 
 ## Claude Code
 
 Config file: `.mcp.json` in the project root, or `~/.claude.json` for global config.
 
-### Feature management only
-
 ```json
 {
   "mcpServers": {
-    "LaunchDarkly feature management": {
+    "LaunchDarkly": {
       "type": "http",
-      "url": "https://mcp.launchdarkly.com/mcp/fm"
-    }
-  }
-}
-```
-
-### Both servers
-
-```json
-{
-  "mcpServers": {
-    "LaunchDarkly feature management": {
-      "type": "http",
-      "url": "https://mcp.launchdarkly.com/mcp/fm"
-    },
-    "LaunchDarkly AI Configs": {
-      "type": "http",
-      "url": "https://mcp.launchdarkly.com/mcp/aiconfigs"
+      "url": "https://mcp.launchdarkly.com/mcp/launchdarkly"
     }
   }
 }
@@ -87,8 +49,8 @@ Configured via the GitHub web UI, not a local config file.
 ```json
 {
   "mcpServers": {
-    "LaunchDarkly feature management": {
-      "url": "https://mcp.launchdarkly.com/mcp/fm",
+    "LaunchDarkly": {
+      "url": "https://mcp.launchdarkly.com/mcp/launchdarkly",
       "headers": {}
     }
   }
@@ -104,8 +66,8 @@ Windsurf uses a similar MCP configuration format. Add to the agent's MCP config:
 ```json
 {
   "mcpServers": {
-    "LaunchDarkly feature management": {
-      "url": "https://mcp.launchdarkly.com/mcp/fm"
+    "LaunchDarkly": {
+      "url": "https://mcp.launchdarkly.com/mcp/launchdarkly"
     }
   }
 }
@@ -113,7 +75,9 @@ Windsurf uses a similar MCP configuration format. Add to the agent's MCP config:
 
 Consult Windsurf's documentation for the exact config file location.
 
-## Migrating from the Old Local Server
+## Migrating from Old Configurations
+
+### From the old local npx-based server
 
 If the user has the old npx-based server configured, replace it:
 
@@ -137,6 +101,27 @@ If the user has the old npx-based server configured, replace it:
 **Replace with the hosted config for the relevant agent** (see sections above).
 
 Also remove any `LD_ACCESS_TOKEN` or `LAUNCHDARKLY_API_KEY` environment variables that were used for the local server. The hosted server handles authentication via OAuth.
+
+### From the deprecated AgentControl server
+
+The `mcp/aiconfigs` endpoint is deprecated. The unified server (`mcp/launchdarkly`) and its mirror (`mcp/fm`) both handle AgentControl now.
+
+If the user has `mcp/aiconfigs` configured, **ask before removing** — see the edge case flow in [SKILL.md](../SKILL.md#edge-cases). The user should confirm the migration.
+
+**Entry to remove (after user confirms):**
+
+```json
+{
+  "mcpServers": {
+    "LaunchDarkly AgentControl": {
+      "url": "https://mcp.launchdarkly.com/mcp/aiconfigs",
+      "headers": {}
+    }
+  }
+}
+```
+
+**Ensure the unified server is present** (see sections above). If they already have `mcp/fm` configured, that works — it mirrors `mcp/launchdarkly`.
 
 ## Local server via `npx`
 
@@ -228,9 +213,9 @@ Claude Desktop config is user-level (not in repos), so token exposure risk is lo
 }
 ```
 
-Replace `YOUR_ACCESS_TOKEN` with the user’s LaunchDarkly API access token. After editing, restart the editor or reload MCP.
+Replace `YOUR_ACCESS_TOKEN` with the user’s LaunchDarkly API access token. After editing, enable the server in the editor's MCP settings. A restart may be required if tools don't appear.
 
 ### Verify (local server)
 
 1. If you have MCP tool access, call **`list-feature-flags`** with the user’s `projectKey` (e.g. `request: { "projectKey": "YOUR_PROJECT_KEY" }`). A normal response confirms the server and token.
-2. If MCP tools are not visible yet, have the user run **`ldcli flags list`** (or curl the REST API) to validate credentials independently while MCP reloads.
+2. If MCP tools are not visible yet, have the user run **`ldcli flags list`** (or curl the REST API) to validate credentials independently while waiting for MCP tools to appear.

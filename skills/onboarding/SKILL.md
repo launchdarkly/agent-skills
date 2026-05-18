@@ -159,12 +159,16 @@ Perform these in **order** in the **same assistant turn**, then proceed directly
 2. **Roadmap:** Give the user a brief, friendly preview of what you are about to do. Keep it conversational -- a short paragraph or a compact list is fine. Do not render a large table by default (the table below is your internal reference). The user should understand the arc (explore the project, set up tooling, install the SDK, create a first flag) without seeing step numbers or internal labels.
 3. **Begin Steps 0-3 immediately.** These steps do not require a LaunchDarkly account or any user action. Run them in the background and surface only the results: what you found (language, framework, agent) and what you installed (companion skills). Do not narrate each step as a separate heading -- summarize them together when presenting findings to the user. Account status is inferred later (see [Prerequisites](#prerequisites)).
 
-- **Resuming:** If `LAUNCHDARKLY_ONBOARDING.md` already exists, read it first per [Steps 0-3](#steps-0-3-setup-run-silently----do-not-narrate-each-step). Show a shorter "where we are" summary. Refresh the task list to match the log; continue from the log's **Next step**.
+- **Resuming:** When the user says "continue LaunchDarkly onboarding" (or similar), **always check for `LAUNCHDARKLY_ONBOARDING.md` first**. If it exists:
+  1. Read the log to understand current state (completed steps, blockers, next step)
+  2. Show a brief "where we are" summary (e.g. "I see we finished MCP setup — next is SDK installation")
+  3. Refresh your task list to match the log's checklist
+  4. Continue from the log's **Next step** — do not restart from Step 0
 
 | Step | What happens | You get |
 |------|--------------|---------|
 | **0-3** -- Setup | Create onboarding log, explore project, detect agent, install companion skills (`npx skills add` from `launchdarkly/ai-tooling`) | Stack summary, agent ID, `launchdarkly-flag-*` skills available |
-| **4** -- MCP | Configure LaunchDarkly MCP; user restarts; agent auto-verifies on next turn | MCP tools (or ldcli/API fallback); account confirmed via OAuth |
+| **4** -- MCP | Configure LaunchDarkly MCP; user enables server; agent probes for tools | MCP tools (or ldcli/API fallback); account confirmed via OAuth |
 | **5** -- SDK install | detect -> plan -> apply ([sdk-install](sdk-install/SKILL.md)) | Packages + init wired to env vars |
 | **6** -- First flag | Create boolean flag, evaluate, toggle, add interactive demo ([first-flag](first-flag/SKILL.md)) | End-to-end proof + visible "wow" moment |
 | **Follow-through** | `LAUNCHDARKLY.md`, editor rules ([1.8-summary](references/1.8-summary.md), [1.9-editor-rules](references/1.9-editor-rules.md)) | Durable docs for the repo |
@@ -232,9 +236,9 @@ Replace `<detected-agent>` with the value from Step 2. Confirm success; skip ski
 
 Hand off to [mcp-configure/SKILL.md](mcp-configure/SKILL.md) for setup (hosted MCP, quick install, manual JSON, agent authorization).
 
-MCP setup requires the user to act outside the agent (clicking a quick-install link, completing OAuth, enabling the server in editor settings). After presenting the instructions, **tell the user to restart or refresh the agent** so MCP tools become available. Then continue to Step 5 — do not block here with a confirmation question.
+MCP setup requires the user to act outside the agent (clicking a quick-install link, completing OAuth, enabling the server in editor settings). After presenting the instructions, **tell the user to enable the server and complete OAuth**. Then probe for MCP tools immediately — a restart may not be required in Cursor or Claude Code.
 
-**Auto-verify on next turn:** When the conversation resumes (after the user restarts or sends a message), probe for MCP by calling a lightweight MCP tool such as `list-feature-flags` with the known project key. If the tool responds normally, MCP is live — note it in the onboarding log and use MCP tools for later steps. If the call fails or no MCP tools are visible, fall back silently to ldcli/API for Steps 5-6 and note the fallback in the onboarding log. **Do not ask** the user whether MCP is working — find out by trying it.
+**Auto-verify:** After the user confirms they've enabled the server, probe for MCP by calling a lightweight MCP tool such as `list-feature-flags` with the known project key. If the tool responds normally, MCP is live — note it in the onboarding log and use MCP tools for later steps. If the call fails or no MCP tools are visible, **update the onboarding log first** (so a new session can resume), then suggest a restart with clear instructions: tell the user to say **"continue LaunchDarkly onboarding"** when they come back. If restart doesn't help, fall back to ldcli/API for Steps 5-6 and note the fallback in the onboarding log. **Do not ask** the user whether MCP is working — find out by trying it.
 
 Do not duplicate MCP procedures in this file. Do not block Step 5 indefinitely on MCP.
 
