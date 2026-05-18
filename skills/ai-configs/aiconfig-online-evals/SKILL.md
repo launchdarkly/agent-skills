@@ -1,7 +1,7 @@
 ---
 name: aiconfig-online-evals
 description: Attach judges to AI Config variations for automatic LLM-as-a-judge evaluation. Create custom judges, configure sampling rates, and monitor quality scores.
-compatibility: Requires LaunchDarkly API access token with ai-configs:write permission. SDK versions Python v0.18.0+ or Node.js v0.17.0+ for automatic metric recording and the consolidated `track_judge_result` / `trackJudgeResult` API.
+compatibility: Requires LaunchDarkly API access token with ai-configs:write permission. SDK versions Python v0.20.0+ or Node.js v0.20.0+ for automatic metric recording and the consolidated `track_judge_result` / `trackJudgeResult` API.
 metadata:
   author: launchdarkly
   version: "0.1.0"
@@ -16,7 +16,7 @@ Attach judges to AI Config variations for automatic quality scoring using LLM-as
 - LaunchDarkly account with AI Configs enabled
 - API access token with write permissions
 - Existing AI Config with variations (use `aiconfig-create` skill)
-- For automatic metric recording and the consolidated judge-result API: Python AI SDK v0.18.0+ or Node.js AI SDK v0.17.0+
+- For automatic metric recording and the consolidated judge-result API: Python AI SDK v0.20.0+ or Node.js AI SDK v0.20.0+
 
 ## API Key Detection
 
@@ -280,7 +280,7 @@ class AIConfigJudges:
 
 ## SDK: Automatic Evaluation
 
-When using `create_chat()` + `invoke()`, attached judges evaluate automatically:
+When using `create_model()` + `run()`, attached judges evaluate automatically:
 
 ```python
 import os
@@ -307,25 +307,25 @@ async def async_main():
 
     default_value = AICompletionConfigDefault(enabled=False)
 
-    # create_chat() initializes with judges from AI Config
-    chat = await aiclient.create_chat(ai_config_key, context, default_value, {})
+    # create_model() initializes with judges from AI Config
+    model = await aiclient.create_model(ai_config_key, context, default_value, {})
 
-    if not chat:
-        print(f"AI chat configuration not enabled for: {ai_config_key}")
+    if not model:
+        print(f"AI configuration not enabled for: {ai_config_key}")
         return
 
     user_input = 'How can LaunchDarkly help me?'
 
-    # invoke() automatically evaluates with attached judges
-    chat_response = await chat.invoke(user_input)
-    print("Response:", chat_response.message.content)
+    # run() automatically evaluates with attached judges
+    result = await model.run(user_input)
+    print("Response:", result.content)
 
     # Await evaluation results
-    if chat_response.evaluations and len(chat_response.evaluations) > 0:
-        eval_results = await asyncio.gather(*chat_response.evaluations)
+    if result.evaluations and len(result.evaluations) > 0:
+        eval_results = await asyncio.gather(*result.evaluations)
         results_to_display = [
-            result.to_dict() if result is not None else "not evaluated"
-            for result in eval_results
+            r.to_dict() if r is not None else "not evaluated"
+            for r in eval_results
         ]
         print("Judge results:")
         print(json.dumps(results_to_display, indent=2, default=str))
@@ -347,7 +347,7 @@ import asyncio
 import ldclient
 from ldclient import Context
 from ldclient.config import Config
-from ldai import LDAIClient, AICompletionConfigDefault
+from ldai import LDAIClient, AIJudgeConfigDefault
 
 sdk_key = os.getenv('LAUNCHDARKLY_SDK_KEY')
 judge_key = os.getenv('LAUNCHDARKLY_AI_JUDGE_KEY', 'sample-ai-judge-accuracy')
@@ -363,10 +363,10 @@ async def async_main():
         .build()
     )
 
-    judge_default_value = AICompletionConfigDefault(enabled=False)
+    judge_default_value = AIJudgeConfigDefault(enabled=False)
 
     # Get judge configuration from LaunchDarkly
-    judge = await aiclient.create_judge(judge_key, context, judge_default_value)
+    judge = aiclient.create_judge(judge_key, context, judge_default_value)
 
     if not judge:
         print(f"AI judge configuration not enabled for key: {judge_key}")
@@ -375,7 +375,7 @@ async def async_main():
     input_text = 'You are a helpful assistant. How can you help me?'
     output_text = 'I can answer any question you have.'
 
-    # Evaluate the input/output pair — always returns a JudgeResult in v0.18.0+
+    # Evaluate the input/output pair — returns a JudgeResult.
     judge_result = await judge.evaluate(input_text, output_text)
 
     if not judge_result.sampled:
@@ -395,7 +395,7 @@ async def async_main():
     ldclient.get().close()
 ```
 
-> **Note:** Direct evaluation does not automatically record metrics. Obtain a tracker via `ai_config.create_tracker()` / `aiConfig.createTracker!()` and call `tracker.track_judge_result(result)` / `tracker.trackJudgeResult(result)` to record scores for the AI Config you're evaluating. (This consolidates the earlier `track_eval_scores` + `track_judge_response` pair that was removed in Python v0.18.0 / Node v0.17.0.)
+> **Note:** Direct evaluation does not automatically record metrics. Obtain a tracker via `ai_config.create_tracker()` / `aiConfig.createTracker()` and call `tracker.track_judge_result(result)` / `tracker.trackJudgeResult(result)` to record scores for the AI Config you're evaluating.
 
 ## Sampling Rates
 
@@ -447,8 +447,9 @@ After attaching judges:
 - [Custom Judges](https://docs.launchdarkly.com/home/ai-configs/custom-judges)
 
 **Python SDK examples:**
-- [direct_judge_example.py](https://github.com/launchdarkly/hello-python-ai/blob/main/examples/direct_judge_example.py) - Evaluate input/output pairs directly
-- [chat_judge_example.py](https://github.com/launchdarkly/hello-python-ai/blob/main/examples/chat_judge_example.py) - Automatic evaluation with create_chat/invoke
+- [create_judge_example.py](https://github.com/launchdarkly/hello-python-ai/blob/main/features/create_judge/create_judge_example.py) - Evaluate input/output pairs directly via `create_judge` + `evaluate`
+- [create_model_example.py](https://github.com/launchdarkly/hello-python-ai/blob/main/features/create_model/create_model_example.py) - Automatic evaluation with `create_model` + `run` (attached judges fire during the run)
 
 **Node.js SDK examples:**
-- [judge-evaluation](https://github.com/launchdarkly/js-core/blob/main/packages/sdk/server-ai/examples/judge-evaluation/src/index.ts) - Both direct evaluation and automatic chat-based evaluation
+- [features/create-judge](https://github.com/launchdarkly/js-core/blob/main/packages/sdk/server-ai/examples/features/create-judge/src/index.ts) - Evaluate input/output pairs directly via `createJudge` + `evaluate`
+- [features/create-model](https://github.com/launchdarkly/js-core/blob/main/packages/sdk/server-ai/examples/features/create-model/src/index.ts) - Automatic evaluation with `createModel` + `run` (attached judges fire during the run)

@@ -7,7 +7,7 @@
 
 ## Tier 1 is not available
 
-Neither `ManagedModel` (Python) nor `TrackedChat` / `initChat` (Node) ship a Bedrock provider today. If you want Tier 1 for a Bedrock chat app, route via LangChain — `ManagedModel` can wrap a `ChatBedrockConverse` through the LangChain provider package.
+`ManagedModel` does not ship a Bedrock provider today (Python or Node). If you want Tier 1 for a Bedrock chat app, route via LangChain — `ManagedModel` can wrap a `ChatBedrockConverse` through the LangChain provider package.
 
 ## Tier 3 — Custom extractor + `trackMetricsOf` (primary)
 
@@ -25,7 +25,7 @@ def bedrock_converse_extractor(response) -> LDAIMetrics:
     usage = response.get("usage", {})
     return LDAIMetrics(
         success=True,
-        usage=TokenUsage(
+        tokens=TokenUsage(
             total=usage.get("totalTokens", 0),
             input=usage.get("inputTokens", 0),
             output=usage.get("outputTokens", 0),
@@ -50,7 +50,7 @@ def call_with_tracking(ai_config, user_prompt: str) -> str | None:
     tracker = ai_config.create_tracker()
     # Exceptions are tracked automatically — track_metrics_of catches
     # exceptions, records tracker.track_error(), and re-raises.
-    response = tracker.track_metrics_of(call_bedrock, bedrock_converse_extractor)
+    response = tracker.track_metrics_of(bedrock_converse_extractor, call_bedrock)
     return response["output"]["message"]["content"][0]["text"]
 ```
 
@@ -64,7 +64,7 @@ const bedrock = new BedrockRuntimeClient({});
 
 const bedrockConverseExtractor = (response: ConverseCommandOutput): LDAIMetrics => ({
   success: true,
-  usage: {
+  tokens: {
     total: response.usage?.totalTokens ?? 0,
     input: response.usage?.inputTokens ?? 0,
     output: response.usage?.outputTokens ?? 0,
@@ -79,7 +79,7 @@ async function callWithTracking(
 
   const systemContent = aiConfig.messages?.[0]?.content;
 
-  const tracker = aiConfig.createTracker!();
+  const tracker = aiConfig.createTracker();
   // Exceptions are tracked automatically — trackMetricsOf catches
   // exceptions, records tracker.trackError(), and re-throws.
   const response = await tracker.trackMetricsOf(
@@ -105,7 +105,7 @@ def invoke_model_extractor(response) -> LDAIMetrics:
     if "usage" in body:
         return LDAIMetrics(
             success=True,
-            usage=TokenUsage(
+            tokens=TokenUsage(
                 total=body["usage"]["input_tokens"] + body["usage"]["output_tokens"],
                 input=body["usage"]["input_tokens"],
                 output=body["usage"]["output_tokens"],
@@ -113,7 +113,7 @@ def invoke_model_extractor(response) -> LDAIMetrics:
         )
     # Llama / Titan — use the fields on the specific body shape
     # ...
-    return LDAIMetrics(success=True, usage=TokenUsage(total=0, input=0, output=0))
+    return LDAIMetrics(success=True, tokens=TokenUsage(total=0, input=0, output=0))
 ```
 
 This is a good reason to migrate to Converse if you can.
@@ -123,29 +123,20 @@ This is a good reason to migrate to Converse if you can.
 If the app uses LangChain, the LangChain provider package's `ChatBedrockConverse` support gives you the Tier-2 experience:
 
 ```python
-from ldai_langchain import LangChainProvider
+from ldai_langchain import create_langchain_model, get_ai_metrics_from_response
 
 ai_config = ai_client.completion_config("my-config-key", context, default_config)
-llm = await LangChainProvider.create_langchain_model(ai_config)  # ChatBedrockConverse when provider=bedrock
+llm = create_langchain_model(ai_config)  # ChatBedrockConverse when provider=bedrock
 
 tracker = ai_config.create_tracker()
 response = tracker.track_metrics_of(
+    get_ai_metrics_from_response,
     lambda: llm.invoke(messages),
-    LangChainProvider.get_ai_metrics_from_response,
 )
 ```
 
-LangChain normalizes the Converse response shape into `AIMessage.usage_metadata`, which `LangChainProvider.get_ai_metrics_from_response` reads — so you don't need a Bedrock-specific extractor.
+LangChain normalizes the Converse response shape into `AIMessage.usage_metadata`, which `get_ai_metrics_from_response` reads — so you don't need a Bedrock-specific extractor.
 
 ## Tier 4 — Manual (streaming only)
 
 Bedrock Converse streaming (`ConverseStream`) needs manual TTFT tracking. The pattern is identical to OpenAI streaming. See [streaming-tracking.md](streaming-tracking.md).
-
-## Legacy: `track_bedrock_converse_metrics` / `trackBedrockConverseMetrics`
-
-Existing code may call `tracker.track_bedrock_converse_metrics(response)` directly. This helper still works and reads the same fields the custom extractor above reads. The current recommendation is to prefer `trackMetricsOf` with a custom extractor because:
-
-- It keeps the tracking call in one place (the wrapper) rather than requiring a separate post-call step, which is easy to forget.
-- It captures duration automatically; the legacy helper does not, so existing code typically pairs it with `track_duration_of`, which drifts.
-
-**Do not introduce `track_bedrock_converse_metrics` in new code.** Leave it alone in existing code unless the user asks for a cleanup.

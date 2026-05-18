@@ -31,7 +31,7 @@ The skill is optimized for Python and Node.js / TypeScript; other languages are 
 | Shape | Python | Node.js | Reference |
 |-------|--------|---------|-----------|
 | One-shot completion (direct OpenAI / Anthropic / Bedrock / Gemini call) | ✅ Worked example | ✅ Worked example | [before-after-examples.md](references/before-after-examples.md), per-provider docs in `aiconfig-ai-metrics/references/` |
-| Chat loop via managed runner (`ManagedModel` / `TrackedChat`) | ✅ Tier 1 pattern | ✅ Tier 1 pattern | [aiconfig-ai-metrics SKILL.md](../aiconfig-ai-metrics/SKILL.md) |
+| Chat loop via managed runner (`ManagedModel`) | ✅ Tier 1 pattern | ✅ Tier 1 pattern | [aiconfig-ai-metrics SKILL.md](../aiconfig-ai-metrics/SKILL.md) |
 | LangChain single-call | ✅ Worked example | ✅ Worked example | [langchain-tracking.md](../aiconfig-ai-metrics/references/langchain-tracking.md) |
 | LangGraph prebuilt agent (Python `langchain.agents.create_agent`, Node `createReactAgent`) | ✅ Worked example | ✅ Worked example | [agent-mode-frameworks.md § LangGraph](references/agent-mode-frameworks.md) |
 | LangGraph custom `StateGraph` with run-scoped tracker (setup_run + call_model + finalize) | ✅ Deep worked example | ⚠️ Mentioned — translate from Python | [agent-mode-frameworks.md § Custom `StateGraph`](references/agent-mode-frameworks.md) |
@@ -56,6 +56,13 @@ This skill requires the remotely hosted LaunchDarkly MCP server to be configured
 - `LD_SDK_KEY` — server-side SDK key (starts with `sdk-`) from the target LaunchDarkly project
 
 **MCP tools used directly by this skill:** none — every LaunchDarkly write happens in a focused sibling skill.
+
+**Check the SDK CHANGELOG before applying any pattern.** The API surface described throughout this skill targets the SDK behavior at the time of the skill's last update; SDK releases can rename, remove, or split methods after that. Before you start, fetch the latest CHANGELOG for the SDK(s) you'll target and skim for anything that contradicts the pattern you're about to apply:
+
+- Python: https://github.com/launchdarkly/python-server-sdk-ai/blob/main/packages/sdk/server-ai/CHANGELOG.md (and per-provider CHANGELOGs under `packages/ai-providers/server-ai-{openai,langchain}/CHANGELOG.md`)
+- Node: https://github.com/launchdarkly/js-core/blob/main/packages/sdk/server-ai/CHANGELOG.md (and per-provider CHANGELOGs under `packages/ai-providers/server-ai-{openai,langchain,vercel}/CHANGELOG.md`)
+
+If a CHANGELOG entry post-dates this skill and changes an API you're about to use, the CHANGELOG wins — and the skill should be updated.
 
 **Hand-off model.** This skill does **not** auto-invoke other skills. At each stage that needs a LaunchDarkly write, this skill prepares the inputs (config key, mode, model, prompt, tool schemas, judge keys) and then **tells the user to run the next slash-command themselves**. After the user finishes that sibling skill, return to the next step here. Treat the "Delegate" lines below as next-step instructions, not auto-handoffs.
 
@@ -145,8 +152,8 @@ This is the first stage that writes code. It has nine sub-steps.
    Commit the deletion separately from the SDK install if the repo's review process benefits from it — otherwise bundle with sub-step 2.
 
 2. **Install the AI SDK.** Detect the package manager from Step 1, then install:
-   - Python: `launchdarkly-server-sdk` + `launchdarkly-server-sdk-ai>=0.18.0`
-   - Node.js/TypeScript: `@launchdarkly/node-server-sdk` + `@launchdarkly/server-sdk-ai@^0.17.0`
+   - Python: `launchdarkly-server-sdk` + `launchdarkly-server-sdk-ai>=0.20.0`
+   - Node.js/TypeScript: `@launchdarkly/node-server-sdk` + `@launchdarkly/server-sdk-ai@^0.20.0`
    - Go: `github.com/launchdarkly/go-server-sdk/v7` + `github.com/launchdarkly/go-server-sdk/ldai`
 
    Tier-2 provider packages (install in Stage 4, only if you're using the matching provider):
@@ -347,21 +354,21 @@ Delegate: **`aiconfig-ai-metrics`** wires the per-request `tracker.track_*` call
 
 Hand off: print the AI Config key, variation key, provider, and whether the call is streaming, then tell the user: *"Run `/aiconfig-ai-metrics` with these inputs, then come back here."* Do not auto-invoke. Return here for sub-step 5 (verify) once they're done.
 
-1. **Create the tracker.** Obtain a per-execution tracker via the factory on the config returned in Stage 2: `tracker = config.create_tracker()` (Python v0.18.0+) or `const tracker = aiConfig.createTracker!();` (Node v0.17.0+). Call the factory **once per user turn** and reuse the returned `tracker` for every tracking call in that turn — each call mints a fresh `runId` that tags every event emitted from the turn so they can be correlated via exported events or downstream queries. (The Monitoring tab aggregates today; run-level grouping is a downstream concern — but the `runId` is also what the SDK's at-most-once guards are keyed on, so minting a new one mid-turn breaks the guard semantics regardless of where the events end up.)
+1. **Create the tracker.** Obtain a per-execution tracker via the factory on the config returned in Stage 2: `tracker = config.create_tracker()` (Python) or `const tracker = aiConfig.createTracker();` (Node). Call the factory **once per user turn** and reuse the returned `tracker` for every tracking call in that turn — each call mints a fresh `runId` that tags every event emitted from the turn so they can be correlated via exported events or downstream queries. (The Monitoring tab aggregates today; run-level grouping is a downstream concern — but the `runId` is also what the SDK's at-most-once guards are keyed on, so minting a new one mid-turn breaks the guard semantics regardless of where the events end up.)
 
    **Where to call the factory depends on the call shape:**
 
    - **Completion mode / one-shot provider call:** mint the tracker right after `completion_config(...)` returns, in the same function that handles the request.
-   - **Agent mode with a ReAct loop (LangGraph, LangChain, custom):** mint the tracker in a dedicated `setup_run` entry node that executes **once** before the loop, stash it on graph state, and read it from state in `call_model` / tool handlers / a terminal `finalize` node. Emitting `track_duration` / `track_tokens` / `track_success` inside the loop body will trip the at-most-once guards in v0.18.0+. See [agent-mode-frameworks.md § Custom `StateGraph` (run-scoped architecture)](references/agent-mode-frameworks.md) for the full `setup_run` + `call_model` + `finalize` pattern.
-   - **Managed runner (Tier 1):** skip this step entirely. `ManagedModel` / `TrackedChat` mint the tracker internally per `invoke()`. Move to sub-step 4 if that's what the app uses.
+   - **Agent mode with a ReAct loop (LangGraph, LangChain, custom):** mint the tracker in a dedicated `setup_run` entry node that executes **once** before the loop, stash it on graph state, and read it from state in `call_model` / tool handlers / a terminal `finalize` node. Emitting `track_duration` / `track_tokens` / `track_success` inside the loop body will trip the at-most-once guards. See [agent-mode-frameworks.md § Custom `StateGraph` (run-scoped architecture)](references/agent-mode-frameworks.md) for the full `setup_run` + `call_model` + `finalize` pattern.
+   - **Managed runner (Tier 1):** skip this step entirely. `ManagedModel` mints the tracker internally per `run()` / `invoke()`. Move to sub-step 4 if that's what the app uses.
 
-2. **Pick a tier from the four-tier ladder.** See [sdk-ai-tracker-patterns.md § Tier decision table](references/sdk-ai-tracker-patterns.md) for the full table (chat loop → Tier 1; provider-package call → Tier 2; custom extractor → Tier 3; streaming/manual → Tier 4). **Do not introduce the legacy helpers** (`track_openai_metrics`, `track_bedrock_converse_metrics`, `trackVercelAISDKGenerateTextMetrics`) in new code — use `trackMetricsOf` + a provider-package extractor instead.
+2. **Pick a tier from the four-tier ladder.** See [sdk-ai-tracker-patterns.md § Tier decision table](references/sdk-ai-tracker-patterns.md) for the full table (chat loop → Tier 1; provider-package call → Tier 2; custom extractor → Tier 3; streaming/manual → Tier 4).
 
 3. **Wire the chosen tier.** The delegate skill has full Python + Node examples for each tier plus per-provider files. A condensed Tier 2/3 example for reference — OpenAI via the provider package:
 
    **Python:**
    ```python
-   from ldai_openai import OpenAIProvider
+   from ldai_openai import get_ai_metrics_from_response
    import openai
 
    client = openai.OpenAI()
@@ -378,21 +385,18 @@ Hand off: print the AI Config key, variation key, provider, and whether the call
    # Exceptions are tracked automatically — track_metrics_of catches
    # exceptions, records tracker.track_error(), and re-raises. Wrap your
    # own try/except only for local handling (logging, fallback).
-   response = tracker.track_metrics_of(
-       call_openai,
-       OpenAIProvider.get_ai_metrics_from_response,
-   )
+   response = tracker.track_metrics_of(get_ai_metrics_from_response, call_openai)
    ```
 
    **Node:**
    ```typescript
-   import { OpenAIProvider } from '@launchdarkly/server-sdk-ai-openai';
+   import { getAIMetricsFromResponse } from '@launchdarkly/server-sdk-ai-openai';
 
-   const tracker = aiConfig.createTracker!();
+   const tracker = aiConfig.createTracker();
    // Exceptions are tracked automatically — trackMetricsOf catches
    // exceptions, records tracker.trackError(), and re-throws.
    const response = await tracker.trackMetricsOf(
-     OpenAIProvider.getAIMetricsFromResponse,
+     getAIMetricsFromResponse,
      () => openaiClient.chat.completions.create({
        model: aiConfig.model!.name,
        messages: [...aiConfig.messages, { role: 'user', content: userPrompt }],
@@ -400,7 +404,7 @@ Hand off: print the AI Config key, variation key, provider, and whether the call
    );
    ```
 
-   For Anthropic direct, Bedrock (no provider package), Gemini, and custom HTTP, write a small extractor returning `LDAIMetrics` — see the delegate skill's [anthropic-tracking.md](../aiconfig-ai-metrics/references/anthropic-tracking.md), [bedrock-tracking.md](../aiconfig-ai-metrics/references/bedrock-tracking.md), and [gemini-tracking.md](../aiconfig-ai-metrics/references/gemini-tracking.md). LangChain single-node and LangGraph go through the `launchdarkly-server-sdk-ai-langchain` / `@launchdarkly/server-sdk-ai-langchain` provider package. Build the model with `create_langchain_model(config)` / `LangChainProvider.createLangChainModel(config)` (forwards all variation parameters) and track with `get_ai_metrics_from_response` / `LangChainProvider.getAIMetricsFromResponse`. See [langchain-tracking.md](../aiconfig-ai-metrics/references/langchain-tracking.md).
+   For Anthropic direct, Bedrock (no provider package), Gemini, and custom HTTP, write a small extractor returning `LDAIMetrics` — see the delegate skill's [anthropic-tracking.md](../aiconfig-ai-metrics/references/anthropic-tracking.md), [bedrock-tracking.md](../aiconfig-ai-metrics/references/bedrock-tracking.md), and [gemini-tracking.md](../aiconfig-ai-metrics/references/gemini-tracking.md). LangChain single-node and LangGraph go through the `launchdarkly-server-sdk-ai-langchain` / `@launchdarkly/server-sdk-ai-langchain` provider package. Build the model with `create_langchain_model(config)` (Python) / `createLangChainModel(config)` (Node) — both forward all variation parameters — and track with `get_ai_metrics_from_response` / `getAIMetricsFromResponse`. See [langchain-tracking.md](../aiconfig-ai-metrics/references/langchain-tracking.md).
 
 4. **Wire feedback tracking if the app has thumbs-up/down UI.** Both SDKs expose `trackFeedback` with a `{kind}` argument.
 
@@ -449,12 +453,12 @@ Hand off: print the AI Config key, variation key, provider, and whether the call
 
    The delegate handles creating custom judge AI Configs, attaching them via the variation PATCH endpoint, and setting fallthrough on each judge config. Offline eval does **not** go through this delegate — it's a Playground workflow, not an API write.
 
-4. **For programmatic direct-judge: wire `create_judge` + `evaluate` + `track_judge_result`.** This is the only path at Stage 5 that writes code. The correct shape (Python v0.18.0+):
+4. **For programmatic direct-judge: wire `create_judge` + `evaluate` + `track_judge_result`.** This is the only path at Stage 5 that writes code. The Python shape:
 
    ```python
    from ldai.client import AIJudgeConfigDefault
 
-   judge = await ai_client.create_judge(
+   judge = ai_client.create_judge(
        judge_key,                               # judge AI Config key in LD
        ld_context,
        AIJudgeConfigDefault(enabled=False),     # fallback: skip eval on SDK miss
@@ -474,7 +478,7 @@ Hand off: print the AI Config key, variation key, provider, and whether the call
    - **`create_judge` returns `Optional[Judge]`.** Always guard with `if judge and judge.enabled:` — it returns `None` if the judge AI Config is disabled for the context or the provider is missing. A direct `.evaluate()` on a `None` return will raise `AttributeError`.
    - **Pass `AIJudgeConfigDefault`**, not `AICompletionConfigDefault`. The `create_judge` `default` parameter is typed `Optional[AIJudgeConfigDefault]`; passing the completion type will not type-check and is a doc-level bug in some older examples.
    - **`sampling_rate` is a parameter on `evaluate()`**, not on `create_judge`. It defaults to `1.0` (evaluate every call). For live paths, pass something lower (0.1–0.25) to control cost.
-   - **`evaluate()` always returns a `JudgeResult` in v0.18.0+** (never `None`). Check `result.sampled` to know whether the evaluation actually ran, and call `track_judge_result(result)` — the consolidated method replaces the earlier `track_eval_scores` / `track_judge_response` pair. Node uses `trackJudgeResult(result)` and `LDJudgeResult` with the same `sampled` field.
+   - **`evaluate()` returns a `JudgeResult`** (never `None`). Check `result.sampled` to know whether the evaluation actually ran, and call `track_judge_result(result)`. Node uses `trackJudgeResult(result)` and `LDJudgeResult` with the same `sampled` field.
 
    **Ask the user which judge AI Config key to use.** LaunchDarkly ships three built-in judges — Accuracy, Relevance, Toxicity — but the actual AI Config **keys** for the built-ins are not canonical SDK constants and aren't documented. Have the user open **AI Configs > Library** in the LD UI and copy the key of the judge they want to reference, or create a custom judge AI Config via `aiconfig-create` first.
 
@@ -490,7 +494,7 @@ Delegate: **`aiconfig-online-evals`** (sub-step 3, optional — only for UI-atta
 | Situation | Action |
 |-----------|--------|
 | App already initializes `LDClient` for feature flags | Reuse it — pass the existing client to `LDAIClient()` / `initAi()`, do not create a second client |
-| App uses LangChain `ChatOpenAI(model=...)` | Replace the hand-rolled model construction with `create_langchain_model(config)` (Python) or `LangChainProvider.createLangChainModel(config)` (Node). Do not read `config.model.name` and pass it to `ChatOpenAI(model=...)` by hand — that pattern drops every variation parameter except the ones you explicitly name |
+| App uses LangChain `ChatOpenAI(model=...)` | Replace the hand-rolled model construction with `create_langchain_model(config)` (Python) or `createLangChainModel(config)` (Node). Do not read `config.model.name` and pass it to `ChatOpenAI(model=...)` by hand — that pattern drops every variation parameter except the ones you explicitly name |
 | Retry wrapper around the provider call | The tracker is minted once at the top of the user turn; the retry loop is inside that scope. Every retry attempt shares the same `runId`. Tracker calls (`track_duration` / `track_tokens` / `track_success` / `track_error`) live *outside* the retry body — one call at the end of the turn, on the success path or the final-failure path |
 | App has no tools — Stage 3 skipped | Move directly from Stage 2 verification to Stage 4 (tracking) |
 | Mode mismatch: user said agent, audit shows one-shot chat | Choose completion mode unless the app uses a LangGraph prebuilt agent (`langchain.agents.create_agent` in Python or `createReactAgent` in Node), CrewAI `Agent`, Strands `Agent`, or a similar goal-driven framework |
@@ -498,7 +502,7 @@ Delegate: **`aiconfig-online-evals`** (sub-step 3, optional — only for UI-atta
 | Strands app on TypeScript | TS SDK ships `BedrockModel` and `OpenAIModel` only — cannot serve Anthropic-backed variations. Use the Python SDK if multi-provider variations are required |
 | TypeScript app using Anthropic SDK | No `trackAnthropicMetrics` helper exists. Use Tier 3: `trackMetricsOf` with a small custom extractor that reads `response.usage.input_tokens` / `response.usage.output_tokens` and returns `LDAIMetrics`. See [anthropic-tracking.md](../aiconfig-ai-metrics/references/anthropic-tracking.md) in the `aiconfig-ai-metrics` skill for the exact extractor |
 | Fallback would silently crash because `LD_SDK_KEY` is missing | Log a startup warning; proceed with the fallback. Never raise at import time |
-| Multi-agent graph (supervisor + workers) | Stop after migrating a single agent. Agent Graph Definitions landed in **both** SDKs — Python via `launchdarkly-server-sdk-ai.agent_graph` and Node via the graph API added in `@launchdarkly/server-sdk-ai` v0.17.0. Read [agent-graph-reference.md](references/agent-graph-reference.md) for the graph-level migration path — it is deliberately out of this skill's main scope |
+| Multi-agent graph (supervisor + workers) | Stop after migrating a single agent. Agent Graph Definitions are available in **both** SDKs — Python via `launchdarkly-server-sdk-ai.agent_graph` and Node via the graph API in `@launchdarkly/server-sdk-ai`. Read [agent-graph-reference.md](references/agent-graph-reference.md) for the graph-level migration path — it is deliberately out of this skill's main scope |
 | Single-agent (ReAct, tool loop) + agent mode | Default to offline eval via the LD Playground + Datasets for Stage 5. UI-attached judges are completion-only today, and programmatic direct-judge adds per-call cost that is usually not worth it until after the migration is live and stable. Point at the [Offline Evals guide](https://docs.launchdarkly.com/guides/ai-configs/offline-evaluations) |
 | Tool with a Pydantic `args_schema` (LangChain `@tool`) | Extract the schema via `tool.args_schema.model_json_schema()`; do not hand-write the JSON schema for the delegate |
 | Custom `StateGraph` with module-level `TOOLS` list bound via `.bind_tools(TOOLS)` and run through `ToolNode(TOOLS)` (e.g. the `langchain-ai/react-agent` template) | Find the `TOOLS` list (usually in a separate `tools.py` module). Extract schemas the same way. Swap **both** call sites — `.bind_tools(...)` and `ToolNode(...)` — to read from the same `config.tools`-derived list |
@@ -515,7 +519,7 @@ These are ordered by how likely they are to show up as a first-run failure. The 
 - **Don't call `agent_config()` / `completion_config()` more than once per user turn.** Each call is a flag evaluation and emits a `$ld:ai:agent:config` event. Re-fetching inside a loop step or a tool body inflates agent-config counts on the Monitoring tab and lets a mid-turn targeting change swap the variation between LLM calls in a single turn. Resolve once at the top, stash on state, and have every subsequent consumer read from state. Tools that need variation-scoped knobs should use the tool-factory pattern (`make_search(ai_config)` that closes over the knob at setup time) — see [agent-mode-frameworks.md § Getting knobs into tools](references/agent-mode-frameworks.md).
 - Don't cache the config object *across* requests — resolve once per turn, yes, but still resolve once per turn. Caching at module scope defeats the targeting-change mechanism entirely.
 - Don't delete the fallback once LaunchDarkly is wired up. It is required for the `enabled=False` and SDK-unreachable paths.
-- Don't tuple-unpack the return of `completion_config` / `agent_config` / `completionConfig` / `agentConfig`. They return a **single** config object (e.g. `AIAgentConfig`, `AICompletionConfig`), not `(config, tracker)`. Obtain the tracker by calling `config.create_tracker()` / `aiConfig.createTracker!()`. LLMs hallucinate both the tuple shape and the earlier `config.tracker` property — the current API (Python v0.18.0+, Node v0.17.0+) is a factory.
+- Don't tuple-unpack the return of `completion_config` / `agent_config` / `completionConfig` / `agentConfig`. They return a **single** config object (e.g. `AIAgentConfig`, `AICompletionConfig`), not `(config, tracker)`. Obtain the tracker by calling `config.create_tracker()` / `aiConfig.createTracker()`. LLMs hallucinate both the tuple shape and a `config.tracker` property — the actual API is a factory.
 
 ### LangChain / LangGraph patterns (second most common failure mode)
 
@@ -523,7 +527,7 @@ These are ordered by how likely they are to show up as a first-run failure. The 
 - **Same rule applies to hand-rolled `resolve_tools` / `TOOL_REGISTRY` / `ALL_TOOLS` helpers.** If the template already has a `resolve_tools(tool_keys)` or an `ALL_TOOLS` module-level list, import `build_structured_tools` from `ldai_langchain.langchain_helper` and delete the hand-rolled version. `build_structured_tools(ai_config, TOOL_REGISTRY_DICT)` reads `ai_config.model.parameters.tools` and wraps the matching callables as LangChain `StructuredTool`s with the LD tool key as the `StructuredTool.name` — so `ToolNode` lookup works without a second mapping. Don't leave both in the repo.
 - Don't put app-scoped knobs directly in `model.parameters`. `create_langchain_model` forwards every key in `parameters` to the provider SDK via `init_chat_model`, so a `max_search_results` / `retry_budget` / `feature_toggle` entry will crash the provider with an unexpected-keyword-argument error. The correct home is `model.custom`, which the provider helpers ignore and the app reads via `ai_config.model.get_custom("key")`. The MCP `update-ai-config-variation` tool does not currently expose top-level `custom`, so pick one of two paths: (a) PATCH the variation via the REST API to set `model.custom` directly, or (b) set it via MCP inside `parameters.custom` (as a nested dict) and use a defensive accessor that reads both locations. Full walk-through with code samples in [langchain-tracking.md § MCP caveat](../aiconfig-ai-metrics/references/langchain-tracking.md).
 - Don't re-encode tool schemas inside the fallback. When LaunchDarkly is unreachable the fallback should run without tools (or with whatever minimal provider-bound parameters the app needs to keep operating). Building a `_FALLBACK_TOOLS` array that duplicates the AI Config's tool schema re-introduces the hardcoded config the migration was supposed to move out of code.
-- Don't import `LaunchDarklyCallbackHandler` from `ldai.langchain` — neither the class nor the dotted module path exists. The Python LangChain helper package is `ldai_langchain` (top-level module, underscore). Use `create_langchain_model(config)` + `track_metrics_of_async(lambda: llm.ainvoke(messages), get_ai_metrics_from_response)` as the canonical pattern.
+- Don't import `LaunchDarklyCallbackHandler` from `ldai.langchain` — neither the class nor the dotted module path exists. The Python LangChain helper package is `ldai_langchain` (top-level module, underscore). Use `create_langchain_model(config)` + `track_metrics_of_async(get_ai_metrics_from_response, lambda: llm.ainvoke(messages))` as the canonical pattern.
 
 ### Stage / handoff discipline
 
@@ -546,7 +550,7 @@ These are ordered by how likely they are to show up as a first-run failure. The 
 
 - Don't use `launchdarkly-metric-instrument` for Stage 4 (tracking). That skill is for `ldClient.track()` feature metrics, not AI `tracker.track_*` calls — they are different APIs.
 - Don't use `track_request()` in Python — it does not exist in `launchdarkly-server-sdk-ai`. Use `track_metrics_of` with a provider-package or custom extractor, or drop to explicit `track_duration` + `track_tokens` + `track_success` / `track_error` if you're on the streaming path.
-- Don't pass `graph_key=...` to `tracker.track_*()` methods in Python — that keyword argument was removed in v0.18.0. Trackers obtained inside a graph traversal are automatically configured with the correct graph key.
+- Don't pass `graph_key=...` to `tracker.track_*()` methods in Python — it is not an accepted argument. Trackers obtained inside a graph traversal are automatically configured with the correct graph key.
 
 ## Related Skills
 

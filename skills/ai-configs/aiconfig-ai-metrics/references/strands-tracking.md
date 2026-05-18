@@ -8,7 +8,7 @@ The key names inside `accumulated_usage` are camelCase even in Python: `inputTok
 
 ## Tier 1 is not available
 
-`ManagedModel` / `TrackedChat` do not currently ship a Strands runner. Strands owns its own agent loop and short-term memory (`SlidingWindowConversationManager`), so wrapping it in a LaunchDarkly managed runner would fight against the framework. Stay on Tier 3.
+`ManagedModel` does not currently ship a Strands runner. Strands owns its own agent loop and short-term memory (`SlidingWindowConversationManager`), so wrapping it in a LaunchDarkly managed runner would fight against the framework. Stay on Tier 3.
 
 ## Tier 3 — Explicit `track_duration_of` + manual `track_tokens` (primary)
 
@@ -61,7 +61,7 @@ def strands_extractor(result) -> LDAIMetrics:
     total = usage.get("totalTokens", 0) or (input_tokens + output_tokens)
     return LDAIMetrics(
         success=True,
-        usage=TokenUsage(input=input_tokens, output=output_tokens, total=total),
+        tokens=TokenUsage(input=input_tokens, output=output_tokens, total=total),
     )
 
 
@@ -69,8 +69,8 @@ async def run_turn(agent, tracker, user_input):
     # Exceptions are tracked automatically — track_metrics_of_async catches
     # exceptions, records tracker.track_error(), and re-raises.
     result = await tracker.track_metrics_of_async(
-        lambda: agent.invoke_async(user_input),
         strands_extractor,
+        lambda: agent.invoke_async(user_input),
     )
     return result.message["content"][0]["text"]
 ```
