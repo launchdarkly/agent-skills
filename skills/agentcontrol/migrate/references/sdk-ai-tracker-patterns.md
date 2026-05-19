@@ -297,7 +297,7 @@ response = tracker.track_metrics_of(
 | Helper | Signature | Tier | Notes |
 |--------|-----------|------|-------|
 | `trackMetricsOf<T>(extractor, func)` | `await tracker.trackMetricsOf((result) => extractor(result), async () => ...)` | **2 / 3** | **Canonical generic wrapper.** `extractor` maps provider response → `LDAIMetrics`. Use a provider package's bare `getAIMetricsFromResponse` for Tier 2 (`@launchdarkly/server-sdk-ai-openai`, `-langchain`, `-vercel`) or a small custom function for Tier 3. |
-| `trackStreamMetricsOf<T>(extractor, streamCreator)` | `tracker.trackStreamMetricsOf(async (chunks) => extractor(chunks), () => createStream())` | 2 / 3 | Stream variant. Does **not** capture TTFT automatically — if you need TTFT, use the manual pattern in [streaming-tracking.md](../../configs-built-in-metrics/references/streaming-tracking.md). |
+| `trackStreamMetricsOf<T>(extractor, streamCreator)` | `tracker.trackStreamMetricsOf(async (chunks) => extractor(chunks), () => createStream())` | 2 / 3 | Stream variant. Does **not** capture TTFT automatically — if you need TTFT, use the manual pattern in [streaming-tracking.md](../../built-in-metrics/references/streaming-tracking.md). |
 | `trackDurationOf<T>(func)` | `await tracker.trackDurationOf(async () => ...)` | 4 | Wraps an async callable; captures duration only. Pair with explicit `trackTokens` + `trackSuccess`. |
 Example — OpenAI via `trackMetricsOf` + the provider package:
 ```typescript
@@ -339,7 +339,7 @@ The managed runner handles message history, provider dispatch (via the installed
 
 ### Anthropic has no provider package today
 
-Neither `@launchdarkly/server-sdk-ai-anthropic` nor `launchdarkly-server-sdk-ai-anthropic` exists as of this writing. For Anthropic direct calls, write a custom extractor and pass it to `track_metrics_of` / `trackMetricsOf` — see the Python example above or the full walk-through in [anthropic-tracking.md](../../configs-built-in-metrics/references/anthropic-tracking.md). If the app is open to LangChain, routing Anthropic through `ChatAnthropic` and the LangChain provider package recovers Tier 2 with zero extractor code.
+Neither `@launchdarkly/server-sdk-ai-anthropic` nor `launchdarkly-server-sdk-ai-anthropic` exists as of this writing. For Anthropic direct calls, write a custom extractor and pass it to `track_metrics_of` / `trackMetricsOf` — see the Python example above or the full walk-through in [anthropic-tracking.md](../../built-in-metrics/references/anthropic-tracking.md). If the app is open to LangChain, routing Anthropic through `ChatAnthropic` and the LangChain provider package recovers Tier 2 with zero extractor code.
 
 ## Tier decision table
 
@@ -352,7 +352,7 @@ Neither `@launchdarkly/server-sdk-ai-anthropic` nor `launchdarkly-server-sdk-ai-
 | Anthropic direct SDK | **3** | Custom extractor reading `response.usage.input_tokens` / `output_tokens` |
 | Bedrock Converse (no provider package) | **3** | Custom extractor reading `response.usage.inputTokens` / `outputTokens` (or route via LangChain for Tier 2) |
 | Gemini / Google GenAI, Cohere, custom HTTP | **3** | Custom extractor |
-| Streaming response with TTFT required | **4** | Manual `trackTimeToFirstToken` + `trackDuration` + `trackTokens` + `trackSuccess` — see [streaming-tracking.md](../../configs-built-in-metrics/references/streaming-tracking.md) |
+| Streaming response with TTFT required | **4** | Manual `trackTimeToFirstToken` + `trackDuration` + `trackTokens` + `trackSuccess` — see [streaming-tracking.md](../../built-in-metrics/references/streaming-tracking.md) |
 | Streaming response without TTFT (Node) | **2 / 3** | `trackStreamMetricsOf(extractor, streamFn)` |
 
 ## Streaming responses
@@ -450,7 +450,7 @@ Run the checklist in order. Each step rules out one cause.
 
 ## Common gotchas
 
-- **`model.parameters` vs `model.custom`.** `create_langchain_model` (Python) / `createLangChainModel` (Node) forwards every key in `model.parameters` to the provider SDK. App-scoped knobs (search result limits, retry budgets, feature toggles) **must** live in `model.custom` or the provider will crash at runtime with an unexpected-keyword-argument error. Read them with `ai_config.model.get_custom("key")`. Full walk-through with the MCP/REST-API caveat in [langchain-tracking.md § `model.parameters` vs `model.custom`](../../configs-built-in-metrics/references/langchain-tracking.md).
+- **`model.parameters` vs `model.custom`.** `create_langchain_model` (Python) / `createLangChainModel` (Node) forwards every key in `model.parameters` to the provider SDK. App-scoped knobs (search result limits, retry budgets, feature toggles) **must** live in `model.custom` or the provider will crash at runtime with an unexpected-keyword-argument error. Read them with `ai_config.model.get_custom("key")`. Full walk-through with the MCP/REST-API caveat in [langchain-tracking.md § `model.parameters` vs `model.custom`](../../built-in-metrics/references/langchain-tracking.md).
 - **`track_tokens` token shape.** The Python `TokenUsage` dataclass requires `total` to be set — it is not derived. Compute `total = input + output` if the provider doesn't return one.
 - **`track_feedback` lifecycle.** The feedback call must be made on a tracker bound to the same `runId` that produced the response. If the thumbs-up comes in a later process, use the cross-process resumption pattern above — do **not** call `create_tracker()` again in the consumer, because that mints a *new* `runId`.
 - **OpenAI streaming tokens.** OpenAI only emits `usage` in the final chunk when `stream_options={"include_usage": True}` is passed. Without that flag, you have to tokenize manually — `tiktoken` for OpenAI models.

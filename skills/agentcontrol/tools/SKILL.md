@@ -211,13 +211,13 @@ for _ in range(MAX_STEPS):
     messages.append({"role": "user", "content": tool_results})
 ```
 
-Per-provider tool-call payload shapes live in the `configs-built-in-metrics` references:
+Per-provider tool-call payload shapes live in the `built-in-metrics` references:
 
-- [openai-tracking.md](../configs-built-in-metrics/references/openai-tracking.md) — Chat Completions + Responses API
-- [anthropic-tracking.md](../configs-built-in-metrics/references/anthropic-tracking.md) — `tool_use` blocks and `tool_result` payloads
-- [bedrock-tracking.md](../configs-built-in-metrics/references/bedrock-tracking.md) — `toolUse` / `toolResult` Converse format
-- [gemini-tracking.md](../configs-built-in-metrics/references/gemini-tracking.md) — `functionCalls` / `functionResponse` parts
-- [langchain-tracking.md](../configs-built-in-metrics/references/langchain-tracking.md) — LangGraph tool loop inherits from `create_react_agent`
+- [openai-tracking.md](../built-in-metrics/references/openai-tracking.md) — Chat Completions + Responses API
+- [anthropic-tracking.md](../built-in-metrics/references/anthropic-tracking.md) — `tool_use` blocks and `tool_result` payloads
+- [bedrock-tracking.md](../built-in-metrics/references/bedrock-tracking.md) — `toolUse` / `toolResult` Converse format
+- [gemini-tracking.md](../built-in-metrics/references/gemini-tracking.md) — `functionCalls` / `functionResponse` parts
+- [langchain-tracking.md](../built-in-metrics/references/langchain-tracking.md) — LangGraph tool loop inherits from `create_react_agent`
 
 ## Orchestrator Note
 

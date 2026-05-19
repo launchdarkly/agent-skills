@@ -17,9 +17,9 @@
       "compatibility": "Requires integration plan and LaunchDarkly credentials (see parent onboarding)"
     },
     {
-      "name": "configs-built-in-metrics",
+      "name": "built-in-metrics",
       "description": "Instrument an existing codebase with LaunchDarkly AI Config tracking. Walks the four-tier ladder (managed runner \u2192 provider package \u2192 custom extractor + trackMetricsOf \u2192 raw manual) and picks the lowest-ceremony option that still captures duration, tokens, and success/error.",
-      "path": "skills/agentcontrol/configs-built-in-metrics",
+      "path": "skills/agentcontrol/built-in-metrics",
       "version": "1.0.0-experimental",
       "license": "Apache-2.0",
       "compatibility": "Requires the LaunchDarkly server-side AI SDK (`launchdarkly-server-sdk-ai>=0.20.0` for Python or `@launchdarkly/server-sdk-ai>=0.20.0` for Node) and an existing AI Config."
@@ -31,14 +31,6 @@
       "version": "1.0.0-experimental",
       "license": "Apache-2.0",
       "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
-    },
-    {
-      "name": "configs-custom-metrics",
-      "description": "Create, track, retrieve, update, and delete custom business metrics for AI Configs. Covers full lifecycle: define metric kinds via API, emit events via SDK, and query results.",
-      "path": "skills/agentcontrol/configs-custom-metrics",
-      "version": "1.0.0-experimental",
-      "license": "Apache-2.0",
-      "compatibility": "Requires the LaunchDarkly server SDK and a LaunchDarkly API token with the `writer` role for metric management."
     },
     {
       "name": "configs-targeting",
@@ -62,6 +54,14 @@
       "version": "1.0.0-experimental",
       "license": "Apache-2.0",
       "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
+    },
+    {
+      "name": "custom-metrics",
+      "description": "Create, track, retrieve, update, and delete custom business metrics for AI Configs. Covers full lifecycle: define metric kinds via API, emit events via SDK, and query results.",
+      "path": "skills/agentcontrol/custom-metrics",
+      "version": "1.0.0-experimental",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the LaunchDarkly server SDK and a LaunchDarkly API token with the `writer` role for metric management."
     },
     {
       "name": "detect",

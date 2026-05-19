@@ -1,5 +1,5 @@
 ---
-name: configs-built-in-metrics
+name: built-in-metrics
 description: "Instrument an existing codebase with LaunchDarkly AI Config tracking. Walks the four-tier ladder (managed runner → provider package → custom extractor + trackMetricsOf → raw manual) and picks the lowest-ceremony option that still captures duration, tokens, and success/error."
 license: Apache-2.0
 compatibility: Requires the LaunchDarkly server-side AI SDK (`launchdarkly-server-sdk-ai>=0.20.0` for Python or `@launchdarkly/server-sdk-ai>=0.20.0` for Node) and an existing AI Config.
@@ -104,6 +104,6 @@ Obtain a tracker via the factory on the config object: `tracker = config.create_
 ## Related skills
 
 - `configs-create` — prerequisite if the app doesn't have an AI Config yet
-- `configs-custom-metrics` — business metrics (conversion, resolution, retention) layered on top of the AI metrics this skill captures
+- `custom-metrics` — business metrics (conversion, resolution, retention) layered on top of the AI metrics this skill captures
 - `online-evals` — automatic quality scoring (LLM-as-judge) on sampled live requests; complementary to the metrics here
 - `migrate` — Stage 4 of the hardcoded-to-AI-Configs migration delegates to this skill
