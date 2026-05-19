@@ -1,94 +1,94 @@
 {
   "skills": [
     {
-      "name": "aiconfig-agent-graphs",
+      "name": "agentcontrol-configs-agent-graphs",
       "description": "Create and manage agent graphs \u2014 directed graphs of AI Configs connected by edges with handoff logic. Use when building multi-agent workflows where configs route to each other.",
-      "path": "skills/ai-configs/aiconfig-agent-graphs",
+      "path": "skills/ai-configs/agentcontrol-configs-agent-graphs",
       "version": "0.1.0",
       "license": "Apache-2.0",
       "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
     },
     {
-      "name": "aiconfig-ai-metrics",
+      "name": "agentcontrol-configs-ai-metrics",
       "description": "Instrument an existing codebase with LaunchDarkly AI Config tracking. Walks the four-tier ladder (managed runner \u2192 provider package \u2192 custom extractor + trackMetricsOf \u2192 raw manual) and picks the lowest-ceremony option that still captures duration, tokens, and success/error.",
-      "path": "skills/ai-configs/aiconfig-ai-metrics",
+      "path": "skills/ai-configs/agentcontrol-configs-ai-metrics",
       "version": "1.0.0-experimental",
       "license": "Apache-2.0",
       "compatibility": "Requires the LaunchDarkly server-side AI SDK (`launchdarkly-server-sdk-ai>=0.20.0` for Python or `@launchdarkly/server-sdk-ai>=0.20.0` for Node) and an existing AI Config."
     },
     {
-      "name": "aiconfig-create",
+      "name": "agentcontrol-configs-create",
       "description": "Create and configure AI Configs in LaunchDarkly. Helps you choose between agent vs completion mode, create the config, add variations with models and prompts, and verify the setup.",
-      "path": "skills/ai-configs/aiconfig-create",
+      "path": "skills/ai-configs/agentcontrol-configs-create",
       "version": "1.0.0-experimental",
       "license": "Apache-2.0",
       "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
     },
     {
-      "name": "aiconfig-custom-metrics",
+      "name": "agentcontrol-configs-custom-metrics",
       "description": "Create, track, retrieve, update, and delete custom business metrics for AI Configs. Covers full lifecycle: define metric kinds via API, emit events via SDK, and query results.",
-      "path": "skills/ai-configs/aiconfig-custom-metrics",
+      "path": "skills/ai-configs/agentcontrol-configs-custom-metrics",
       "version": "1.0.0-experimental",
       "license": "Apache-2.0",
       "compatibility": "Requires the LaunchDarkly server SDK and a LaunchDarkly API token with the `writer` role for metric management."
     },
     {
-      "name": "aiconfig-migrate",
+      "name": "agentcontrol-configs-migrate",
       "description": "Migrate an application with hardcoded LLM prompts to a full LaunchDarkly AI Configs implementation in five stages: audit the code, wrap the call, move the tools, add tracking, attach evaluators. Use when the user wants to externalize model/prompt configuration, move from direct provider calls (OpenAI, Anthropic, Bedrock, Gemini, Strands) to a managed AI Config, or stage a full hardcoded-to-LaunchDarkly migration.",
-      "path": "skills/ai-configs/aiconfig-migrate",
+      "path": "skills/ai-configs/agentcontrol-configs-migrate",
       "version": "0.1.0",
       "license": "Apache-2.0",
       "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
     },
     {
-      "name": "aiconfig-online-evals",
+      "name": "agentcontrol-configs-online-evals",
       "description": "Attach judges to AI Config variations for automatic LLM-as-a-judge evaluation. Create custom judges, configure sampling rates, and monitor quality scores.",
-      "path": "skills/ai-configs/aiconfig-online-evals",
+      "path": "skills/ai-configs/agentcontrol-configs-online-evals",
       "version": "0.1.0",
       "compatibility": "Requires LaunchDarkly API access token with ai-configs:write permission. SDK versions Python v0.20.0+ or Node.js v0.20.0+ for automatic metric recording and the consolidated `track_judge_result` / `trackJudgeResult` API."
     },
     {
-      "name": "aiconfig-projects",
+      "name": "agentcontrol-projects",
       "description": "Guide for setting up LaunchDarkly projects in your codebase. Helps you assess your stack, choose the right approach, and integrate project management that makes sense for your architecture.",
-      "path": "skills/ai-configs/aiconfig-projects",
+      "path": "skills/ai-configs/agentcontrol-projects",
       "version": "0.4.0",
       "compatibility": "Requires LaunchDarkly API access token with projects:write permission or LaunchDarkly MCP server."
     },
     {
-      "name": "aiconfig-snippets",
+      "name": "agentcontrol-configs-snippets",
       "description": "Create and manage prompt snippets \u2014 reusable text blocks referenced inside AI Config variation prompts. Keeps common instructions, personas, and guardrails consistent across multiple configs.",
-      "path": "skills/ai-configs/aiconfig-snippets",
+      "path": "skills/ai-configs/agentcontrol-configs-snippets",
       "version": "0.1.0",
       "license": "Apache-2.0",
       "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
     },
     {
-      "name": "aiconfig-targeting",
+      "name": "agentcontrol-configs-targeting",
       "description": "Configure AI Config targeting rules to control which variations serve to different users. Enable percentage rollouts, attribute-based rules, segment targeting, and guarded rollouts.",
-      "path": "skills/ai-configs/aiconfig-targeting",
+      "path": "skills/ai-configs/agentcontrol-configs-targeting",
       "version": "0.1.0",
       "compatibility": "Requires LaunchDarkly API access token with ai-configs:write permission."
     },
     {
-      "name": "aiconfig-tools",
+      "name": "agentcontrol-tools",
       "description": "Give your AI agents capabilities through tools (function calling). Helps you identify what your AI needs to do, create tool definitions, and attach them to AI Config variations.",
-      "path": "skills/ai-configs/aiconfig-tools",
+      "path": "skills/ai-configs/agentcontrol-tools",
       "version": "1.0.0-experimental",
       "license": "Apache-2.0",
       "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
     },
     {
-      "name": "aiconfig-update",
+      "name": "agentcontrol-configs-update",
       "description": "Update, archive, and delete LaunchDarkly AI Configs and their variations. Use when you need to modify config properties, change model parameters, update instructions or messages, archive unused configs, or permanently remove them.",
-      "path": "skills/ai-configs/aiconfig-update",
+      "path": "skills/ai-configs/agentcontrol-configs-update",
       "version": "1.0.0-experimental",
       "license": "Apache-2.0",
       "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
     },
     {
-      "name": "aiconfig-variations",
+      "name": "agentcontrol-configs-variations",
       "description": "Experiment with AI configurations by creating and managing variations. Helps you test different models, prompts, and parameters to find what works best through systematic experimentation.",
-      "path": "skills/ai-configs/aiconfig-variations",
+      "path": "skills/ai-configs/agentcontrol-configs-variations",
       "version": "1.0.0-experimental",
       "license": "Apache-2.0",
       "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
