@@ -494,7 +494,7 @@ Custom metrics appear in:
 
 - `sdk` - SDK setup
 - `configs-built-in-metrics` - Built-in AI metrics (tokens, duration, cost)
-- `configs-online-evals` - Quality metrics via judges
+- `online-evals` - Quality metrics via judges
 
 ## References
 

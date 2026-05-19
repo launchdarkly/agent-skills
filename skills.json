@@ -1,20 +1,20 @@
 {
   "skills": [
     {
+      "name": "agent-graphs",
+      "description": "Create and manage agent graphs \u2014 directed graphs of configs connected by edges with handoff logic. Use when building multi-agent workflows where configs route to each other.",
+      "path": "skills/agentcontrol/agent-graphs",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
+    },
+    {
       "name": "apply",
       "description": "Apply LaunchDarkly SDK onboarding: install dependency (or dual-SDK pair), configure env and secrets with consent, add init at entrypoint(s), verify compile. Nested under sdk-install; next is run.",
       "path": "skills/onboarding/sdk-install/apply",
       "version": "0.2.0",
       "license": "Apache-2.0",
       "compatibility": "Requires integration plan and LaunchDarkly credentials (see parent onboarding)"
-    },
-    {
-      "name": "configs-agent-graphs",
-      "description": "Create and manage agent graphs \u2014 directed graphs of configs connected by edges with handoff logic. Use when building multi-agent workflows where configs route to each other.",
-      "path": "skills/agentcontrol/configs-agent-graphs",
-      "version": "0.1.0",
-      "license": "Apache-2.0",
-      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
     },
     {
       "name": "configs-built-in-metrics",
@@ -39,29 +39,6 @@
       "version": "1.0.0-experimental",
       "license": "Apache-2.0",
       "compatibility": "Requires the LaunchDarkly server SDK and a LaunchDarkly API token with the `writer` role for metric management."
-    },
-    {
-      "name": "configs-migrate",
-      "description": "Migrate an application with hardcoded LLM prompts to a full LaunchDarkly AI Configs implementation in five stages: audit the code, wrap the call, move the tools, add tracking, attach evaluators. Use when the user wants to externalize model/prompt configuration, move from direct provider calls (OpenAI, Anthropic, Bedrock, Gemini, Strands) to a managed AI Config, or stage a full hardcoded-to-LaunchDarkly migration.",
-      "path": "skills/agentcontrol/configs-migrate",
-      "version": "0.1.0",
-      "license": "Apache-2.0",
-      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
-    },
-    {
-      "name": "configs-online-evals",
-      "description": "Attach judges to AI Config variations for automatic LLM-as-a-judge evaluation. Create custom judges, configure sampling rates, and monitor quality scores.",
-      "path": "skills/agentcontrol/configs-online-evals",
-      "version": "0.1.0",
-      "compatibility": "Requires LaunchDarkly API access token with ai-configs:write permission. SDK versions Python v0.20.0+ or Node.js v0.20.0+ for automatic metric recording and the consolidated `track_judge_result` / `trackJudgeResult` API."
-    },
-    {
-      "name": "configs-snippets",
-      "description": "Create and manage prompt snippets \u2014 reusable text blocks referenced inside AI Config variation prompts. Keeps common instructions, personas, and guardrails consistent across multiple configs.",
-      "path": "skills/agentcontrol/configs-snippets",
-      "version": "0.1.0",
-      "license": "Apache-2.0",
-      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
     },
     {
       "name": "configs-targeting",
@@ -226,6 +203,14 @@
       "compatibility": "Requires an MCP-compatible coding agent and a LaunchDarkly account"
     },
     {
+      "name": "migrate",
+      "description": "Migrate an application with hardcoded LLM prompts to a full LaunchDarkly AI Configs implementation in five stages: audit the code, wrap the call, move the tools, add tracking, attach evaluators. Use when the user wants to externalize model/prompt configuration, move from direct provider calls (OpenAI, Anthropic, Bedrock, Gemini, Strands) to a managed AI Config, or stage a full hardcoded-to-LaunchDarkly migration.",
+      "path": "skills/agentcontrol/migrate",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
+    },
+    {
       "name": "onboarding",
       "description": "Onboard a project to LaunchDarkly: kickoff roadmap, resumable log, explore repo, MCP, companion flag skills, nested SDK install (detect/plan/apply), first flag. Use when adding LaunchDarkly, setting up or integrating feature flags in a project, SDK integration, or 'onboard me'.",
       "path": "skills/onboarding",
@@ -242,6 +227,13 @@
         "getting-started",
         "setup"
       ]
+    },
+    {
+      "name": "online-evals",
+      "description": "Attach judges to AI Config variations for automatic LLM-as-a-judge evaluation. Create custom judges, configure sampling rates, and monitor quality scores.",
+      "path": "skills/agentcontrol/online-evals",
+      "version": "0.1.0",
+      "compatibility": "Requires LaunchDarkly API access token with ai-configs:write permission. SDK versions Python v0.20.0+ or Node.js v0.20.0+ for automatic metric recording and the consolidated `track_judge_result` / `trackJudgeResult` API."
     },
     {
       "name": "plan",
@@ -265,6 +257,14 @@
       "version": "0.2.0",
       "license": "Apache-2.0",
       "compatibility": "Requires a supported language/framework in the project. SDK credentials are required by [Apply](apply/SKILL.md), not for [Detect](detect/SKILL.md) / [Plan](plan/SKILL.md) alone (see parent onboarding **Prerequisites**)."
+    },
+    {
+      "name": "snippets",
+      "description": "Create and manage prompt snippets \u2014 reusable text blocks referenced inside AI Config variation prompts. Keeps common instructions, personas, and guardrails consistent across multiple configs.",
+      "path": "skills/agentcontrol/snippets",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
     },
     {
       "name": "tools",

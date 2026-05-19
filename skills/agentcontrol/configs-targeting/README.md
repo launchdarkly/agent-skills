@@ -43,7 +43,7 @@ configs-targeting/
 
 - [AI Config Create](../configs-create/) - Create AI Configs first
 - [AI Config Variations](../configs-variations/) - Create variations to target
-- [AI Config Online Evals](../configs-online-evals/) - Attach judges
+- [AI Config Online Evals](../online-evals/) - Attach judges
 - [Targeting Docs](https://docs.launchdarkly.com/home/ai-configs/target)
 
 ## License

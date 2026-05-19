@@ -16,7 +16,7 @@ Completion mode is the default and covers direct provider calls (OpenAI, Anthrop
 
 Agent mode returns an `instructions` string. Completion mode returns a `messages` array. Both modes support tools, parameters, and the same tracker — the only difference is the input shape the SDK returns to you.
 
-**Caveat:** judges cannot be attached to agent-mode variations via the LaunchDarkly UI. Agent mode evaluations must go through the programmatic judge API (`create_judge(...).evaluate(input, output)`). See `configs-online-evals` for the programmatic path.
+**Caveat:** judges cannot be attached to agent-mode variations via the LaunchDarkly UI. Agent mode evaluations must go through the programmatic judge API (`create_judge(...).evaluate(input, output)`). See `online-evals` for the programmatic path.
 
 **Model construction for LangChain / LangGraph.** When the framework runs on top of LangChain (which includes LangGraph's prebuilt agent and most custom graphs), build the chat model with `create_langchain_model(ai_config)` (Python) or `createLangChainModel(aiConfig)` (Node). These helpers forward every variation parameter (`temperature`, `max_tokens`, `top_p`, …) and handle LaunchDarkly→LangChain provider-name mapping internally. Do not hand-roll `init_chat_model(model=..., model_provider=...)` — it silently drops every variation parameter. See [langchain-tracking.md](../../configs-built-in-metrics/references/langchain-tracking.md) for the canonical single-model and LangGraph patterns, including the SDK helpers `sum_token_usage_from_messages` / `get_tool_calls_from_response` (Python, `ldai_langchain`) used inside the `track_metrics_of_async` / `trackMetricsOf` extractor.
 

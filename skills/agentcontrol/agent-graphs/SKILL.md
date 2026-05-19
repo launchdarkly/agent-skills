@@ -1,5 +1,5 @@
 ---
-name: configs-agent-graphs
+name: agent-graphs
 description: "Create and manage agent graphs — directed graphs of configs connected by edges with handoff logic. Use when building multi-agent workflows where configs route to each other."
 license: Apache-2.0
 compatibility: Requires the remotely hosted LaunchDarkly MCP server

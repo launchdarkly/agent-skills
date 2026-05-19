@@ -1,5 +1,5 @@
 ---
-name: configs-migrate
+name: migrate
 description: "Migrate an application with hardcoded LLM prompts to a full LaunchDarkly AI Configs implementation in five stages: audit the code, wrap the call, move the tools, add tracking, attach evaluators. Use when the user wants to externalize model/prompt configuration, move from direct provider calls (OpenAI, Anthropic, Bedrock, Gemini, Strands) to a managed AI Config, or stage a full hardcoded-to-LaunchDarkly migration."
 license: Apache-2.0
 compatibility: Requires the remotely hosted LaunchDarkly MCP server
@@ -71,7 +71,7 @@ If a CHANGELOG entry post-dates this skill and changes an API you're about to us
 - `configs-create` — Stage 2 (creates the AI Config and first variation)
 - `tools` — Stage 3 (creates tool definitions and attaches them)
 - `configs-targeting` — between Stage 2 and Stage 4 (promotes the new variation to fallthrough so the SDK actually serves it)
-- `configs-online-evals` — Stage 5 (attaches judges, creates custom judges)
+- `online-evals` — Stage 5 (attaches judges, creates custom judges)
 
 ## Core Principles
 
@@ -79,7 +79,7 @@ If a CHANGELOG entry post-dates this skill and changes an API you're about to us
 2. **Replace config, not business logic.** The SDK call is a drop-in for the place where the model, parameters, and prompt are *defined* — not for the provider call itself. OpenAI/Anthropic/Bedrock calls stay where they are.
 3. **Fallback mirrors current behavior.** The fallback passed to `completion_config` / `agent_config` must preserve the hardcoded values you removed, so the app is unchanged if LaunchDarkly is unreachable.
 4. **Stages are ordered.** Wrap before you add tools. Add tools before you track. Track before you add evals. Skipping ahead produces configs without traffic, metrics without context, and judges with nothing to score.
-5. **Hand off to focused skills, manually.** Each stage that needs a LaunchDarkly write tells the user to run a sibling slash-command (`/configs-create`, `/tools`, `/configs-targeting`, `/configs-online-evals`) and waits for them to come back. This skill does **not** auto-invoke other skills.
+5. **Hand off to focused skills, manually.** Each stage that needs a LaunchDarkly write tells the user to run a sibling slash-command (`/configs-create`, `/tools`, `/configs-targeting`, `/online-evals`) and waits for them to come back. This skill does **not** auto-invoke other skills.
 
 ## Workflow
 
@@ -446,7 +446,7 @@ Hand off: print the AI Config key, variation key, provider, and whether the call
 
    Write this shape into the project's `datasets/README.md` (or equivalent) so the comparison pattern is reproducible after the migration ships.
 
-3. **Hand off to `configs-online-evals`** — only for UI-attached judges (completion mode) or to create custom judge AI Configs that will be referenced by the programmatic path. Tell the user: *"Run `/configs-online-evals` with these inputs, then come back here."* Do not auto-invoke. Pass:
+3. **Hand off to `online-evals`** — only for UI-attached judges (completion mode) or to create custom judge AI Configs that will be referenced by the programmatic path. Tell the user: *"Run `/online-evals` with these inputs, then come back here."* Do not auto-invoke. Pass:
    - The parent AI Config key and variation key
    - A list of built-in judges (Accuracy, Relevance, Toxicity) or custom judge keys to create/attach
    - Target environment
@@ -487,7 +487,7 @@ Hand off: print the AI Config key, variation key, provider, and whether the call
    - **Programmatic direct-judge:** hit the wrapped endpoint and confirm `track_judge_result` lands on the parent config's Monitoring tab.
    - **Offline eval:** run the dataset through the LD Playground, compare baseline vs new-variation scores side by side. No runtime wiring required.
 
-Delegate: **`configs-online-evals`** (sub-step 3, optional — only for UI-attached judges or custom-judge creation; offline eval doesn't delegate).
+Delegate: **`online-evals`** (sub-step 3, optional — only for UI-attached judges or custom-judge creation; offline eval doesn't delegate).
 
 ## Edge Cases
 
@@ -556,7 +556,7 @@ These are ordered by how likely they are to show up as a first-run failure. The 
 
 - `configs-create` — called by Stage 2 to create the config
 - `tools` — called by Stage 3 to create and attach tool definitions
-- `configs-online-evals` — called by Stage 5 to attach judges
+- `online-evals` — called by Stage 5 to attach judges
 - `configs-variations` — add variations for A/B testing after migration is complete
 - `configs-targeting` — roll out new variations to users after migration is complete
 - `configs-update` — modify config properties as your app evolves

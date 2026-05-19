@@ -43,7 +43,7 @@ Before picking a tier, find the provider call and answer these questions:
    - `aiclient.config(...)` → `aiclient.completion_config(...)` for one-shot/chat or `aiclient.agent_config(...)` for agent mode (mirror the call signature). Node is the same with camelCase.
    - `AIConfig(...)` default → `AICompletionConfigDefault(...)` or `AIAgentConfigDefault(...)` (Node: `LDAICompletionConfigDefault` / `LDAIAgentConfigDefault`). `AIConfig` is the base class the SDK returns; it isn't a valid default-value constructor — the typed `*Default` variants are.
    - If the result was being tuple-unpacked (`config, tracker = aiclient.config(...)`), drop the unpack — the new methods return a single config object. Obtain the tracker via `config.create_tracker()` / `aiConfig.createTracker()`.
-   - For deeper rewrites (call sites with hardcoded model/prompt as well), hand off to `configs-migrate` instead of doing the full migration here.
+   - For deeper rewrites (call sites with hardcoded model/prompt as well), hand off to `migrate` instead of doing the full migration here.
 
 ### 2. Look up your Tier-2 option
 
@@ -105,5 +105,5 @@ Obtain a tracker via the factory on the config object: `tracker = config.create_
 
 - `configs-create` — prerequisite if the app doesn't have an AI Config yet
 - `configs-custom-metrics` — business metrics (conversion, resolution, retention) layered on top of the AI metrics this skill captures
-- `configs-online-evals` — automatic quality scoring (LLM-as-judge) on sampled live requests; complementary to the metrics here
-- `configs-migrate` — Stage 4 of the hardcoded-to-AI-Configs migration delegates to this skill
+- `online-evals` — automatic quality scoring (LLM-as-judge) on sampled live requests; complementary to the metrics here
+- `migrate` — Stage 4 of the hardcoded-to-AI-Configs migration delegates to this skill

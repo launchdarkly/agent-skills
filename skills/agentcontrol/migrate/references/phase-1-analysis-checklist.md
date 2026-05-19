@@ -185,7 +185,7 @@ Proposed plan:
   Stage 2 (Wrap):     Install SDK, create AI Config 'chat-assistant', inline fallback mirrors current values (Mustache syntax), rewrite the call site
   Stage 3 (Tools):    Skipped (no function calling) / Attach 2 tools via tools
   Stage 4 (Tracking): Inline tracker wiring (track_duration + track_tokens + track_success/error) — run-scoped tracker for agent loops
-  Stage 5 (Evals):    Attach built-in 'accuracy' judge at 0.25 sampling via configs-online-evals
+  Stage 5 (Evals):    Attach built-in 'accuracy' judge at 0.25 sampling via online-evals
 ```
 
 ## STOP

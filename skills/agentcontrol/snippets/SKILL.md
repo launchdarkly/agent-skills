@@ -1,5 +1,5 @@
 ---
-name: configs-snippets
+name: snippets
 description: "Create and manage prompt snippets — reusable text blocks referenced inside AI Config variation prompts. Keeps common instructions, personas, and guardrails consistent across multiple configs."
 license: Apache-2.0
 compatibility: Requires the remotely hosted LaunchDarkly MCP server

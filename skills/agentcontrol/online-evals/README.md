@@ -12,7 +12,7 @@ This skill teaches agents how to:
 
 ## Installation (Local)
 
-Copy `skills/agentcontrol/configs-online-evals/` into your agent client's skills path.
+Copy `skills/agentcontrol/online-evals/` into your agent client's skills path.
 
 ## Prerequisites
 
@@ -33,7 +33,7 @@ Create a custom judge that checks for scope creep in code changes
 ## Structure
 
 ```
-configs-online-evals/
+online-evals/
 ├── SKILL.md
 └── README.md
 ```
