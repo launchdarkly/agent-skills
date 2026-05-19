@@ -22,16 +22,16 @@ Agent Skills are modular, text-based playbooks that teach an agent how to perfor
 
 | Skill | Description |
 |-------|-------------|
-| `ai-configs/configs-create` | Create AI Configs with variations for agent or completion mode |
-| `ai-configs/configs-migrate` | Migrate an app with hardcoded LLM prompts to AI Configs in five stages (extract, wrap, tools, tracking, evals) |
-| `ai-configs/configs-update` | Update and delete AI Configs, manage lifecycle |
-| `ai-configs/configs-variations` | Manage AI Config variations for A/B testing |
-| `ai-configs/configs-tools` | Create and attach tools for function calling |
-| `ai-configs/configs-projects` | Create and manage projects to organize AI Configs |
-| `ai-configs/configs-online-evals` | Attach LLM-as-a-judge evaluators to AI Configs |
-| `ai-configs/configs-targeting` | Configure targeting rules for AI Config rollouts |
-| `ai-configs/configs-snippets` | Create and manage reusable prompt snippets across AI Configs |
-| `ai-configs/configs-agent-graphs` | Create and manage multi-agent graphs with routing and handoffs |
+| `agentcontrol/create` | Create AI Configs with variations for agent or completion mode |
+| `agentcontrol/migrate` | Migrate an app with hardcoded LLM prompts to AI Configs in five stages (extract, wrap, tools, tracking, evals) |
+| `agentcontrol/update` | Update and delete AI Configs, manage lifecycle |
+| `agentcontrol/variations` | Manage AI Config variations for A/B testing |
+| `agentcontrol/tools` | Create and attach tools for function calling |
+| `agentcontrol/projects` | Create and manage projects to organize AI Configs |
+| `agentcontrol/online-evals` | Attach LLM-as-a-judge evaluators to AI Configs |
+| `agentcontrol/targeting` | Configure targeting rules for AI Config rollouts |
+| `agentcontrol/snippets` | Create and manage reusable prompt snippets across AI Configs |
+| `agentcontrol/agent-graphs` | Create and manage multi-agent graphs with routing and handoffs |
 
 ### Experiments
 
