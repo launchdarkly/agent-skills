@@ -17,9 +17,9 @@
       "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
     },
     {
-      "name": "configs-ai-metrics",
+      "name": "configs-built-in-metrics",
       "description": "Instrument an existing codebase with LaunchDarkly AI Config tracking. Walks the four-tier ladder (managed runner \u2192 provider package \u2192 custom extractor + trackMetricsOf \u2192 raw manual) and picks the lowest-ceremony option that still captures duration, tokens, and success/error.",
-      "path": "skills/agentcontrol/configs-ai-metrics",
+      "path": "skills/agentcontrol/configs-built-in-metrics",
       "version": "1.0.0-experimental",
       "license": "Apache-2.0",
       "compatibility": "Requires the LaunchDarkly server-side AI SDK (`launchdarkly-server-sdk-ai>=0.20.0` for Python or `@launchdarkly/server-sdk-ai>=0.20.0` for Node) and an existing AI Config."

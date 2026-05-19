@@ -488,7 +488,7 @@ After configuring targeting:
    ```
    https://app.launchdarkly.com/projects/{projectKey}/ai-configs/{configKey}
    ```
-2. **Monitor performance** with `configs-ai-metrics`
+2. **Monitor performance** with `configs-built-in-metrics`
 3. **Attach judges** with `configs-online-evals`
 4. **Set up guarded rollouts** for automatic regression detection
 

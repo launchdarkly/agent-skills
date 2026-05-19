@@ -18,7 +18,7 @@ Agent mode returns an `instructions` string. Completion mode returns a `messages
 
 **Caveat:** judges cannot be attached to agent-mode variations via the LaunchDarkly UI. Agent mode evaluations must go through the programmatic judge API (`create_judge(...).evaluate(input, output)`). See `configs-online-evals` for the programmatic path.
 
-**Model construction for LangChain / LangGraph.** When the framework runs on top of LangChain (which includes LangGraph's prebuilt agent and most custom graphs), build the chat model with `create_langchain_model(ai_config)` (Python) or `createLangChainModel(aiConfig)` (Node). These helpers forward every variation parameter (`temperature`, `max_tokens`, `top_p`, …) and handle LaunchDarkly→LangChain provider-name mapping internally. Do not hand-roll `init_chat_model(model=..., model_provider=...)` — it silently drops every variation parameter. See [langchain-tracking.md](../../configs-ai-metrics/references/langchain-tracking.md) for the canonical single-model and LangGraph patterns, including the SDK helpers `sum_token_usage_from_messages` / `get_tool_calls_from_response` (Python, `ldai_langchain`) used inside the `track_metrics_of_async` / `trackMetricsOf` extractor.
+**Model construction for LangChain / LangGraph.** When the framework runs on top of LangChain (which includes LangGraph's prebuilt agent and most custom graphs), build the chat model with `create_langchain_model(ai_config)` (Python) or `createLangChainModel(aiConfig)` (Node). These helpers forward every variation parameter (`temperature`, `max_tokens`, `top_p`, …) and handle LaunchDarkly→LangChain provider-name mapping internally. Do not hand-roll `init_chat_model(model=..., model_provider=...)` — it silently drops every variation parameter. See [langchain-tracking.md](../../configs-built-in-metrics/references/langchain-tracking.md) for the canonical single-model and LangGraph patterns, including the SDK helpers `sum_token_usage_from_messages` / `get_tool_calls_from_response` (Python, `ldai_langchain`) used inside the `track_metrics_of_async` / `trackMetricsOf` extractor.
 
 ## Framework-agnostic invariants for the run-scoped pattern
 
@@ -291,7 +291,7 @@ async def run_turn(ai_client, user_id: str, user_input: str):
 **Key points:**
 - `system_prompt=agent_config.instructions` — the instructions string replaces the hardcoded system prompt.
 - `create_strands_model(agent_config)` is the provider-dispatch seam. Add a branch per provider the variation can serve.
-- The tracker is Tier 3: `tracker.track_duration_of(...)` + an explicit `track_tokens` call fed by `track_strands_metrics`. See [strands-tracking.md](../../configs-ai-metrics/references/strands-tracking.md) for the single-call `track_metrics_of_async` variant and the per-field breakdown of `accumulated_usage`.
+- The tracker is Tier 3: `tracker.track_duration_of(...)` + an explicit `track_tokens` call fed by `track_strands_metrics`. See [strands-tracking.md](../../configs-built-in-metrics/references/strands-tracking.md) for the single-call `track_metrics_of_async` variant and the per-field breakdown of `accumulated_usage`.
 - Always `ldclient.get().flush()` before process exit in short-lived scripts — trailing events can otherwise be lost.
 
 **TypeScript caveat.** The Strands TypeScript SDK ships `BedrockModel` and `OpenAIModel` only — it cannot run Anthropic-backed variations. If the app needs to serve both OpenAI and Anthropic from a single AI Config, use the Python SDK.

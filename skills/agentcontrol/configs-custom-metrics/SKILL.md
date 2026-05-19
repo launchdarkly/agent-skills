@@ -16,7 +16,7 @@ Full lifecycle management of custom business metrics: create metric definitions 
 
 - LaunchDarkly SDK initialized (see `sdk`)
 - LaunchDarkly API token with `writer` role for metric management
-- Understanding of built-in AI metrics (see `configs-ai-metrics`)
+- Understanding of built-in AI metrics (see `configs-built-in-metrics`)
 
 ## API Key Detection
 
@@ -493,7 +493,7 @@ Custom metrics appear in:
 ## Related Skills
 
 - `sdk` - SDK setup
-- `configs-ai-metrics` - Built-in AI metrics (tokens, duration, cost)
+- `configs-built-in-metrics` - Built-in AI metrics (tokens, duration, cost)
 - `configs-online-evals` - Quality metrics via judges
 
 ## References
