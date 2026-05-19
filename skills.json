@@ -1,8 +1,16 @@
 {
   "skills": [
     {
+      "name": "apply",
+      "description": "Apply LaunchDarkly SDK onboarding: install dependency (or dual-SDK pair), configure env and secrets with consent, add init at entrypoint(s), verify compile. Nested under sdk-install; next is run.",
+      "path": "skills/onboarding/sdk-install/apply",
+      "version": "0.2.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires integration plan and LaunchDarkly credentials (see parent onboarding)"
+    },
+    {
       "name": "configs-agent-graphs",
-      "description": "Create and manage agent graphs \u2014 directed graphs of AI Configs connected by edges with handoff logic. Use when building multi-agent workflows where configs route to each other.",
+      "description": "Create and manage agent graphs \u2014 directed graphs of configs connected by edges with handoff logic. Use when building multi-agent workflows where configs route to each other.",
       "path": "skills/agentcontrol/configs-agent-graphs",
       "version": "0.1.0",
       "license": "Apache-2.0",
@@ -48,13 +56,6 @@
       "compatibility": "Requires LaunchDarkly API access token with ai-configs:write permission. SDK versions Python v0.20.0+ or Node.js v0.20.0+ for automatic metric recording and the consolidated `track_judge_result` / `trackJudgeResult` API."
     },
     {
-      "name": "projects",
-      "description": "Guide for setting up LaunchDarkly projects in your codebase. Helps you assess your stack, choose the right approach, and integrate project management that makes sense for your architecture.",
-      "path": "skills/agentcontrol/projects",
-      "version": "0.4.0",
-      "compatibility": "Requires LaunchDarkly API access token with projects:write permission or LaunchDarkly MCP server."
-    },
-    {
       "name": "configs-snippets",
       "description": "Create and manage prompt snippets \u2014 reusable text blocks referenced inside AI Config variation prompts. Keeps common instructions, personas, and guardrails consistent across multiple configs.",
       "path": "skills/agentcontrol/configs-snippets",
@@ -68,14 +69,6 @@
       "path": "skills/agentcontrol/configs-targeting",
       "version": "0.1.0",
       "compatibility": "Requires LaunchDarkly API access token with ai-configs:write permission."
-    },
-    {
-      "name": "tools",
-      "description": "Give your AI agents capabilities through tools (function calling). Helps you identify what your AI needs to do, create tool definitions, and attach them to AI Config variations.",
-      "path": "skills/agentcontrol/tools",
-      "version": "1.0.0-experimental",
-      "license": "Apache-2.0",
-      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
     },
     {
       "name": "configs-update",
@@ -92,14 +85,6 @@
       "version": "1.0.0-experimental",
       "license": "Apache-2.0",
       "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
-    },
-    {
-      "name": "apply",
-      "description": "Apply LaunchDarkly SDK onboarding: install dependency (or dual-SDK pair), configure env and secrets with consent, add init at entrypoint(s), verify compile. Nested under sdk-install; next is run.",
-      "path": "skills/onboarding/sdk-install/apply",
-      "version": "0.2.0",
-      "license": "Apache-2.0",
-      "compatibility": "Requires integration plan and LaunchDarkly credentials (see parent onboarding)"
     },
     {
       "name": "detect",
@@ -267,12 +252,27 @@
       "compatibility": "Requires completed or equivalent detect context (see sibling detect skill)"
     },
     {
+      "name": "projects",
+      "description": "Guide for setting up LaunchDarkly projects in your codebase. Helps you assess your stack, choose the right approach, and integrate project management that makes sense for your architecture.",
+      "path": "skills/agentcontrol/projects",
+      "version": "0.4.0",
+      "compatibility": "Requires LaunchDarkly API access token with projects:write permission or LaunchDarkly MCP server."
+    },
+    {
       "name": "sdk-install",
       "description": "Install and initialize the correct LaunchDarkly SDK during onboarding by running nested skills in order: detect, plan, apply. Parent onboarding Step 6 is first flag.",
       "path": "skills/onboarding/sdk-install",
       "version": "0.2.0",
       "license": "Apache-2.0",
       "compatibility": "Requires a supported language/framework in the project. SDK credentials are required by [Apply](apply/SKILL.md), not for [Detect](detect/SKILL.md) / [Plan](plan/SKILL.md) alone (see parent onboarding **Prerequisites**)."
+    },
+    {
+      "name": "tools",
+      "description": "Give your AI agents capabilities through tools (function calling). Helps you identify what your AI needs to do, create tool definitions, and attach them to AI Config variations.",
+      "path": "skills/agentcontrol/tools",
+      "version": "1.0.0-experimental",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
     }
   ]
 }
