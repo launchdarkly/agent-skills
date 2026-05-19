@@ -9,6 +9,90 @@
       "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
     },
     {
+      "name": "aiconfig-agent-graphs",
+      "description": "DEPRECATED redirect \u2014 this skill was renamed to agent-graphs. Do not use this skill; invoke agent-graphs instead. Kept only so old references to aiconfig-agent-graphs still point users to the new name.",
+      "path": "skills/agentcontrol/aiconfig-agent-graphs",
+      "version": "0.1.0",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "aiconfig-ai-metrics",
+      "description": "DEPRECATED redirect \u2014 this skill was renamed to built-in-metrics. Do not use this skill; invoke built-in-metrics instead. Kept only so old references to aiconfig-ai-metrics still point users to the new name.",
+      "path": "skills/agentcontrol/aiconfig-ai-metrics",
+      "version": "0.1.0",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "aiconfig-create",
+      "description": "DEPRECATED redirect \u2014 this skill was renamed to configs-create. Do not use this skill; invoke configs-create instead. Kept only so old references to aiconfig-create still point users to the new name.",
+      "path": "skills/agentcontrol/aiconfig-create",
+      "version": "0.1.0",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "aiconfig-custom-metrics",
+      "description": "DEPRECATED redirect \u2014 this skill was renamed to custom-metrics. Do not use this skill; invoke custom-metrics instead. Kept only so old references to aiconfig-custom-metrics still point users to the new name.",
+      "path": "skills/agentcontrol/aiconfig-custom-metrics",
+      "version": "0.1.0",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "aiconfig-migrate",
+      "description": "DEPRECATED redirect \u2014 this skill was renamed to migrate. Do not use this skill; invoke migrate instead. Kept only so old references to aiconfig-migrate still point users to the new name.",
+      "path": "skills/agentcontrol/aiconfig-migrate",
+      "version": "0.1.0",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "aiconfig-online-evals",
+      "description": "DEPRECATED redirect \u2014 this skill was renamed to online-evals. Do not use this skill; invoke online-evals instead. Kept only so old references to aiconfig-online-evals still point users to the new name.",
+      "path": "skills/agentcontrol/aiconfig-online-evals",
+      "version": "0.1.0",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "aiconfig-projects",
+      "description": "DEPRECATED redirect \u2014 this skill was renamed to projects. Do not use this skill; invoke projects instead. Kept only so old references to aiconfig-projects still point users to the new name.",
+      "path": "skills/agentcontrol/aiconfig-projects",
+      "version": "0.1.0",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "aiconfig-snippets",
+      "description": "DEPRECATED redirect \u2014 this skill was renamed to snippets. Do not use this skill; invoke snippets instead. Kept only so old references to aiconfig-snippets still point users to the new name.",
+      "path": "skills/agentcontrol/aiconfig-snippets",
+      "version": "0.1.0",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "aiconfig-targeting",
+      "description": "DEPRECATED redirect \u2014 this skill was renamed to configs-targeting. Do not use this skill; invoke configs-targeting instead. Kept only so old references to aiconfig-targeting still point users to the new name.",
+      "path": "skills/agentcontrol/aiconfig-targeting",
+      "version": "0.1.0",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "aiconfig-tools",
+      "description": "DEPRECATED redirect \u2014 this skill was renamed to tools. Do not use this skill; invoke tools instead. Kept only so old references to aiconfig-tools still point users to the new name.",
+      "path": "skills/agentcontrol/aiconfig-tools",
+      "version": "0.1.0",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "aiconfig-update",
+      "description": "DEPRECATED redirect \u2014 this skill was renamed to configs-update. Do not use this skill; invoke configs-update instead. Kept only so old references to aiconfig-update still point users to the new name.",
+      "path": "skills/agentcontrol/aiconfig-update",
+      "version": "0.1.0",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "aiconfig-variations",
+      "description": "DEPRECATED redirect \u2014 this skill was renamed to configs-variations. Do not use this skill; invoke configs-variations instead. Kept only so old references to aiconfig-variations still point users to the new name.",
+      "path": "skills/agentcontrol/aiconfig-variations",
+      "version": "0.1.0",
+      "license": "Apache-2.0"
+    },
+    {
       "name": "apply",
       "description": "Apply LaunchDarkly SDK onboarding: install dependency (or dual-SDK pair), configure env and secrets with consent, add init at entrypoint(s), verify compile. Nested under sdk-install; next is run.",
       "path": "skills/onboarding/sdk-install/apply",
