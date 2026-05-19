@@ -221,16 +221,16 @@ ai-apac           → Asia-Pacific Region
 
 After setting up projects:
 
-1. **Create AI Configs** - Use the `create` skill
+1. **Create AI Configs** - Use the `configs-create` skill
 2. **Set up SDK Integration** - Use the `sdk` skill
-3. **Configure Targeting** - Use the `targeting` skill
+3. **Configure Targeting** - Use the `configs-targeting` skill
 
 ## Related Skills
 
-- `create` - Create AI Configs in projects
+- `configs-create` - Create AI Configs in projects
 - `sdk` - Integrate SDK in your application
-- `targeting` - Configure AI Config targeting
-- `variations` - Manage config variations
+- `configs-targeting` - Configure AI Config targeting
+- `configs-variations` - Manage config variations
 
 ## References
 

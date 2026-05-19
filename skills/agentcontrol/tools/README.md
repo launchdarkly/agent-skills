@@ -38,8 +38,8 @@ tools/
 
 ## Related
 
-- [AI Config Create](../create/): Create the config before adding tools
-- [AI Config Variations](../variations/): Manage variations that tools attach to
+- [AI Config Create](../configs-create/): Create the config before adding tools
+- [AI Config Variations](../configs-variations/): Manage variations that tools attach to
 - [LaunchDarkly AI Configs Docs](https://docs.launchdarkly.com/home/ai-configs)
 
 ## License
