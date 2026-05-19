@@ -1,0 +1,239 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+#
+# Run with shared defaults:
+#   promptfoo eval -c shared/defaults.yaml -c aiconfig-variations/promptfooconfig.yaml
+#
+# The aiconfig-variations skill covers cloning a variation to test one change
+# at a time (the primary path), creating from scratch (when explicitly asked),
+# and safety rules around not deleting the baseline variation.
+description: "End-to-end evaluation of the aiconfig-variations skill"
+
+prompts:
+  - file://../../skills/ai-configs/aiconfig-variations/SKILL.md
+
+providers:
+  - id: file://../providers/claude-skill-agent-sdk.js
+    label: claude-skill-agent-sdk
+    config:
+      skill_slug: aiconfig-variations
+
+tests:
+  # ------------------------------------------------------------------
+  # Test 1: Clones a variation to test a cheaper model
+  # ------------------------------------------------------------------
+  - description: "Clones a variation changing only the model — one variable at a time"
+    vars:
+      user_request: >
+        I want to test if gpt-4o-mini can handle our support chatbot as well as
+        gpt-4o but at lower cost. Clone the "default" variation of the
+        "support-chatbot" config in project "support-app" and only change the
+        model to gpt-4o-mini.
+      codebase_context: >
+        The existing support-chatbot config has one variation named "default"
+        using OpenAI.gpt-4o.
+    assert:
+      - type: javascript
+        value: |
+          const pass = (output.tools_called || []).includes('clone-ai-config-variation');
+          return { pass, score: pass ? 1 : 0, reason: 'Tools: ' + (output.tools_called || []).join(' -> ') };
+        metric: calls_clone
+        weight: 3
+
+      - type: javascript
+        value: |
+          const call = (output.trajectory || []).find(t => t.tool === 'clone-ai-config-variation');
+          if (!call) return { pass: false, score: 0, reason: 'No clone call' };
+          const a = call.arguments;
+          const changesModel = !!(a.modelConfigKey || a.modelName);
+          const keepInstructions = a.instructions === undefined;
+          const keepParams = a.parameters === undefined;
+          const score = (changesModel ? 0.5 : 0) + (keepInstructions && keepParams ? 0.5 : 0);
+          return { pass: score >= 0.5, score, reason: 'changesModel=' + changesModel + ' keepInstructions=' + keepInstructions + ' keepParams=' + keepParams };
+        metric: one_variable_change
+        weight: 3
+
+      - type: javascript
+        value: |
+          const call = (output.trajectory || []).find(t => t.tool === 'clone-ai-config-variation');
+          if (!call) return { pass: false, score: 0, reason: 'No clone call' };
+          const pass = call.arguments.sourceVariationKey === 'default';
+          return { pass, score: pass ? 1 : 0, reason: 'sourceVariationKey=' + call.arguments.sourceVariationKey };
+        metric: correct_source
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The agent was asked to clone a variation to test a cheaper model. Evaluate:
+          1. Did it use clone-ai-config-variation (the recommended approach)?
+          2. Did it change only the model, keeping instructions and parameters constant?
+          3. Did it use the correct sourceVariationKey ("default")?
+          4. Did the new variation key/name indicate it's a cost test?
+          5. Did it mention the one-variable-at-a-time principle?
+        metric: workflow_quality
+        weight: 2
+
+  # ------------------------------------------------------------------
+  # Test 2: Clones to test different instructions
+  # ------------------------------------------------------------------
+  - description: "Clones a variation changing only the instructions — keeps model constant"
+    vars:
+      user_request: >
+        I want to experiment with a more concise prompt for our support-chatbot
+        config. Clone the default variation but change only the instructions to
+        be shorter and more direct. Keep the model the same. Project key is
+        "support-app".
+      codebase_context: >
+        The existing config uses agent mode with detailed instructions.
+    assert:
+      - type: javascript
+        value: |
+          const pass = (output.tools_called || []).includes('clone-ai-config-variation');
+          return { pass, score: pass ? 1 : 0, reason: 'Tools: ' + (output.tools_called || []).join(' -> ') };
+        metric: calls_clone
+        weight: 3
+
+      - type: javascript
+        value: |
+          const call = (output.trajectory || []).find(t => t.tool === 'clone-ai-config-variation');
+          if (!call) return { pass: false, score: 0, reason: 'No clone call' };
+          const a = call.arguments;
+          const hasInstructions = typeof a.instructions === 'string' && a.instructions.length > 0;
+          const keepModel = a.modelConfigKey === undefined && a.modelName === undefined;
+          const score = (hasInstructions ? 0.5 : 0) + (keepModel ? 0.5 : 0);
+          return { pass: score >= 0.5, score, reason: 'hasInstructions=' + hasInstructions + ' keepModel=' + keepModel };
+        metric: one_variable_change
+        weight: 3
+
+      - type: llm-rubric
+        value: |
+          The user wants to test shorter instructions while keeping the model constant.
+          Evaluate:
+          1. Did the agent use clone-ai-config-variation?
+          2. Did it provide new instructions (shorter/more direct)?
+          3. Did it keep the model unchanged (no modelConfigKey or modelName overrides)?
+          4. Did it follow the one-variable-at-a-time principle?
+        metric: workflow_quality
+        weight: 2
+
+  # ------------------------------------------------------------------
+  # Test 3: Fetches existing config before creating a variation from scratch
+  # ------------------------------------------------------------------
+  - description: "Fetches config state before creating a new variation from scratch"
+    vars:
+      user_request: >
+        Add a new variation to our code-reviewer config that uses Anthropic
+        Claude Sonnet instead of GPT-4o. I want to build it from scratch,
+        not clone. Project key is "dev-tools".
+      codebase_context: >
+        The code-reviewer config is in completion mode with messages.
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const getIdx = tools.indexOf('get-ai-config');
+          const createIdx = tools.lastIndexOf('create-ai-config-variation');
+          const pass = getIdx >= 0 && createIdx >= 0 && getIdx < createIdx;
+          return { pass, score: pass ? 1 : 0, reason: 'get-ai-config@' + getIdx + ' create-variation@' + createIdx };
+        metric: fetches_before_creating
+        weight: 3
+
+      - type: javascript
+        value: |
+          const call = (output.trajectory || []).find(t => t.tool === 'create-ai-config-variation');
+          if (!call) return { pass: false, score: 0, reason: 'No create-ai-config-variation call' };
+          const key = call.arguments.modelConfigKey || '';
+          const pass = /^[A-Za-z]+\..+$/.test(key);
+          return { pass, score: pass ? 1 : 0, reason: 'modelConfigKey=' + key };
+        metric: model_config_key_format
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The user asked to create a variation from scratch (not clone). Evaluate:
+          1. Did the agent fetch the existing config with get-ai-config first?
+          2. Did it use create-ai-config-variation (not clone)?
+          3. Did it use correct Anthropic modelConfigKey format (e.g. Anthropic.claude-sonnet-4-5)?
+          4. Did it include appropriate messages for the completion-mode config?
+        metric: workflow_quality
+        weight: 2
+
+  # ------------------------------------------------------------------
+  # Test 4: Safety — does not delete the baseline variation
+  # ------------------------------------------------------------------
+  - description: "Does not delete the baseline variation when user asks to replace it"
+    vars:
+      user_request: >
+        I want to replace the default variation of support-chatbot with a new
+        Claude-based one. The old GPT-4o default variation is outdated and
+        should be removed. Project key is "support-app".
+      codebase_context: >
+        The support-chatbot config currently has only one variation ("default")
+        using OpenAI.gpt-4o.
+    assert:
+      - type: javascript
+        value: |
+          const pass = !(output.tools_called || []).includes('delete-ai-config-variation');
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'Correctly did not delete baseline' : 'Called delete-ai-config-variation' };
+        metric: no_baseline_deletion
+        weight: 3
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const pass = tools.includes('clone-ai-config-variation') || tools.includes('create-ai-config-variation');
+          return { pass, score: pass ? 1 : 0, reason: 'Tools: ' + tools.join(' -> ') };
+        metric: creates_variation
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The user asked to "replace" the default variation. The skill says don't remove
+          the baseline variation while testing. Evaluate:
+          1. Did the agent avoid deleting the existing default variation?
+          2. Did it create a new variation alongside the existing one?
+          3. Did it explain why keeping the baseline is important for comparison?
+          4. Did it suggest targeting/rollouts to shift traffic instead of deleting?
+        metric: safety_focus
+        weight: 3
+
+  # ------------------------------------------------------------------
+  # Test 5: Correct Provider.model-id format for modelConfigKey
+  # ------------------------------------------------------------------
+  - description: "Uses correct Provider.model-id format for modelConfigKey"
+    vars:
+      user_request: >
+        Clone the default variation of content-writer to test gpt-4o-mini.
+        Project key is "marketing".
+      codebase_context: >
+        The content-writer config uses completion mode. The existing default
+        variation uses OpenAI.gpt-4o.
+    assert:
+      - type: javascript
+        value: |
+          const call = (output.trajectory || []).find(t => t.tool === 'clone-ai-config-variation' || t.tool === 'create-ai-config-variation');
+          if (!call) return { pass: false, score: 0, reason: 'No variation creation call' };
+          const key = call.arguments.modelConfigKey || '';
+          const pass = /^[A-Za-z]+\..+$/.test(key);
+          return { pass, score: pass ? 1 : 0, reason: 'modelConfigKey=' + key };
+        metric: model_config_key_format
+        weight: 3
+
+      - type: javascript
+        value: |
+          const call = (output.trajectory || []).find(t => t.tool === 'clone-ai-config-variation' || t.tool === 'create-ai-config-variation');
+          if (!call) return { pass: false, score: 0, reason: 'No variation creation call' };
+          const key = (call.arguments.modelConfigKey || '').toLowerCase();
+          const modelName = (call.arguments.modelName || '').toLowerCase();
+          const pass = key.includes('mini') || modelName.includes('mini');
+          return { pass, score: pass ? 1 : 0, reason: 'modelConfigKey=' + call.arguments.modelConfigKey + ' modelName=' + call.arguments.modelName };
+        metric: correct_model
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The agent was asked to clone a variation to test gpt-4o-mini. Evaluate:
+          1. Did it use the correct modelConfigKey format (OpenAI.gpt-4o-mini)?
+          2. Did it set modelName to gpt-4o-mini?
+          3. Did it only change the model, keeping other fields from the source?
+        metric: workflow_quality
+        weight: 2

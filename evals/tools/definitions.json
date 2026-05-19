@@ -1,0 +1,513 @@
+[
+  {
+    "name": "list-flags",
+    "description": "Search and browse feature flags in a project. Returns a paginated list scoped to a single environment. Use query to search by name/key, tags to filter by tag, state to filter by lifecycle state (active, inactive, new, launched, archived), and type to filter by temporary or permanent.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "env": { "type": "string", "description": "Environment key (defaults to production)" },
+        "query": { "type": "string", "description": "Search by flag name or key" },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "Filter by tags" },
+        "state": { "type": "string", "enum": ["active", "inactive", "archived", "new", "launched"], "description": "Filter by lifecycle state" },
+        "type": { "type": "string", "enum": ["temporary", "permanent"], "description": "Filter by temporary or permanent" },
+        "limit": { "type": "number", "description": "Max number of results (default 20)" }
+      },
+      "required": ["projectKey"]
+    }
+  },
+  {
+    "name": "get-flag",
+    "description": "Get detailed configuration for a single feature flag scoped to a specific environment. Returns the full targeting tree including rules, individual targets, fallthrough, prerequisites, and variation details.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "flagKey": { "type": "string", "description": "The flag key" },
+        "env": { "type": "string", "description": "Environment key (defaults to production)" }
+      },
+      "required": ["projectKey", "flagKey"]
+    }
+  },
+  {
+    "name": "create-flag",
+    "description": "Create a new feature flag in a project. Defaults to a boolean temporary flag. After creation the flag is OFF in all environments: use toggle-flag to enable it. For multivariate flags, provide variations array with {value, name} entries.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "name": { "type": "string", "description": "Human-readable flag name" },
+        "key": { "type": "string", "description": "Unique flag key (immutable)" },
+        "kind": { "type": "string", "enum": ["boolean", "multivariate"], "description": "Flag kind (default: boolean)" },
+        "description": { "type": "string", "description": "Description of the flag's purpose" },
+        "temporary": { "type": "boolean", "description": "Whether the flag is temporary (default: true)" },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags for organization" },
+        "variations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": { "description": "The variation value" },
+              "name": { "type": "string", "description": "Variation name" }
+            }
+          },
+          "description": "Custom variations (for multivariate flags)"
+        },
+        "clientSideAvailability": {
+          "type": "object",
+          "properties": {
+            "usingMobileKey": { "type": "boolean" },
+            "usingEnvironmentId": { "type": "boolean" }
+          },
+          "description": "Client-side SDK availability"
+        }
+      },
+      "required": ["projectKey", "name", "key"]
+    }
+  },
+  {
+    "name": "update-flag-settings",
+    "description": "Update a flag's top-level settings: name, description, tags, temporary/permanent status, or maintainer. Does NOT modify targeting, rollouts, or rules: use the targeting tools for those. Supported instruction kinds: updateName, updateDescription, addTags, removeTags, markTemporary, markPermanent, updateMaintainerMember.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "flagKey": { "type": "string", "description": "The flag key" },
+        "instructions": {
+          "type": "array",
+          "items": { "type": "object" },
+          "description": "Array of semantic patch instructions"
+        },
+        "comment": { "type": "string", "description": "Optional comment for audit log" }
+      },
+      "required": ["projectKey", "flagKey", "instructions"]
+    }
+  },
+  {
+    "name": "toggle-flag",
+    "description": "Turn a feature flag's targeting on or off in a specific environment. Returns the previous and new state.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "flagKey": { "type": "string", "description": "The flag key" },
+        "env": { "type": "string", "description": "Environment key" },
+        "on": { "type": "boolean", "description": "Whether to turn targeting on or off" },
+        "comment": { "type": "string", "description": "Optional comment" }
+      },
+      "required": ["projectKey", "flagKey", "env", "on"]
+    }
+  },
+  {
+    "name": "list-ai-configs",
+    "description": "Search and browse AI Configs in a project. Returns a paginated list with key, name, mode (agent or completion), tags, and variation count. Use query to search by name or key.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "query": { "type": "string", "description": "Search by name or key" },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "Filter by tags" },
+        "limit": { "type": "number", "description": "Max number of results (default 20)" }
+      },
+      "required": ["projectKey"]
+    }
+  },
+  {
+    "name": "get-ai-config",
+    "description": "Get detailed configuration for a single AI Config including all its variations. Each variation includes its model, instructions or messages, parameters, and attached tools.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "configKey": { "type": "string", "description": "The AI Config key" }
+      },
+      "required": ["projectKey", "configKey"]
+    }
+  },
+  {
+    "name": "create-ai-config",
+    "description": "Create a new AI Config in a project. This creates the config shell: use create-ai-config-variation next to add a model, prompts, and parameters. Mode determines whether variations use 'instructions' (agent) or 'messages' (completion).",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "key": { "type": "string", "description": "Unique config key (lowercase, hyphens)" },
+        "name": { "type": "string", "description": "Human-readable config name" },
+        "mode": { "type": "string", "enum": ["agent", "completion"], "description": "Agent uses instructions; completion uses messages" },
+        "description": { "type": "string", "description": "Description of the config's purpose" },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags for organization" }
+      },
+      "required": ["projectKey", "key", "name", "mode"]
+    }
+  },
+  {
+    "name": "update-ai-config",
+    "description": "Update an AI Config's metadata: name, description, tags, or archive status. Does NOT modify variations: use update-ai-config-variation for model, prompt, or parameter changes. Set archived: true to archive (reversible).",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "configKey": { "type": "string", "description": "The AI Config key" },
+        "name": { "type": "string", "description": "New config name" },
+        "description": { "type": "string", "description": "New description" },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "Replacement tags" },
+        "archived": { "type": "boolean", "description": "Set true to archive, false to unarchive" }
+      },
+      "required": ["projectKey", "configKey"]
+    }
+  },
+  {
+    "name": "delete-ai-config",
+    "description": "Permanently delete an AI Config. THIS IS IRREVERSIBLE. Requires confirm=true to execute. Prefer archiving (update-ai-config with archived: true) when possible.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "configKey": { "type": "string", "description": "The AI Config key" },
+        "confirm": { "type": "boolean", "description": "Must be true to execute deletion" }
+      },
+      "required": ["projectKey", "configKey", "confirm"]
+    }
+  },
+  {
+    "name": "setup-ai-config",
+    "description": "Create an AI Config with its first variation in one step. This is the recommended way to set up a new AI Config: it creates the config, adds a variation with model and prompts, and verifies everything is configured correctly. Returns the full config detail with variation. To attach AI tools, pass the 'tools' array with {key, version} entries. Use create-ai-config + create-ai-config-variation separately only when you need more control.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "key": { "type": "string", "description": "Unique config key (lowercase, hyphens)" },
+        "name": { "type": "string", "description": "Human-readable config name" },
+        "mode": { "type": "string", "enum": ["agent", "completion"], "description": "Agent uses instructions; completion uses messages" },
+        "description": { "type": "string", "description": "Description of the config's purpose" },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags for organization" },
+        "variationKey": { "type": "string", "description": "Key for the first variation" },
+        "variationName": { "type": "string", "description": "Name for the first variation" },
+        "modelConfigKey": { "type": "string", "description": "Provider.model-id format (e.g. OpenAI.gpt-4o)" },
+        "modelName": { "type": "string", "description": "The model identifier (e.g. gpt-4o)" },
+        "instructions": { "type": "string", "description": "System instructions (agent mode)" },
+        "messages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": { "type": "string", "description": "Message role (system, user, assistant)" },
+              "content": { "type": "string", "description": "Message content" }
+            },
+            "required": ["role", "content"]
+          },
+          "description": "Message array (completion mode)"
+        },
+        "parameters": { "type": "object", "description": "Model parameters (temperature, maxTokens, etc.)" },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "description": "AI tool key" },
+              "version": { "type": "number", "description": "Tool version" }
+            },
+            "required": ["key", "version"]
+          },
+          "description": "AI tools to attach"
+        }
+      },
+      "required": ["projectKey", "key", "name", "mode", "variationKey", "variationName", "modelConfigKey", "modelName"]
+    }
+  },
+  {
+    "name": "get-ai-config-health",
+    "description": "Health check for an AI Config. Detects common issues: missing models (NO MODEL in UI), missing prompts, orphaned tool references, and empty configs with no variations. Returns a health verdict (healthy, warning, unhealthy) with specific issues and per-variation summaries. Run before updating or experimenting with a config.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "configKey": { "type": "string", "description": "The AI Config key" }
+      },
+      "required": ["projectKey", "configKey"]
+    }
+  },
+  {
+    "name": "create-ai-config-variation",
+    "description": "Create a variation for an AI Config. A variation defines the model, prompts, parameters, and tools. modelConfigKey must be in Provider.model-id format (e.g. OpenAI.gpt-4o, Anthropic.claude-sonnet-4-5) for models to display correctly in the UI. Agent-mode configs use 'instructions' (a string); completion-mode configs use 'messages' (an array of {role, content} objects). To attach AI tools, pass the 'tools' array with {key, version} entries (create tools first with create-ai-tool).",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "configKey": { "type": "string", "description": "The AI Config key" },
+        "key": { "type": "string", "description": "Unique variation key" },
+        "name": { "type": "string", "description": "Human-readable variation name" },
+        "modelConfigKey": { "type": "string", "description": "Provider.model-id format (e.g. OpenAI.gpt-4o)" },
+        "modelName": { "type": "string", "description": "The model identifier (e.g. gpt-4o)" },
+        "instructions": { "type": "string", "description": "System instructions (agent mode)" },
+        "messages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": { "type": "string", "description": "Message role" },
+              "content": { "type": "string", "description": "Message content" }
+            },
+            "required": ["role", "content"]
+          },
+          "description": "Message array (completion mode)"
+        },
+        "parameters": { "type": "object", "description": "Model parameters (temperature, maxTokens, etc.)" },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "description": "AI tool key" },
+              "version": { "type": "number", "description": "Tool version" }
+            },
+            "required": ["key", "version"]
+          },
+          "description": "AI tools to attach"
+        }
+      },
+      "required": ["projectKey", "configKey", "key", "name", "modelConfigKey", "modelName"]
+    }
+  },
+  {
+    "name": "update-ai-config-variation",
+    "description": "Update an AI Config variation's model, instructions/messages, parameters, or attached tools. All fields are optional: only provided fields are updated. To attach tools, pass the 'tools' array with {key, version} entries (create tools first with create-ai-tool). Pass an empty tools array to detach all tools.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "configKey": { "type": "string", "description": "The AI Config key" },
+        "variationKey": { "type": "string", "description": "The variation key to update" },
+        "modelConfigKey": { "type": "string", "description": "New Provider.model-id format key" },
+        "modelName": { "type": "string", "description": "New model identifier" },
+        "instructions": { "type": "string", "description": "New system instructions (agent mode)" },
+        "messages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": { "type": "string", "description": "Message role" },
+              "content": { "type": "string", "description": "Message content" }
+            },
+            "required": ["role", "content"]
+          },
+          "description": "New message array (completion mode)"
+        },
+        "parameters": { "type": "object", "description": "New model parameters" },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "description": "AI tool key" },
+              "version": { "type": "number", "description": "Tool version" }
+            },
+            "required": ["key", "version"]
+          },
+          "description": "Tools to attach (replaces existing)"
+        }
+      },
+      "required": ["projectKey", "configKey", "variationKey"]
+    }
+  },
+  {
+    "name": "delete-ai-config-variation",
+    "description": "Permanently delete an AI Config variation. THIS IS IRREVERSIBLE. Requires confirm=true to execute.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "configKey": { "type": "string", "description": "The AI Config key" },
+        "variationKey": { "type": "string", "description": "The variation key to delete" },
+        "confirm": { "type": "boolean", "description": "Must be true to execute deletion" }
+      },
+      "required": ["projectKey", "configKey", "variationKey", "confirm"]
+    }
+  },
+  {
+    "name": "clone-ai-config-variation",
+    "description": "Clone an existing AI Config variation with selective overrides. Reads the source variation, applies any provided overrides (model, instructions, messages, parameters, tools), and creates a new variation. Returns both the source and created variation so you can compare the diff. Use this for A/B experimentation: change one thing at a time while keeping everything else constant.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "configKey": { "type": "string", "description": "The AI Config key" },
+        "sourceVariationKey": { "type": "string", "description": "Key of the variation to clone from" },
+        "key": { "type": "string", "description": "Key for the new variation" },
+        "name": { "type": "string", "description": "Name for the new variation" },
+        "modelConfigKey": { "type": "string", "description": "Override Provider.model-id format key" },
+        "modelName": { "type": "string", "description": "Override model identifier" },
+        "instructions": { "type": "string", "description": "Override system instructions" },
+        "messages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": { "type": "string", "description": "Message role" },
+              "content": { "type": "string", "description": "Message content" }
+            },
+            "required": ["role", "content"]
+          },
+          "description": "Override message array"
+        },
+        "parameters": { "type": "object", "description": "Override model parameters" },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string", "description": "AI tool key" },
+              "version": { "type": "number", "description": "Tool version" }
+            },
+            "required": ["key", "version"]
+          },
+          "description": "Override tools to attach"
+        }
+      },
+      "required": ["projectKey", "configKey", "sourceVariationKey", "key", "name"]
+    }
+  },
+  {
+    "name": "list-ai-tools",
+    "description": "List AI tool definitions in a project. Returns each tool's key, description, and schema. Tools are attached to AI Config variations to give models function-calling capabilities.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "limit": { "type": "number", "description": "Max number of results (default 20)" }
+      },
+      "required": ["projectKey"]
+    }
+  },
+  {
+    "name": "get-ai-tool",
+    "description": "Get a single AI tool definition including its full schema. Use to inspect a tool's parameters before attaching it to an AI Config variation.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "toolKey": { "type": "string", "description": "The AI tool key" }
+      },
+      "required": ["projectKey", "toolKey"]
+    }
+  },
+  {
+    "name": "create-ai-tool",
+    "description": "Create a new AI tool definition in a project. The schema should be a raw JSON Schema object with type, properties, and required fields (e.g. {\"type\": \"object\", \"properties\": {...}}). Do NOT use the OpenAI function calling wrapper format. After creation, attach the tool to a variation using update-ai-config-variation.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "key": { "type": "string", "description": "Unique tool key" },
+        "description": { "type": "string", "description": "Tool description (LLM uses this to decide when to call it)" },
+        "schema": { "type": "object", "description": "Raw JSON Schema with type, properties, and required" }
+      },
+      "required": ["projectKey", "key", "description", "schema"]
+    }
+  },
+  {
+    "name": "get-environments",
+    "description": "List all environments for a project. Returns each environment's key, name, color, and the credentials that the SDKs need: SDK key (server-side), client-side ID (browser/edge), and mobile key. Use this as the single source for all key types when wiring up an SDK during onboarding -- do not make separate per-key requests.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" }
+      },
+      "required": ["projectKey"]
+    }
+  },
+  {
+    "name": "list-feature-flags",
+    "description": "List feature flags in a project, scoped to a single environment. Returns each flag's key, name, kind, tags, and whether targeting is on. Pagination via limit/offset.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "environmentKey": { "type": "string", "description": "Environment key (defaults to production)" },
+        "limit": { "type": "number", "description": "Max number of results (default 20)" },
+        "offset": { "type": "number", "description": "Pagination offset (default 0)" }
+      },
+      "required": ["projectKey"]
+    }
+  },
+  {
+    "name": "get-feature-flag",
+    "description": "Get detailed configuration for a single feature flag in a specific environment. Returns the full targeting tree: rules, individual targets, fallthrough, prerequisites, and variation details.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "flagKey": { "type": "string", "description": "The flag key" },
+        "environmentKey": { "type": "string", "description": "Environment key (defaults to production)" }
+      },
+      "required": ["projectKey", "flagKey"]
+    }
+  },
+  {
+    "name": "create-feature-flag",
+    "description": "Create a new feature flag in a project. Defaults to a boolean temporary flag. After creation the flag is OFF in every environment: use update-feature-flag with {on: true} to turn it on. Use kebab-case keys.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "key": { "type": "string", "description": "Unique flag key (kebab-case, immutable)" },
+        "name": { "type": "string", "description": "Human-readable flag name" },
+        "kind": { "type": "string", "enum": ["boolean", "multivariate"], "description": "Flag kind (default: boolean)" },
+        "description": { "type": "string", "description": "Description of the flag's purpose" },
+        "temporary": { "type": "boolean", "description": "Whether the flag is temporary (default: true)" },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags for organization" },
+        "variations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": { "description": "The variation value" },
+              "name": { "type": "string", "description": "Variation name" }
+            }
+          },
+          "description": "Custom variations (for multivariate flags)"
+        },
+        "clientSideAvailability": {
+          "type": "object",
+          "properties": {
+            "usingMobileKey": { "type": "boolean" },
+            "usingEnvironmentId": { "type": "boolean" }
+          },
+          "description": "Client-side SDK availability"
+        }
+      },
+      "required": ["projectKey", "key", "name"]
+    }
+  },
+  {
+    "name": "update-feature-flag",
+    "description": "Update or toggle a feature flag in a specific environment. Pass {on: true} or {on: false} to flip targeting; pass `instructions` (semantic patch instructions) for richer changes (rules, fallthrough, etc.). Returns the previous and new state.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "flagKey": { "type": "string", "description": "The flag key" },
+        "environmentKey": { "type": "string", "description": "Environment key" },
+        "on": { "type": "boolean", "description": "Whether to turn targeting on or off" },
+        "instructions": {
+          "type": "array",
+          "items": { "type": "object" },
+          "description": "Semantic patch instructions for richer changes"
+        },
+        "comment": { "type": "string", "description": "Optional comment for the audit log" }
+      },
+      "required": ["projectKey", "flagKey", "environmentKey"]
+    }
+  },
+  {
+    "name": "get-project",
+    "description": "Get a project by key. Returns the project's key, name, and environments.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" }
+      },
+      "required": ["projectKey"]
+    }
+  }
+]
