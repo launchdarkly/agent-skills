@@ -24,28 +24,6 @@
         ]
       },
       {
-        "key": "dark-mode",
-        "name": "Dark Mode",
-        "kind": "boolean",
-        "description": "Dark mode theme toggle",
-        "temporary": true,
-        "tags": [
-          "frontend",
-          "ui"
-        ],
-        "on": false,
-        "variations": [
-          {
-            "value": true,
-            "name": "On"
-          },
-          {
-            "value": false,
-            "name": "Off"
-          }
-        ]
-      },
-      {
         "key": "search-v2",
         "name": "Search V2",
         "kind": "boolean",
@@ -68,7 +46,7 @@
         ]
       }
     ],
-    "totalCount": 3,
+    "totalCount": 2,
     "pageInfo": {
       "limit": 20,
       "offset": 0
