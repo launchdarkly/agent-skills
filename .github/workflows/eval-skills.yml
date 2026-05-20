@@ -56,7 +56,7 @@ jobs:
           cache-dependency-path: evals/package-lock.json
 
       - name: Install eval dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
         working-directory: evals
 
       - name: Run unit tests
@@ -116,7 +116,7 @@ jobs:
           cache-dependency-path: evals/package-lock.json
 
       - name: Install eval dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
         working-directory: evals
 
       - name: Run eval suite
@@ -151,9 +151,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: "npm"
+          cache-dependency-path: evals/package-lock.json
 
       - name: Install eval dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
         working-directory: evals
 
       - name: Download all suite results
