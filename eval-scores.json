@@ -1,34 +1,34 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-05-19T22:29:45.928Z",
+  "updatedAt": "2026-05-20T18:26:38.373Z",
   "skills": {
     "ai-configs/aiconfig-create": {
-      "score": 100,
-      "passed": 4,
+      "score": 75,
+      "passed": 3,
       "total": 4,
       "status": "passing",
-      "lastCommit": "fc69376",
-      "lastRun": "2026-05-19T22:29:45.923Z",
+      "lastCommit": "f5ffd15",
+      "lastRun": "2026-05-20T18:26:38.372Z",
       "perTest": [
         {
           "description": "Create an AI Config for my customer support bot. It uses LangGraph and needs per",
           "pass": true,
-          "score": 1
+          "score": 0
         },
         {
           "description": "I need an AI Config for our blog summarizer. We call the OpenAI API directly wit",
           "pass": true,
-          "score": 1
+          "score": 0
         },
         {
           "description": "Create a new AI Config for our analytics agent. Project key is \"data-platform\".\n",
           "pass": true,
-          "score": 1
+          "score": 0
         },
         {
           "description": "Create an AI Config called \"email-assistant\" for composing emails. Project is \"c",
-          "pass": true,
-          "score": 0.8333333333333334
+          "pass": false,
+          "score": 0
         }
       ]
     },

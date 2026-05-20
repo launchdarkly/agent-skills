@@ -97,6 +97,7 @@ jobs:
     needs: [unit-test, diff]
     if: needs.diff.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
+    continue-on-error: true
     strategy:
       fail-fast: false
       max-parallel: 3

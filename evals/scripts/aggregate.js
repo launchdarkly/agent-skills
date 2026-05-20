@@ -159,7 +159,13 @@ function main() {
   fs.writeFileSync(SCORES_PATH, JSON.stringify(output, null, 2) + "\n");
   console.log(`\nWrote ${SCORES_PATH}`);
 
-  if (anyError) process.exit(1);
+  const belowThreshold = suites
+    .filter((suite) => skills[suite.skillKey] && skills[suite.skillKey].score < 75)
+    .map((suite) => suite.skillKey);
+  if (belowThreshold.length > 0) {
+    console.error(`\naggregate.js: suites below 75% threshold: ${belowThreshold.join(", ")}`);
+  }
+  if (anyError || belowThreshold.length > 0) process.exit(1);
 }
 
 main();
