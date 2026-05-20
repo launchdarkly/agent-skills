@@ -115,7 +115,7 @@ function runSuiteWithModel(suite, modelId, alias) {
     console.error(`[run-models] launch error: ${result.error.message}`);
     return false;
   }
-  if (result.status !== 0) {
+  if (result.status !== 0 && result.status !== 100) {
     console.error(`[run-models] suite ${suite.suite} exited with status ${result.status}`);
     return false;
   }

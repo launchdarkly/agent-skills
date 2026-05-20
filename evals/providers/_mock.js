@@ -272,6 +272,18 @@ function renderMockResponse(template, input, toolName, state) {
     return { configKey: input.configKey, variation };
   }
 
+  if (toolName === "update-ai-config") {
+    const cfg = state.configs[input.key || input.configKey];
+    if (cfg) {
+      const CONFIG_FIELDS = ["name", "description", "tags", "archived"];
+      for (const k of CONFIG_FIELDS) {
+        if (input[k] !== undefined) cfg[k] = input[k];
+      }
+      return { ...cfg };
+    }
+    return walk(template, replacements);
+  }
+
   if (toolName === "update-ai-config-variation") {
     const cfg = state.configs[input.configKey];
     if (cfg) {
