@@ -67,7 +67,7 @@ function runSuite(suite) {
       "eval",
       "-c", path.join(EVALS_DIR, "shared", "defaults.yaml"),
       "-c", path.join(EVALS_DIR, suite.suite, "promptfooconfig.yaml"),
-      "--env-file", path.join(EVALS_DIR, ".env"),
+      ...(fs.existsSync(path.join(EVALS_DIR, ".env")) ? ["--env-file", path.join(EVALS_DIR, ".env")] : []),
       "--no-cache",
       "-o", outFile,
     ],
