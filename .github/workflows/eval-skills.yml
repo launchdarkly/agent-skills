@@ -97,7 +97,6 @@ jobs:
     needs: [unit-test, diff]
     if: needs.diff.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
-    continue-on-error: true
     strategy:
       fail-fast: false
       max-parallel: 3
@@ -275,3 +274,22 @@ jobs:
           git add skills/**/README.md
           git commit -m "chore(evals): refresh eval-scores.json and README badges"
           git push origin HEAD:${{ github.ref_name }}
+
+  eval-gate:
+    name: "Evaluate gate"
+    needs: [diff, evaluate]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check evaluate results
+        run: |
+          if [[ "${{ needs.diff.outputs.has_changes }}" != "true" ]]; then
+            echo "No suites changed — gate passes"
+            exit 0
+          fi
+          if [[ "${{ needs.evaluate.result }}" == "success" ]]; then
+            echo "All evaluate jobs passed"
+            exit 0
+          fi
+          echo "One or more evaluate jobs failed (result: ${{ needs.evaluate.result }})"
+          exit 1
