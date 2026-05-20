@@ -7,7 +7,7 @@
  * confusing stack traces.
  */
 module.exports = (output) => {
-  const isObj = output !== null && typeof output === "object";
+  const isObj = output !== null && typeof output === "object" && !Array.isArray(output);
   return {
     pass: isObj,
     score: isObj ? 1 : 0,
