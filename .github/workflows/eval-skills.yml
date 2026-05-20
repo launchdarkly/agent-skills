@@ -130,6 +130,7 @@ jobs:
         working-directory: evals
 
       - name: Upload suite results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: results-${{ matrix.suite }}

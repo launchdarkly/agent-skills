@@ -74,7 +74,9 @@ function runSuite(suite) {
     { cwd: EVALS_DIR, stdio: "inherit", env: { ...process.env } },
   );
 
-  if (result.status !== 0) {
+  // promptfoo exits 100 when tests ran but some failed — that's a valid run,
+  // results.json is still written. Treat any other non-zero as a hard failure.
+  if (result.status !== 0 && result.status !== 100) {
     console.error(`✗ Suite ${suite.suite} exited with status ${result.status}`);
     return false;
   }
