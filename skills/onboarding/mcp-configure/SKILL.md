@@ -128,17 +128,17 @@ Then ask how they want to add the token to the MCP config:
 ## Edge Cases
 
 - **User already has MCP configured:** Verify by checking for existing LD MCP entries in the config.
-  - `mcp/launchdarkly` or `mcp/fm` → working, skip configuration (both point to the unified server)
-  - `mcp/aiconfigs` → deprecated, ask before migrating:
-    
+  - `mcp/launchdarkly` → working, skip configuration
+  - `mcp/fm` or `mcp/aiconfigs` → deprecated, ask before migrating:
+
     **D-MIGRATE -- BLOCKING:** Call your structured question tool now.
-    - question: "I see you have the old AgentControl MCP server configured (`mcp/aiconfigs`). That endpoint is deprecated — the unified server at `mcp/launchdarkly` now handles both feature management and AgentControl. Want me to update your config?"
+    - question: "I see you have a deprecated MCP server configured (`mcp/fm` and/or `mcp/aiconfigs`). Those endpoints are deprecated — the unified server at `mcp/launchdarkly` now handles both feature management and AgentControl. Want me to update your config?"
     - options:
       - "Yes, update my config to use the unified server"
       - "No, leave it as is for now"
     - STOP. Do not modify the MCP config before the user selects an option.
-    
-    If they agree, remove the `mcp/aiconfigs` entry and ensure the unified `mcp/launchdarkly` (or `mcp/fm`) config is present. See [MCP Config Templates](references/mcp-config-templates.md). If they decline, note the deprecation and continue.
+
+    If they agree, remove the deprecated entries and ensure the unified `mcp/launchdarkly` config is present. See [MCP Config Templates](references/mcp-config-templates.md). If they decline, note the deprecation and continue.
 - **User has the old npx-based local server:** Migrate them. Remove the old `npx @launchdarkly/mcp-server` entry and any `LD_ACCESS_TOKEN` env vars. Replace with the hosted server config. See [MCP Config Templates — Migration](references/mcp-config-templates.md#migrating-from-old-configurations).
 - **Federal or EU instances:** The hosted MCP server is not available for federal or EU environments. Use [local MCP server docs](https://launchdarkly.com/docs/home/getting-started/mcp-local) and the **Local server via `npx`** section in [MCP Config Templates](references/mcp-config-templates.md). Follow the [Local MCP: Access Token Setup](#local-mcp-access-token-setup) flow for token handling.
 - **Agent not in known list:** Provide the generic pattern: the user needs to add an MCP server entry pointing to `https://mcp.launchdarkly.com/mcp/launchdarkly` using whatever format their agent expects.

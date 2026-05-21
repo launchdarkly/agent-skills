@@ -1,0 +1,168 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+#
+# Run with shared defaults:
+#   promptfoo eval -c shared/defaults.yaml -c launchdarkly-flag-create/promptfooconfig.yaml
+#
+# The launchdarkly-flag-create skill guides the agent through exploring the
+# codebase's existing flag patterns, creating the flag in LaunchDarkly, adding
+# evaluation code matching existing patterns, and verifying the setup.
+description: "End-to-end evaluation of the launchdarkly-flag-create skill"
+
+prompts:
+  - file://../../skills/feature-flags/launchdarkly-flag-create/SKILL.md
+
+providers:
+  - id: file://../providers/claude-skill-agent-sdk.js
+    label: claude-skill-agent-sdk
+    config:
+      skill_slug: launchdarkly-flag-create
+      allow_builtins: true
+
+tests:
+  # ------------------------------------------------------------------
+  # Test 1: Happy path — simple boolean flag in a Node.js app
+  # ------------------------------------------------------------------
+  - description: "Happy path: creates boolean flag for a Node.js feature gate"
+    vars:
+      user_request: >
+        I need to wrap our new checkout flow in a feature flag so we can roll it
+        out gradually. Project key is "shop-app".
+      codebase_context: >
+        Node.js Express app using LaunchDarkly server-side Node SDK (v9).
+        SDK initialized as:
+          const ld = require('@launchdarkly/node-server-sdk');
+          const client = ld.init(process.env.LD_SDK_KEY);
+        Existing flag eval pattern:
+          const showNewUI = await client.variation('new-ui', context, false);
+        Flag keys use kebab-case. Common tags: ['frontend', 'experiment'].
+      mock_files:
+        "package.json": '{"dependencies":{"@launchdarkly/node-server-sdk":"^9.0.0","express":"^4.18.0"}}'
+        "src/checkout.js": "// Checkout route\nconst showCheckout = await client.variation('show-checkout', context, false);\n"
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const pass = tools.includes('create-flag');
+          return { pass, score: pass ? 1 : 0, reason: 'Tools: ' + tools.join(' -> ') };
+        metric: calls_create_flag
+        weight: 3
+
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const call = traj.find(t => t.tool === 'create-flag');
+          if (!call) return { pass: false, score: 0, reason: 'No create-flag call' };
+          const a = call.arguments || {};
+          const hasKey = typeof a.key === 'string' && /^[a-z][a-z0-9-]*$/.test(a.key);
+          const hasName = typeof a.name === 'string' && a.name.length > 0;
+          const hasProject = a.projectKey === 'shop-app';
+          const score = (hasKey ? 0.4 : 0) + (hasName ? 0.3 : 0) + (hasProject ? 0.3 : 0);
+          return { pass: score >= 0.5, score, reason: `key=${a.key} name=${a.name} project=${a.projectKey}` };
+        metric: create_flag_args_correct
+        weight: 3
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const forbidden = ['delete-flag', 'archive-flag'];
+          const called = forbidden.filter(f => tools.includes(f));
+          const pass = called.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'No destructive tools' : 'Called: ' + called.join(', ') };
+        metric: no_destructive_tools
+        weight: 3
+
+      - type: llm-rubric
+        value: |
+          Evaluate whether the agent created a feature flag appropriate for gradually rolling
+          out a new checkout flow.
+          Score 1.0 if all of the following are met:
+          1. The agent created a flag with a kebab-case key related to checkout.
+          2. The flag is configured as boolean (or defaults to boolean).
+          3. The response includes Node.js SDK code showing how to evaluate the flag,
+             matching the existing `client.variation(...)` pattern in the codebase.
+          4. The flag key matches the codebase convention (kebab-case).
+          Deduct 0.25 for each criterion missed.
+        metric: workflow_quality
+        weight: 2
+
+  # ------------------------------------------------------------------
+  # Test 2: Exploration — agent scans codebase before creating
+  # Minimal codebase context forces the agent to read files.
+  # ------------------------------------------------------------------
+  - description: "Exploration: scans codebase for existing patterns before creating flag"
+    vars:
+      user_request: >
+        Add a feature flag for our new dark mode feature. Project key is "web-app".
+      codebase_context: >
+        React single-page app. Uses LaunchDarkly but I'm not sure which SDK version.
+      mock_files:
+        "package.json": '{"dependencies":{"launchdarkly-react-client-sdk":"^3.0.0","react":"^18.0.0"}}'
+        "src/index.js": "import { withLDProvider } from 'launchdarkly-react-client-sdk';\n"
+        "src/App.js": "import { useFlags } from 'launchdarkly-react-client-sdk';\nconst { newDashboard } = useFlags();\n"
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const pass = tools.includes('create-flag');
+          return { pass, score: pass ? 1 : 0, reason: 'Tools: ' + tools.join(' -> ') };
+        metric: calls_create_flag
+        weight: 3
+
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const readCalls = traj.filter(t => t.tool === 'Read' || t.tool === 'Glob' || t.tool === 'Grep');
+          // Agent should read files before (or alongside) creating the flag.
+          // Pass either way — 0.5 partial credit if no exploration occurred.
+          const explored = readCalls.length > 0;
+          return { pass: true, score: explored ? 1 : 0.5, reason: `read calls: ${readCalls.length}` };
+        metric: explores_codebase
+        weight: 2
+
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const call = traj.find(t => t.tool === 'create-flag');
+          if (!call) return { pass: false, score: 0, reason: 'No create-flag call' };
+          const a = call.arguments || {};
+          const hasKey = typeof a.key === 'string' && /^[a-z][a-z0-9-]*$/.test(a.key);
+          return { pass: hasKey, score: hasKey ? 1 : 0, reason: `key=${a.key}` };
+        metric: key_is_kebab_case
+        weight: 2
+
+  # ------------------------------------------------------------------
+  # Test 3: Verify after creation
+  # The skill instructs the agent to verify the flag was created
+  # correctly using get-flag after create-flag.
+  # ------------------------------------------------------------------
+  - description: "Verification: calls get-flag after create-flag to verify creation"
+    vars:
+      user_request: >
+        Create a feature flag for our A/B test of the new onboarding flow.
+        Project key is "growth-app". Mark it as temporary.
+      codebase_context: >
+        Python Django app. Uses launchdarkly-server-sdk:
+          variation = ldclient.get().variation('flag-key', user, False)
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const createIdx = tools.indexOf('create-flag');
+          const verifyIdx = tools.lastIndexOf('get-flag');
+          const created = createIdx >= 0;
+          const verified = verifyIdx > createIdx;
+          const score = (created ? 0.6 : 0) + (verified ? 0.4 : 0);
+          return { pass: created, score, reason: `create@${createIdx} verify@${verifyIdx}` };
+        metric: creates_then_verifies
+        weight: 3
+
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const call = traj.find(t => t.tool === 'create-flag');
+          if (!call) return { pass: false, score: 0, reason: 'No create-flag' };
+          const a = call.arguments || {};
+          const isTemp = a.temporary === true;
+          return { pass: isTemp, score: isTemp ? 1 : 0.5, reason: `temporary=${a.temporary}` };
+        metric: temporary_flag_set
+        weight: 1

@@ -102,26 +102,28 @@ If the user has the old npx-based server configured, replace it:
 
 Also remove any `LD_ACCESS_TOKEN` or `LAUNCHDARKLY_API_KEY` environment variables that were used for the local server. The hosted server handles authentication via OAuth.
 
-### From the deprecated AgentControl server
+### From deprecated split servers (`mcp/fm` and `mcp/aiconfigs`)
 
-The `mcp/aiconfigs` endpoint is deprecated. The unified server (`mcp/launchdarkly`) and its mirror (`mcp/fm`) both handle AgentControl now.
+Both `mcp/fm` and `mcp/aiconfigs` are deprecated. All functionality is now in the unified server (`mcp/launchdarkly`).
 
-If the user has `mcp/aiconfigs` configured, **ask before removing** — see the edge case flow in [SKILL.md](../SKILL.md#edge-cases). The user should confirm the migration.
+If the user has either endpoint configured, **ask before removing** — see the edge case flow in [SKILL.md](../SKILL.md#edge-cases). The user should confirm the migration.
 
-**Entry to remove (after user confirms):**
+**Entries to remove (after user confirms):**
 
 ```json
 {
   "mcpServers": {
+    "LaunchDarkly Feature Management": {
+      "url": "https://mcp.launchdarkly.com/mcp/fm"
+    },
     "LaunchDarkly AgentControl": {
-      "url": "https://mcp.launchdarkly.com/mcp/aiconfigs",
-      "headers": {}
+      "url": "https://mcp.launchdarkly.com/mcp/aiconfigs"
     }
   }
 }
 ```
 
-**Ensure the unified server is present** (see sections above). If they already have `mcp/fm` configured, that works — it mirrors `mcp/launchdarkly`.
+**Replace with the single unified server** (see sections above).
 
 ## Local server via `npx`
 

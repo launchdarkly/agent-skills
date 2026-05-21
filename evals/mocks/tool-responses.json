@@ -1,0 +1,504 @@
+{
+  "list-flags": {
+    "flags": [
+      {
+        "key": "enable-notifications",
+        "name": "Enable Notifications",
+        "kind": "boolean",
+        "description": "Enables push notification system",
+        "temporary": true,
+        "tags": [
+          "backend",
+          "notifications"
+        ],
+        "on": true,
+        "variations": [
+          {
+            "value": true,
+            "name": "Enabled"
+          },
+          {
+            "value": false,
+            "name": "Disabled"
+          }
+        ]
+      },
+      {
+        "key": "search-v2",
+        "name": "Search V2",
+        "kind": "boolean",
+        "description": "Enables the new search backend",
+        "temporary": true,
+        "tags": [
+          "backend",
+          "search"
+        ],
+        "on": true,
+        "variations": [
+          {
+            "value": true,
+            "name": "Enabled"
+          },
+          {
+            "value": false,
+            "name": "Disabled"
+          }
+        ]
+      }
+    ],
+    "totalCount": 2,
+    "pageInfo": {
+      "limit": 20,
+      "offset": 0
+    }
+  },
+  "get-flag": {
+    "key": "{{flagKey}}",
+    "name": "{{flagName}}",
+    "kind": "boolean",
+    "description": "Feature flag",
+    "temporary": true,
+    "tags": [],
+    "variations": [
+      {
+        "value": true,
+        "name": "true"
+      },
+      {
+        "value": false,
+        "name": "false"
+      }
+    ],
+    "defaults": {
+      "onVariation": 0,
+      "offVariation": 1
+    },
+    "environment": {
+      "on": false,
+      "version": 1,
+      "rules": [],
+      "targets": [],
+      "fallthrough": {
+        "variation": 1
+      },
+      "offVariation": 1
+    }
+  },
+  "create-flag": {
+    "key": "{{flagKey}}",
+    "name": "{{flagName}}",
+    "kind": "boolean",
+    "description": "",
+    "temporary": true,
+    "tags": [],
+    "variations": [
+      {
+        "value": true,
+        "name": "true"
+      },
+      {
+        "value": false,
+        "name": "false"
+      }
+    ],
+    "defaults": {
+      "onVariation": 0,
+      "offVariation": 1
+    },
+    "environments": {
+      "production": {
+        "on": false,
+        "version": 1
+      },
+      "staging": {
+        "on": false,
+        "version": 1
+      }
+    }
+  },
+  "create-feature-flag": {
+    "key": "{{flagKey}}",
+    "name": "{{flagName}}",
+    "kind": "boolean",
+    "description": "",
+    "temporary": true,
+    "tags": [],
+    "variations": [
+      {
+        "value": true,
+        "name": "true"
+      },
+      {
+        "value": false,
+        "name": "false"
+      }
+    ],
+    "defaults": {
+      "onVariation": 0,
+      "offVariation": 1
+    },
+    "environments": {
+      "production": {
+        "on": false,
+        "version": 1
+      },
+      "staging": {
+        "on": false,
+        "version": 1
+      }
+    }
+  },
+  "update-flag-settings": {
+    "key": "{{flagKey}}",
+    "name": "{{flagName}}",
+    "description": "",
+    "temporary": true,
+    "tags": [],
+    "maintainer": null
+  },
+  "toggle-flag": {
+    "key": "{{flagKey}}",
+    "previousState": false,
+    "newState": true,
+    "environment": "production"
+  },
+  "update-feature-flag": {
+    "key": "{{flagKey}}",
+    "environmentKey": "production",
+    "previous": {
+      "on": false
+    },
+    "current": {
+      "on": true
+    }
+  },
+  "get-environments": {
+    "items": [
+      {
+        "key": "test",
+        "name": "Test",
+        "color": "417505",
+        "apiKey": "sdk-test-abcdef12-3456-7890-abcd-ef1234567890",
+        "mobileKey": "mob-test-abcdef12-3456-7890-abcd-ef1234567890",
+        "_id": "clientside-test-abcdef12"
+      },
+      {
+        "key": "production",
+        "name": "Production",
+        "color": "D43F3A",
+        "apiKey": "sdk-prod-abcdef12-3456-7890-abcd-ef1234567890",
+        "mobileKey": "mob-prod-abcdef12-3456-7890-abcd-ef1234567890",
+        "_id": "clientside-prod-abcdef12"
+      }
+    ],
+    "totalCount": 2
+  },
+  "get-project": {
+    "key": "{{projectKey}}",
+    "name": "{{projectKey}}",
+    "environments": {
+      "items": [
+        {
+          "key": "test",
+          "name": "Test",
+          "color": "417505"
+        },
+        {
+          "key": "production",
+          "name": "Production",
+          "color": "D43F3A"
+        }
+      ],
+      "totalCount": 2
+    }
+  },
+  "list-feature-flags": {
+    "items": [
+      {
+        "key": "enable-notifications",
+        "name": "Enable Notifications",
+        "kind": "boolean",
+        "temporary": true,
+        "tags": ["backend", "notifications"],
+        "on": true
+      },
+      {
+        "key": "dark-mode",
+        "name": "Dark Mode",
+        "kind": "boolean",
+        "temporary": true,
+        "tags": ["frontend", "ui"],
+        "on": false
+      },
+      {
+        "key": "search-v2",
+        "name": "Search V2",
+        "kind": "boolean",
+        "temporary": true,
+        "tags": ["backend", "search"],
+        "on": true
+      }
+    ],
+    "totalCount": 3
+  },
+  "list-ai-configs": {
+    "configs": [
+      {
+        "key": "support-chatbot",
+        "name": "Support Chatbot",
+        "mode": "agent",
+        "description": "AI-powered support agent for customer tickets",
+        "tags": [
+          "support",
+          "production"
+        ],
+        "variationsCount": 2,
+        "archived": false
+      },
+      {
+        "key": "code-reviewer",
+        "name": "Code Review Assistant",
+        "mode": "completion",
+        "description": "Automated code review assistant for pull requests",
+        "tags": [
+          "engineering"
+        ],
+        "variationsCount": 1,
+        "archived": false
+      },
+      {
+        "key": "content-writer",
+        "name": "Content Writer",
+        "mode": "completion",
+        "description": "Marketing content generation",
+        "tags": [
+          "marketing"
+        ],
+        "variationsCount": 3,
+        "archived": false
+      }
+    ],
+    "totalCount": 3
+  },
+  "get-ai-config": {
+    "key": "{{configKey}}",
+    "name": "{{configName}}",
+    "mode": "agent",
+    "description": "AI Config",
+    "tags": [],
+    "archived": false,
+    "variations": [
+      {
+        "key": "default",
+        "name": "Default",
+        "modelConfigKey": "OpenAI.gpt-4o",
+        "modelName": "gpt-4o",
+        "instructions": "You are a helpful assistant that answers questions concisely.",
+        "status": "active",
+        "parameters": {
+          "temperature": 0.7,
+          "max_tokens": 2048
+        }
+      }
+    ]
+  },
+  "create-ai-config": {
+    "key": "{{configKey}}",
+    "name": "{{configName}}",
+    "mode": "{{mode}}",
+    "description": "",
+    "tags": []
+  },
+  "update-ai-config": {
+    "key": "{{configKey}}",
+    "name": "{{configName}}",
+    "description": "",
+    "tags": [],
+    "archived": false
+  },
+  "delete-ai-config": {
+    "deleted": true,
+    "key": "{{configKey}}"
+  },
+  "setup-ai-config": {
+    "key": "{{configKey}}",
+    "name": "{{configName}}",
+    "mode": "{{mode}}",
+    "description": "",
+    "tags": [],
+    "archived": false,
+    "variations": [
+      {
+        "key": "{{variationKey}}",
+        "name": "{{variationName}}",
+        "modelConfigKey": "{{modelConfigKey}}",
+        "modelName": "{{modelName}}",
+        "instructions": "You are a helpful assistant that answers questions concisely.",
+        "status": "active",
+        "parameters": {
+          "temperature": 0.7
+        }
+      }
+    ]
+  },
+  "get-ai-config-health": {
+    "key": "{{configKey}}",
+    "name": "{{configName}}",
+    "mode": "agent",
+    "health": "healthy",
+    "variationsCount": 1,
+    "issues": [],
+    "variations": [
+      {
+        "key": "default",
+        "name": "Default",
+        "hasModel": true,
+        "hasPrompts": true,
+        "toolsAttached": 0
+      }
+    ]
+  },
+  "create-ai-config-variation": {
+    "configKey": "{{configKey}}",
+    "variation": {
+      "key": "{{variationKey}}",
+      "name": "{{variationName}}",
+      "modelConfigKey": "{{modelConfigKey}}",
+      "modelName": "{{modelName}}",
+      "instructions": "You are a helpful assistant that answers questions concisely.",
+      "status": "active",
+      "parameters": {
+        "temperature": 0.7
+      }
+    }
+  },
+  "update-ai-config-variation": {
+    "configKey": "{{configKey}}",
+    "variation": {
+      "key": "{{variationKey}}",
+      "name": "{{variationName}}",
+      "modelConfigKey": "{{modelConfigKey}}",
+      "modelName": "{{modelName}}",
+      "instructions": "Updated instructions for the agent.",
+      "status": "active",
+      "parameters": {
+        "temperature": 0.7
+      }
+    }
+  },
+  "delete-ai-config-variation": {
+    "deleted": true,
+    "configKey": "{{configKey}}",
+    "variationKey": "{{variationKey}}"
+  },
+  "clone-ai-config-variation": {
+    "configKey": "{{configKey}}",
+    "source": {
+      "key": "default",
+      "name": "Default",
+      "modelConfigKey": "OpenAI.gpt-4o",
+      "modelName": "gpt-4o",
+      "instructions": "You are a helpful assistant that answers questions concisely.",
+      "status": "active",
+      "parameters": {
+        "temperature": 0.7,
+        "max_tokens": 2048
+      },
+      "tools": [
+        {
+          "key": "search-docs",
+          "version": 2
+        },
+        {
+          "key": "run-query",
+          "version": 1
+        }
+      ]
+    },
+    "created": {
+      "key": "{{variationKey}}",
+      "name": "{{variationName}}",
+      "modelConfigKey": "{{modelConfigKey}}",
+      "modelName": "{{modelName}}",
+      "instructions": "You are a helpful assistant that answers questions concisely.",
+      "status": "active",
+      "parameters": {
+        "temperature": 0.7,
+        "max_tokens": 2048
+      },
+      "tools": [
+        {
+          "key": "search-docs",
+          "version": 2
+        },
+        {
+          "key": "run-query",
+          "version": 1
+        }
+      ]
+    }
+  },
+  "list-ai-tools": {
+    "tools": [
+      {
+        "key": "search-docs",
+        "description": "Search internal documentation",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Search query"
+            },
+            "limit": {
+              "type": "number",
+              "description": "Max results"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      },
+      {
+        "key": "run-query",
+        "description": "Run a database query",
+        "schema": null
+      }
+    ],
+    "totalCount": 2
+  },
+  "get-ai-tool": {
+    "key": "{{toolKey}}",
+    "description": "Search internal documentation",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Search query"
+        },
+        "limit": {
+          "type": "number",
+          "description": "Max results"
+        }
+      },
+      "required": [
+        "query"
+      ]
+    }
+  },
+  "create-ai-tool": {
+    "key": "{{toolKey}}",
+    "description": "{{toolDescription}}",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "input": {
+          "type": "string",
+          "description": "Input value"
+        }
+      }
+    }
+  }
+}
