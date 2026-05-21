@@ -314,7 +314,7 @@
     "name": "{{configName}}",
     "description": "",
     "tags": [],
-    "archived": "{{archived}}"
+    "archived": false
   },
   "delete-ai-config": {
     "deleted": true,

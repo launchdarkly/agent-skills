@@ -200,10 +200,11 @@ jobs:
         working-directory: evals
 
       - name: Render README badges
+        if: always()
         run: node evals/scripts/render-badges.js
 
       - name: PR comment with score diff
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         uses: actions/github-script@v7
         env:
           BEFORE_PATH: /tmp/eval-scores-before.json
@@ -262,7 +263,7 @@ jobs:
             }
 
       - name: Commit refreshed scores and badges
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         run: |
           if git diff --quiet eval-scores.json skills/; then
             echo "No score or badge changes to commit"
