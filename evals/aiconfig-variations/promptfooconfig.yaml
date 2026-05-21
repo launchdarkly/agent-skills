@@ -9,13 +9,13 @@
 description: "End-to-end evaluation of the aiconfig-variations skill"
 
 prompts:
-  - file://../../skills/ai-configs/aiconfig-variations/SKILL.md
+  - file://../../skills/agentcontrol/configs-variations/SKILL.md
 
 providers:
   - id: file://../providers/claude-skill-agent-sdk.js
     label: claude-skill-agent-sdk
     config:
-      skill_slug: aiconfig-variations
+      skill_slug: configs-variations
 
 tests:
   # ------------------------------------------------------------------

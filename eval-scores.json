@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "updatedAt": "2026-05-20T19:16:00.938Z",
   "skills": {
-    "ai-configs/aiconfig-create": {
+    "agentcontrol/configs-create": {
       "score": 100,
       "passed": 4,
       "total": 4,
@@ -32,7 +32,7 @@
         }
       ]
     },
-    "ai-configs/aiconfig-update": {
+    "agentcontrol/configs-update": {
       "score": 80,
       "passed": 4,
       "total": 5,
@@ -67,7 +67,7 @@
         }
       ]
     },
-    "ai-configs/aiconfig-tools": {
+    "agentcontrol/tools": {
       "score": 75,
       "passed": 3,
       "total": 4,
@@ -97,7 +97,7 @@
         }
       ]
     },
-    "ai-configs/aiconfig-variations": {
+    "agentcontrol/configs-variations": {
       "score": 80,
       "passed": 4,
       "total": 5,
