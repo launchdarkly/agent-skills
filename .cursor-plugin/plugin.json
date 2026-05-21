@@ -21,7 +21,7 @@
     "mcp"
   ],
   "skills": [
-    "skills/ai-configs",
+    "skills/agentcontrol",
     "skills/feature-flags",
     "skills/metrics",
     "skills/onboarding"

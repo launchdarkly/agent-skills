@@ -10,13 +10,13 @@
 description: "End-to-end evaluation of the aiconfig-tools skill"
 
 prompts:
-  - file://../../skills/ai-configs/aiconfig-tools/SKILL.md
+  - file://../../skills/agentcontrol/tools/SKILL.md
 
 providers:
   - id: file://../providers/claude-skill-agent-sdk.js
     label: claude-skill-agent-sdk
     config:
-      skill_slug: aiconfig-tools
+      skill_slug: tools
 
 tests:
   # ------------------------------------------------------------------
