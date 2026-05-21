@@ -35,7 +35,7 @@ Our LangGraph agent has its model and instructions baked in — walk me through 
 ```
 
 ```
-Wire up the AI tracker and attach accuracy + relevance judges to our existing config
+Wire up the agent tracker and attach accuracy + relevance judges to our existing config
 ```
 
 ## Structure

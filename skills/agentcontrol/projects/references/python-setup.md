@@ -106,7 +106,7 @@ pm = ProjectManager()
 
 # Create new project
 project = pm.create_project(
-    name="Customer Support AI",
+    name="Customer Support Agent",
     key="support-ai",
     tags=["ai-configs", "production"]
 )
@@ -245,7 +245,7 @@ if __name__ == "__main__":
 
 **Usage:**
 ```bash
-python cli/ld_projects.py create "My AI" my-ai --tags ai-configs
+python cli/ld_projects.py create "My Agent" my-ai --tags ai-configs
 python cli/ld_projects.py list
 python cli/ld_projects.py get-key my-ai --env production
 ```

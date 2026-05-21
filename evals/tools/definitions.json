@@ -171,7 +171,7 @@
   },
   {
     "name": "setup-ai-config",
-    "description": "Create a config with its first variation in one step. This is the recommended way to set up a new config: it creates the config, adds a variation with model and prompts, and verifies everything is configured correctly. Returns the full config detail with variation. To attach AI tools, pass the 'tools' array with {key, version} entries. Use create-ai-config + create-ai-config-variation separately only when you need more control.",
+    "description": "Create a config with its first variation in one step. This is the recommended way to set up a new config: it creates the config, adds a variation with model and prompts, and verifies everything is configured correctly. Returns the full config detail with variation. To attach agent tools, pass the 'tools' array with {key, version} entries. Use create-ai-config + create-ai-config-variation separately only when you need more control.",
     "input_schema": {
       "type": "object",
       "properties": {
@@ -204,12 +204,12 @@
           "items": {
             "type": "object",
             "properties": {
-              "key": { "type": "string", "description": "AI tool key" },
+              "key": { "type": "string", "description": "agent tool key" },
               "version": { "type": "number", "description": "Tool version" }
             },
             "required": ["key", "version"]
           },
-          "description": "AI tools to attach"
+          "description": "agent tools to attach"
         }
       },
       "required": ["projectKey", "key", "name", "mode", "variationKey", "variationName", "modelConfigKey", "modelName"]
@@ -229,7 +229,7 @@
   },
   {
     "name": "create-ai-config-variation",
-    "description": "Create a variation for a config. A variation defines the model, prompts, parameters, and tools. modelConfigKey must be in Provider.model-id format (e.g. OpenAI.gpt-4o, Anthropic.claude-sonnet-4-5) for models to display correctly in the UI. Agent-mode configs use 'instructions' (a string); completion-mode configs use 'messages' (an array of {role, content} objects). To attach AI tools, pass the 'tools' array with {key, version} entries (create tools first with create-ai-tool).",
+    "description": "Create a variation for a config. A variation defines the model, prompts, parameters, and tools. modelConfigKey must be in Provider.model-id format (e.g. OpenAI.gpt-4o, Anthropic.claude-sonnet-4-5) for models to display correctly in the UI. Agent-mode configs use 'instructions' (a string); completion-mode configs use 'messages' (an array of {role, content} objects). To attach agent tools, pass the 'tools' array with {key, version} entries (create tools first with create-ai-tool).",
     "input_schema": {
       "type": "object",
       "properties": {
@@ -258,12 +258,12 @@
           "items": {
             "type": "object",
             "properties": {
-              "key": { "type": "string", "description": "AI tool key" },
+              "key": { "type": "string", "description": "agent tool key" },
               "version": { "type": "number", "description": "Tool version" }
             },
             "required": ["key", "version"]
           },
-          "description": "AI tools to attach"
+          "description": "agent tools to attach"
         }
       },
       "required": ["projectKey", "configKey", "key", "name", "modelConfigKey", "modelName"]
@@ -299,7 +299,7 @@
           "items": {
             "type": "object",
             "properties": {
-              "key": { "type": "string", "description": "AI tool key" },
+              "key": { "type": "string", "description": "agent tool key" },
               "version": { "type": "number", "description": "Tool version" }
             },
             "required": ["key", "version"]
@@ -356,7 +356,7 @@
           "items": {
             "type": "object",
             "properties": {
-              "key": { "type": "string", "description": "AI tool key" },
+              "key": { "type": "string", "description": "agent tool key" },
               "version": { "type": "number", "description": "Tool version" }
             },
             "required": ["key", "version"]
@@ -369,7 +369,7 @@
   },
   {
     "name": "list-ai-tools",
-    "description": "List AI tool definitions in a project. Returns each tool's key, description, and schema. Tools are attached to config variations to give models function-calling capabilities.",
+    "description": "List agent tool definitions in a project. Returns each tool's key, description, and schema. Tools are attached to config variations to give models function-calling capabilities.",
     "input_schema": {
       "type": "object",
       "properties": {
@@ -381,19 +381,19 @@
   },
   {
     "name": "get-ai-tool",
-    "description": "Get a single AI tool definition including its full schema. Use to inspect a tool's parameters before attaching it to a config variation.",
+    "description": "Get a single agent tool definition including its full schema. Use to inspect a tool's parameters before attaching it to a config variation.",
     "input_schema": {
       "type": "object",
       "properties": {
         "projectKey": { "type": "string", "description": "The project key" },
-        "toolKey": { "type": "string", "description": "The AI tool key" }
+        "toolKey": { "type": "string", "description": "The agent tool key" }
       },
       "required": ["projectKey", "toolKey"]
     }
   },
   {
     "name": "create-ai-tool",
-    "description": "Create a new AI tool definition in a project. The schema should be a raw JSON Schema object with type, properties, and required fields (e.g. {\"type\": \"object\", \"properties\": {...}}). Do NOT use the OpenAI function calling wrapper format. After creation, attach the tool to a variation using update-ai-config-variation.",
+    "description": "Create a new agent tool definition in a project. The schema should be a raw JSON Schema object with type, properties, and required fields (e.g. {\"type\": \"object\", \"properties\": {...}}). Do NOT use the OpenAI function calling wrapper format. After creation, attach the tool to a variation using update-ai-config-variation.",
     "input_schema": {
       "type": "object",
       "properties": {

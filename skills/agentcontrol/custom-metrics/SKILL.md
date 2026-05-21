@@ -16,7 +16,7 @@ Full lifecycle management of custom business metrics: create metric definitions 
 
 - LaunchDarkly SDK initialized (see `sdk`)
 - LaunchDarkly API token with `writer` role for metric management
-- Understanding of built-in AI metrics (see `built-in-metrics`)
+- Understanding of built-in agent metrics (see `built-in-metrics`)
 
 ## API Key Detection
 
@@ -126,7 +126,7 @@ def create_metric(
 ```
 
 **Metric Kinds:**
-- `custom` - Track any event (most common for AI metrics)
+- `custom` - Track any event (most common for agent metrics)
 - `pageview` - Track page views
 - `click` - Track click events
 
@@ -210,7 +210,7 @@ def track_satisfaction(ld_client, user_id: str, score: float, feedback_type: str
         )
 
 def track_revenue(ld_client, user_id: str, revenue: float, source: str):
-    """Track revenue generated after AI interaction."""
+    """Track revenue generated after agent interaction."""
     context = Context.builder(user_id).set("tier", "premium").build()
 
     if revenue > 0:
@@ -370,10 +370,10 @@ ld_client = ldclient.get()
 create_metric(
     PROJECT_KEY,
     "ai.task.completion",
-    name="AI Task Completion Rate",
+    name="Agent Task Completion Rate",
     kind="custom",
     is_numeric=True,
-    description="Tracks successful AI task completions"
+    description="Tracks successful agent task completions"
 )
 
 # 2. Track events
@@ -387,7 +387,7 @@ ld_client.flush()
 metric = get_metric(PROJECT_KEY, "ai.task.completion")
 
 # 4. Update metric name
-rename_metric(PROJECT_KEY, "ai.task.completion", "AI Task Success Rate")
+rename_metric(PROJECT_KEY, "ai.task.completion", "Agent Task Success Rate")
 
 # 5. List all metrics
 list_metrics(PROJECT_KEY)
@@ -493,7 +493,7 @@ Custom metrics appear in:
 ## Related Skills
 
 - `sdk` - SDK setup
-- `built-in-metrics` - Built-in AI metrics (tokens, duration, cost)
+- `built-in-metrics` - Built-in agent metrics (tokens, duration, cost)
 - `online-evals` - Quality metrics via judges
 
 ## References

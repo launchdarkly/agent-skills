@@ -1,4 +1,4 @@
-# SDK AI Tracker Patterns
+# SDK Agent Tracker Patterns
 
 The main novel content of this skill — a per-method reference for the LaunchDarkly config tracker in Python and Node side by side. **No existing skill covers this.** The `launchdarkly-metric-instrument` skill is for `ldClient.track()` feature metrics, which is a different API.
 

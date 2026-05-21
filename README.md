@@ -1,6 +1,6 @@
 # LaunchDarkly Agent Skills
 
-LaunchDarkly's public collection of AI agent skills and playbooks. These skills encode repeatable workflows for working with LaunchDarkly, so coding agents can execute common tasks safely and consistently.
+LaunchDarkly's public collection of agent skills and playbooks. These skills encode repeatable workflows for working with LaunchDarkly, so coding agents can execute common tasks safely and consistently.
 
 ## What Is This Repo?
 

@@ -329,7 +329,7 @@ program.parse();
 
 **Usage:**
 ```bash
-npm run ld-projects create "My AI" my-ai -t ai-configs production
+npm run ld-projects create "My Agent" my-ai -t ai-configs production
 npm run ld-projects list
 npm run ld-projects get-key my-ai --env production
 ```

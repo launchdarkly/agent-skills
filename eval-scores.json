@@ -81,7 +81,7 @@
           "score": 1
         },
         {
-          "description": "Create an AI tool called \"create-ticket\" that accepts title (required string), p",
+          "description": "Create an agent tool called \"create-ticket\" that accepts title (required string), p",
           "pass": true,
           "score": 1
         },

@@ -195,7 +195,7 @@ pip install click tabulate
 **Usage:**
 ```bash
 # Create project
-python cli/ldprojects.py create "My AI" my-ai -t ai-configs -t production
+python cli/ldprojects.py create "My Agent" my-ai -t ai-configs -t production
 
 # List projects
 python cli/ldprojects.py list
@@ -207,7 +207,7 @@ python cli/ldprojects.py get-key my-ai
 python cli/ldprojects.py get-key my-ai --env test --show-key
 
 # Clone project
-python cli/ldprojects.py clone template-ai new-ai "New AI Project"
+python cli/ldprojects.py clone template-ai new-ai "New Agent Project"
 
 # Export keys
 python cli/ldprojects.py export-keys my-ai -o keys.json

@@ -41,7 +41,7 @@ When the user provides enough context (use case, model, mode), proceed through t
 Before creating, identify what you're building:
 
 - **What framework?** LangGraph, LangChain, CrewAI, Strands, OpenAI SDK, Anthropic SDK, custom
-- **What does the AI need?** Just text generation, or tools/function calling?
+- **What does the agent need?** Just text generation, or tools/function calling?
 - **Agent or completion?** See the decision matrix below
 
 ### Step 2: Choose Agent vs Completion Mode

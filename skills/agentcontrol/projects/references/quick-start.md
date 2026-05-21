@@ -22,7 +22,7 @@ Content-Type: application/json
 **Minimal Payload:**
 ```json
 {
-  "name": "My AI Project",
+  "name": "My Agent Project",
   "key": "my-ai-project"
 }
 ```
@@ -30,7 +30,7 @@ Content-Type: application/json
 **Recommended Payload:**
 ```json
 {
-  "name": "Customer Support AI",
+  "name": "Customer Support Agent",
   "key": "support-ai",
   "tags": ["ai-configs", "production"]
 }
@@ -41,7 +41,7 @@ Content-Type: application/json
 ### Success (201 Created)
 ```json
 {
-  "name": "Customer Support AI",
+  "name": "Customer Support Agent",
   "key": "support-ai",
   "environments": {
     "items": [
@@ -140,7 +140,7 @@ Before creating a new project, you may want to check what exists.
 {
   "items": [
     {
-      "name": "Customer Support AI",
+      "name": "Customer Support Agent",
       "key": "support-ai",
       "tags": ["ai-configs"]
     }

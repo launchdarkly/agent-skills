@@ -180,9 +180,9 @@ Project keys must follow these rules:
 
 ### By Team
 ```
-platform-ai       → Platform Team AI
-customer-ai       → Customer Success Team AI
-internal-ai       → Internal Tools Team AI
+platform-ai       → Platform Team Agent
+customer-ai       → Customer Success Team Agent
+internal-ai       → Internal Tools Team Agent
 ```
 
 ### By Application/Service

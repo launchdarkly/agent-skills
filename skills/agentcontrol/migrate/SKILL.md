@@ -350,7 +350,7 @@ Delegate: **`tools`** (sub-step 2).
 
 ### Step 4: Instrument the tracker (Stage 4)
 
-Delegate: **`built-in-metrics`** wires the per-request `tracker.track_*` calls (duration, tokens, success/error, feedback) around the provider call. Use **`custom-metrics`** alongside it if the app needs business metrics beyond the built-in AI ones. Note: do not confuse this with `launchdarkly-metric-instrument`, which is for `ldClient.track()` feature metrics — a different API. See [sdk-ai-tracker-patterns.md](references/sdk-ai-tracker-patterns.md) for the full per-method Python + Node matrix that the delegate skill draws on.
+Delegate: **`built-in-metrics`** wires the per-request `tracker.track_*` calls (duration, tokens, success/error, feedback) around the provider call. Use **`custom-metrics`** alongside it if the app needs business metrics beyond the built-in agent ones. Note: do not confuse this with `launchdarkly-metric-instrument`, which is for `ldClient.track()` feature metrics — a different API. See [sdk-ai-tracker-patterns.md](references/sdk-ai-tracker-patterns.md) for the full per-method Python + Node matrix that the delegate skill draws on.
 
 Hand off: print the config key, variation key, provider, and whether the call is streaming, then tell the user: *"Run `/built-in-metrics` with these inputs, then come back here."* Do not auto-invoke. Return here for sub-step 5 (verify) once they're done.
 
@@ -548,7 +548,7 @@ These are ordered by how likely they are to show up as a first-run failure. The 
 
 ### API surface gotchas
 
-- Don't use `launchdarkly-metric-instrument` for Stage 4 (tracking). That skill is for `ldClient.track()` feature metrics, not AI `tracker.track_*` calls — they are different APIs.
+- Don't use `launchdarkly-metric-instrument` for Stage 4 (tracking). That skill is for `ldClient.track()` feature metrics, not agent `tracker.track_*` calls — they are different APIs.
 - Don't use `track_request()` in Python — it does not exist in `launchdarkly-server-sdk-ai`. Use `track_metrics_of` with a provider-package or custom extractor, or drop to explicit `track_duration` + `track_tokens` + `track_success` / `track_error` if you're on the streaming path.
 - Don't pass `graph_key=...` to `tracker.track_*()` methods in Python — it is not an accepted argument. Trackers obtained inside a graph traversal are automatically configured with the correct graph key.
 
@@ -560,7 +560,7 @@ These are ordered by how likely they are to show up as a first-run failure. The 
 - `configs-variations` — add variations for A/B testing after migration is complete
 - `configs-targeting` — roll out new variations to users after migration is complete
 - `configs-update` — modify config properties as your app evolves
-- `launchdarkly-metric-instrument` — for `ldClient.track()` feature metrics (NOT for AI tracker calls)
+- `launchdarkly-metric-instrument` — for `ldClient.track()` feature metrics (NOT for agent tracker calls)
 
 ## References
 

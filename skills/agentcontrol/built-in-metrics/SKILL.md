@@ -8,9 +8,9 @@ metadata:
   version: "1.0.0-experimental"
 ---
 
-# AI Metrics Instrumentation
+# Agent Metrics Instrumentation
 
-You're using a skill that wires LaunchDarkly AI metrics around an existing provider call. Your job is to audit what's already there, pick the right tier from the ladder below, and implement it with the **least ceremony that still captures the metrics the Monitoring tab needs** (duration, input/output tokens, success/error, plus TTFT when streaming).
+You're using a skill that wires LaunchDarkly agent metrics around an existing provider call. Your job is to audit what's already there, pick the right tier from the ladder below, and implement it with the **least ceremony that still captures the metrics the Monitoring tab needs** (duration, input/output tokens, success/error, plus TTFT when streaming).
 
 The single most important thing to get right: **default to the highest tier that fits the shape of the call**. Going lower ("just write the manual tracker calls") looks flexible but costs you drift, missed metrics, and legacy patterns the SDKs have moved past.
 
@@ -104,6 +104,6 @@ Obtain a tracker via the factory on the config object: `tracker = config.create_
 ## Related skills
 
 - `configs-create` — prerequisite if the app doesn't have a config yet
-- `custom-metrics` — business metrics (conversion, resolution, retention) layered on top of the AI metrics this skill captures
+- `custom-metrics` — business metrics (conversion, resolution, retention) layered on top of the agent metrics this skill captures
 - `online-evals` — automatic quality scoring (LLM-as-judge) on sampled live requests; complementary to the metrics here
 - `migrate` — Stage 4 of the hardcoded-to-AgentControl migration delegates to this skill

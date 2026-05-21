@@ -311,7 +311,7 @@ async def async_main():
     model = await aiclient.create_model(ai_config_key, context, default_value, {})
 
     if not model:
-        print(f"AI configuration not enabled for: {ai_config_key}")
+        print(f"agent configuration not enabled for: {ai_config_key}")
         return
 
     user_input = 'How can LaunchDarkly help me?'
@@ -369,7 +369,7 @@ async def async_main():
     judge = aiclient.create_judge(judge_key, context, judge_default_value)
 
     if not judge:
-        print(f"AI judge configuration not enabled for key: {judge_key}")
+        print(f"agent judge configuration not enabled for key: {judge_key}")
         return
 
     input_text = 'You are a helpful assistant. How can you help me?'

@@ -198,7 +198,7 @@ func main() {
     pm := launchdarkly.NewProjectManager("")
     
     project, err := pm.CreateProject(
-        "Customer AI Service",
+        "Customer Agent Service",
         "customer-ai",
         []string{"ai-configs", "production"},
     )
@@ -386,7 +386,7 @@ func main() {
 
 **Usage:**
 ```bash
-go run cmd/ldprojects/main.go create -name "My AI" -key my-ai -tags ai-configs,production
+go run cmd/ldprojects/main.go create -name "My Agent" -key my-ai -tags ai-configs,production
 go run cmd/ldprojects/main.go list
 go run cmd/ldprojects/main.go get-key -project my-ai -env production
 ```

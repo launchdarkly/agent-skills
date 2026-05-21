@@ -276,7 +276,7 @@ Generate the repo summary per [Onboarding Summary](references/1.8-summary.md). W
 3. **Where to Find Things** -- dashboard links with real project key substituted
 4. **How Feature Flags Work** -- a language-specific code example showing flag evaluation in this project's stack (not a generic snippet -- use the same pattern the agent wired during Step 5)
 5. **Next Steps / Advanced Capabilities** -- links to Percentage Rollouts, Targeting Rules, Experimentation, configs, Guarded Rollouts, and Observability
-6. **AI Agent Integration** -- MCP server setup for continued agent-driven flag management
+6. **Agent Integration** -- MCP server setup for continued agent-driven flag management
 
 This is **not** the same file as `LAUNCHDARKLY_ONBOARDING.md`. The onboarding log is a working checklist; `LAUNCHDARKLY.md` is the **permanent reference** for the team.
 
