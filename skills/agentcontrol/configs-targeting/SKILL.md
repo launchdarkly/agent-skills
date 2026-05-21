@@ -323,7 +323,7 @@ class AIConfigTargeting:
 
 ## Instruction Reference
 
-> **Note:** `turnTargetingOn` and `turnTargetingOff` do not work for configs. configs have targeting enabled by default. To "enable" a config, set the fallthrough to an enabled variation using `updateFallthroughVariationOrRollout`.
+> **Note:** `turnTargetingOn` and `turnTargetingOff` do not work for configs. Configs have targeting enabled by default. To "enable" a config, set the fallthrough to an enabled variation using `updateFallthroughVariationOrRollout`.
 
 ### Rules
 | Kind | Description |

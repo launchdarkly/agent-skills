@@ -32,7 +32,7 @@ This skill requires the remotely hosted LaunchDarkly MCP server to be configured
 
 Prompt snippets are named, versioned text blocks stored at the project level. They contain reusable pieces of prompt text — personas, guardrails, output format instructions, domain knowledge — that can be shared across multiple config variations.
 
-When a snippet is updated, a new version is created. config variations that reference the snippet can pick up the latest version, keeping all your configs in sync.
+When a snippet is updated, a new version is created. Config variations that reference the snippet can pick up the latest version, keeping all your configs in sync.
 
 ### When to Use Snippets
 

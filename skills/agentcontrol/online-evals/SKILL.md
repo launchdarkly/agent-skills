@@ -128,7 +128,7 @@ curl -X PATCH "https://app.launchdarkly.com/api/v2/projects/{projectKey}/ai-conf
 
 ### Step 3: Set Fallthrough on Judges
 
-Each judge config needs its fallthrough set to the enabled variation. configs default to the "disabled" variation (index 0).
+Each judge config needs its fallthrough set to the enabled variation. Configs default to the "disabled" variation (index 0).
 
 > **Note:** `turnTargetingOn` does not work for configs. Use `updateFallthroughVariationOrRollout` instead.
 
