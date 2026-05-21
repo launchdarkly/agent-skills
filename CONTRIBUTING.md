@@ -40,10 +40,11 @@ The metrics skills have a Promptfoo suite under `tests/`. Run it before merging 
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
-npm run test:llm-evals
+npm run eval:all
 ```
 
-Run from the repository root, or from `tests/` with `npm run test:llm-evals` (same as `npm run eval`). For a single skill, use `npm run eval:create`, `eval:choose`, or `eval:instrument` inside `tests/`.
+Run from the repository root. To run a single suite, `cd evals` and use `npm run eval:<suite-name>` (e.g., `eval:aiconfig-create`). View results with `npm run eval:view`.
+
 
 ## Documentation
 

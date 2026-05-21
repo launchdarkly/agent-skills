@@ -1,0 +1,210 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+#
+# Run with shared defaults:
+#   promptfoo eval -c shared/defaults.yaml -c aiconfig-create/promptfooconfig.yaml
+#
+# The aiconfig-create skill guides the agent through choosing agent vs
+# completion mode, creating a config + variation, and verifying the setup.
+# The recommended path is setup-ai-config (one-step); the agent may also
+# use create-ai-config + create-ai-config-variation for more control.
+description: "End-to-end evaluation of the aiconfig-create skill"
+
+prompts:
+  - file://../../skills/ai-configs/aiconfig-create/SKILL.md
+
+providers:
+  - id: file://../providers/claude-skill-agent-sdk.js
+    label: claude-skill-agent-sdk
+    config:
+      skill_slug: aiconfig-create
+
+tests:
+  # ------------------------------------------------------------------
+  # Test 1: Happy path — LangGraph agent bot
+  # The most common use case: a user building a LangGraph agent wants
+  # to create a config in agent mode. The skill should call setup-ai-config
+  # with agent mode and reasonable defaults.
+  # ------------------------------------------------------------------
+  - description: "Happy path: creates agent-mode config for a LangGraph chatbot using setup-ai-config"
+    vars:
+      user_request: >
+        Create an AI Config for my customer support bot. It uses LangGraph and
+        needs persistent instructions. The project key is "acme-app".
+        Use Claude Sonnet as the model.
+      codebase_context: ""
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const pass = tools.includes('setup-ai-config') || tools.includes('create-ai-config');
+          return { pass, score: pass ? 1 : 0, reason: 'Tools: ' + tools.join(' -> ') };
+        metric: calls_create_tool
+        weight: 3
+
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const setup = traj.find(t => t.tool === 'setup-ai-config');
+          const create = traj.find(t => t.tool === 'create-ai-config');
+          const call = setup || create;
+          if (!call) return { pass: false, score: 0, reason: 'No create tool called' };
+          const a = call.arguments || {};
+          const isAgentMode = a.mode === 'agent';
+          const hasKey = typeof a.key === 'string' && a.key.length > 0;
+          const hasProject = a.projectKey === 'acme-app';
+          const score = (isAgentMode ? 0.5 : 0) + (hasKey ? 0.3 : 0) + (hasProject ? 0.2 : 0);
+          return { pass: score >= 0.5, score, reason: `mode=${a.mode} key=${a.key} project=${a.projectKey}` };
+        metric: create_args_correct
+        weight: 3
+
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const setup = traj.find(t => t.tool === 'setup-ai-config');
+          const create = traj.find(t => t.tool === 'create-ai-config');
+          const call = setup || create;
+          if (!call) return { pass: false, score: 0, reason: 'No create tool called' };
+          const a = call.arguments || {};
+          const keyIsKebab = typeof a.key === 'string' && /^[a-z][a-z0-9-]*$/.test(a.key);
+          return { pass: keyIsKebab, score: keyIsKebab ? 1 : 0, reason: `key=${a.key}` };
+        metric: key_is_kebab_case
+        weight: 2
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const forbidden = ['delete-ai-config', 'delete-ai-config-variation'];
+          const called = forbidden.filter(f => tools.includes(f));
+          const pass = called.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'No destructive tools' : 'Called: ' + called.join(', ') };
+        metric: no_destructive_tools
+        weight: 3
+
+      - type: llm-rubric
+        value: |
+          Evaluate whether the agent correctly created an AI Config in agent mode.
+          Score 1.0 if all of the following are met:
+          1. The agent chose agent mode (appropriate for LangGraph with persistent instructions).
+          2. The agent created a config with a meaningful key and name derived from the use case.
+          3. The agent used claude/Anthropic as the model (not GPT or another provider).
+          4. The response confirms the config was created and mentions next steps (targeting).
+          Deduct 0.25 for each criterion missed.
+        metric: workflow_quality
+        weight: 2
+
+  # ------------------------------------------------------------------
+  # Test 2: Completion mode — OpenAI direct API
+  # User explicitly uses OpenAI API (not a framework). The skill's
+  # decision matrix should lead to completion mode.
+  # ------------------------------------------------------------------
+  - description: "Completion mode: creates completion-mode config for direct OpenAI API use"
+    vars:
+      user_request: >
+        I need an AI Config for our blog summarizer. We call the OpenAI API
+        directly with a messages array (system + user). Project key is "blog-app",
+        use gpt-4o.
+      codebase_context: >
+        Python Flask app. We use the openai SDK directly:
+        client.chat.completions.create(model="gpt-4o", messages=[...])
+        No agent framework in use.
+    assert:
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const setup = traj.find(t => t.tool === 'setup-ai-config');
+          const create = traj.find(t => t.tool === 'create-ai-config');
+          const call = setup || create;
+          if (!call) return { pass: false, score: 0, reason: 'No create tool called' };
+          const a = call.arguments || {};
+          const isCompletion = a.mode === 'completion';
+          return { pass: isCompletion, score: isCompletion ? 1 : 0, reason: `mode=${a.mode}` };
+        metric: completion_mode_selected
+        weight: 3
+
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const setup = traj.find(t => t.tool === 'setup-ai-config');
+          const create = traj.find(t => t.tool === 'create-ai-config');
+          const call = setup || create;
+          if (!call) return { pass: false, score: 0, reason: 'No create tool called' };
+          const a = call.arguments || {};
+          const hasGpt = typeof a.modelName === 'string' && a.modelName.includes('gpt') ||
+                         typeof a.modelConfigKey === 'string' && a.modelConfigKey.includes('gpt');
+          return { pass: hasGpt, score: hasGpt ? 1 : 0, reason: `model=${a.modelName} configKey=${a.modelConfigKey}` };
+        metric: model_matches_request
+        weight: 2
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const pass = tools.includes('setup-ai-config') || tools.includes('create-ai-config');
+          return { pass, score: pass ? 1 : 0, reason: 'Tools: ' + tools.join(' -> ') };
+        metric: calls_create_tool
+        weight: 3
+
+  # ------------------------------------------------------------------
+  # Test 3: Exploration — agent browses existing configs first
+  # User provides minimal context. The skill should list existing
+  # configs to understand naming conventions before creating.
+  # ------------------------------------------------------------------
+  - description: "Exploration: browses existing configs before creating when context is sparse"
+    vars:
+      user_request: >
+        Create a new AI Config for our analytics agent. Project key is "data-platform".
+      codebase_context: ""
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const aIdx = tools.indexOf('list-ai-configs');
+          const bIdx = tools.lastIndexOf('setup-ai-config') === -1
+            ? tools.lastIndexOf('create-ai-config')
+            : tools.lastIndexOf('setup-ai-config');
+          const created = bIdx >= 0;
+          // Either explored first OR went straight to creation (both are valid)
+          const pass = created;
+          return { pass, score: pass ? 1 : 0, reason: `list@${aIdx} create@${bIdx}` };
+        metric: creation_happens
+        weight: 3
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const pass = tools.includes('setup-ai-config') || tools.includes('create-ai-config');
+          return { pass, score: pass ? 1 : 0, reason: 'Tools: ' + tools.join(' -> ') };
+        metric: calls_create_tool
+        weight: 3
+
+  # ------------------------------------------------------------------
+  # Test 4: Targeting reminder
+  # After creation, the skill should remind the user they need to run
+  # targeting (/aiconfig-targeting) before the SDK returns enabled=True.
+  # ------------------------------------------------------------------
+  - description: "Post-creation: response mentions targeting step or aiconfig-targeting"
+    vars:
+      user_request: >
+        Create an AI Config called "email-assistant" for composing emails.
+        Project is "comms-app", use gpt-4o-mini in completion mode.
+      codebase_context: ""
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const pass = tools.includes('setup-ai-config') || tools.includes('create-ai-config');
+          return { pass, score: pass ? 1 : 0, reason: 'Tools: ' + tools.join(' -> ') };
+        metric: calls_create_tool
+        weight: 3
+
+      - type: llm-rubric
+        value: |
+          Evaluate whether the agent's final response mentions targeting or the next step
+          after creation. Score 1.0 if the response:
+          1. Confirms the config was created successfully.
+          2. Mentions that targeting must be configured before the SDK returns enabled=True,
+             OR references the /aiconfig-targeting skill, OR notes the fallthrough points at
+             a disabled variation.
+          Score 0.5 if it mentions the config was created but omits the targeting warning.
+          Score 0.0 if it neither confirms creation nor mentions targeting.
+        metric: targeting_reminder
+        weight: 2
