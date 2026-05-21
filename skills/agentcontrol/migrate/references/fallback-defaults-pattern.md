@@ -2,11 +2,11 @@
 
 Every `completion_config` / `agent_config` call takes a fallback. The fallback runs when LaunchDarkly is unreachable, the SDK is disabled, or the returned config has `enabled=False`. **It must mirror the hardcoded values you removed** so behavior is unchanged if LaunchDarkly is unavailable.
 
-This doc covers three patterns in order of sophistication. Pick the one that matches the size of the app and the number of AI Configs it uses.
+This doc covers three patterns in order of sophistication. Pick the one that matches the size of the app and the number of configs it uses.
 
 ## Pattern 1: Inline fallback (start here)
 
-One config key, one fallback constant. Best for apps with a handful of AI Configs or a single call site.
+One config key, one fallback constant. Best for apps with a handful of configs or a single call site.
 
 ### Python — completion mode
 
@@ -101,13 +101,13 @@ const agent = await aiClient.agentConfig('support-agent', context, SUPPORT_AGENT
 
 ### When to use inline
 
-- Fewer than ~5 AI Configs in the app
+- Fewer than ~5 configs in the app
 - Fallback values don't change often (or change in lockstep with code deploys)
 - You want every fallback visible in a single source file for easy review
 
 ## Pattern 2: File-backed defaults
 
-A JSON/YAML file holds every config's fallback; a loader at startup builds the default objects. Best for apps with many AI Configs or where the fallback needs to be environment-specific.
+A JSON/YAML file holds every config's fallback; a loader at startup builds the default objects. Best for apps with many configs or where the fallback needs to be environment-specific.
 
 ### File shape
 
@@ -206,16 +206,16 @@ config = ai_client.completion_config(
 
 ### When to use file-backed
 
-- 5+ AI Configs, each with its own fallback
+- 5+ configs, each with its own fallback
 - Fallback values are derived from the current LaunchDarkly state (see Pattern 3 for generation)
 - You want a single commit to update all fallbacks at once
 - You want different default files per environment (dev vs staging vs prod)
 
 ## Pattern 3: Bootstrap-generated defaults
 
-A script fetches the current state of every AI Config from LaunchDarkly and writes the file used by Pattern 2. Best for large apps where keeping fallbacks in sync by hand is a maintenance burden.
+A script fetches the current state of every config from LaunchDarkly and writes the file used by Pattern 2. Best for large apps where keeping fallbacks in sync by hand is a maintenance burden.
 
-The devrel-agents-tutorial has a `bootstrap/create_configs.py` script that does this end-to-end: it creates the AI Configs in LaunchDarkly from a YAML manifest, then writes the `.ai_config_defaults.json` file that the app loads at startup. Use it as prior art — do not reproduce it inline.
+The devrel-agents-tutorial has a `bootstrap/create_configs.py` script that does this end-to-end: it creates the configs in LaunchDarkly from a YAML manifest, then writes the `.ai_config_defaults.json` file that the app loads at startup. Use it as prior art — do not reproduce it inline.
 
 ### Sketch
 
@@ -250,11 +250,11 @@ def dump_defaults(api_token: str, project_key: str, environment: str) -> dict:
 
 - Run the script in CI on every merge to main, commit the updated file
 - Or run it on deploy to bake the file into the container image
-- Or run it manually when you know an AI Config has changed meaningfully
+- Or run it manually when you know a config has changed meaningfully
 
 ### When to use bootstrap-generated
 
-- 20+ AI Configs
+- 20+ configs
 - You want fallbacks to track production state automatically
 - You have CI capacity to run the generator and commit the file
 

@@ -37,7 +37,7 @@ See [Quick Start](references/quick-start.md) for API usage patterns.
 ## What Are Projects?
 
 Projects are LaunchDarkly's top-level organizational containers that hold:
-- All your AI Configs
+- All your configs
 - Feature flags and segments  
 - Multiple environments (Production and Test created by default)
 
@@ -187,9 +187,9 @@ internal-ai       → Internal Tools Team AI
 
 ### By Application/Service
 ```
-mobile-ai         → Mobile App AI Configs
-web-ai            → Web App AI Configs
-api-ai            → API Service AI Configs
+mobile-ai         → Mobile App configs
+web-ai            → Web App configs
+api-ai            → API Service configs
 ```
 
 ### By Region/Deployment
@@ -221,15 +221,15 @@ ai-apac           → Asia-Pacific Region
 
 After setting up projects:
 
-1. **Create AI Configs** - Use the `configs-create` skill
+1. **Create configs** - Use the `configs-create` skill
 2. **Set up SDK Integration** - Use the `sdk` skill
 3. **Configure Targeting** - Use the `configs-targeting` skill
 
 ## Related Skills
 
-- `configs-create` - Create AI Configs in projects
+- `configs-create` - Create configs in projects
 - `sdk` - Integrate SDK in your application
-- `configs-targeting` - Configure AI Config targeting
+- `configs-targeting` - Configure config targeting
 - `configs-variations` - Manage config variations
 
 ## References

@@ -1,6 +1,6 @@
 ---
 name: migrate
-description: "Migrate an application with hardcoded LLM prompts to a full LaunchDarkly AI Configs implementation in five stages: audit the code, wrap the call, move the tools, add tracking, attach evaluators. Use when the user wants to externalize model/prompt configuration, move from direct provider calls (OpenAI, Anthropic, Bedrock, Gemini, Strands) to a managed AI Config, or stage a full hardcoded-to-LaunchDarkly migration."
+description: "Migrate an application with hardcoded LLM prompts to a full LaunchDarkly AgentControl implementation in five stages: audit the code, wrap the call, move the tools, add tracking, attach evaluators. Use when the user wants to externalize model/prompt configuration, move from direct provider calls (OpenAI, Anthropic, Bedrock, Gemini, Strands) to a managed config, or stage a full hardcoded-to-LaunchDarkly migration."
 license: Apache-2.0
 compatibility: Requires the remotely hosted LaunchDarkly MCP server
 metadata:
@@ -8,13 +8,13 @@ metadata:
   version: "0.1.0"
 ---
 
-# Migrate to AI Configs
+# Migrate to AgentControl
 
-You're using a skill that will guide you through migrating an application from hardcoded LLM prompts to a full LaunchDarkly AI Configs implementation. Your job is to run the migration in **five stages**, stopping at each stage for the user to confirm:
+You're using a skill that will guide you through migrating an application from hardcoded LLM prompts to a full LaunchDarkly AgentControl implementation. Your job is to run the migration in **five stages**, stopping at each stage for the user to confirm:
 
 1. **Audit the code** — read-only scan that produces a structured list of everything hardcoded (prompt, model, parameters, tools, app-scoped knobs).
-2. **Wrap the call** — install the SDK, create the AI Config in LaunchDarkly with a fallback that mirrors the hardcoded values, and rewrite the call site to fetch the config fresh on every request.
-3. **Move the tools** — extract each tool's JSON schema, attach it to the AI Config, and swap every call site that references the old tool list.
+2. **Wrap the call** — install the SDK, create the config in LaunchDarkly with a fallback that mirrors the hardcoded values, and rewrite the call site to fetch the config fresh on every request.
+3. **Move the tools** — extract each tool's JSON schema, attach it to the config, and swap every call site that references the old tool list.
 4. **Add tracking** — wire the per-request tracker (duration, tokens, success/error) around the provider call.
 5. **Attach evaluators** — either offline evals via the Playground + Datasets, or online judges that score sampled traffic automatically.
 
@@ -22,7 +22,7 @@ You're using a skill that will guide you through migrating an application from h
 >
 > 1. **Tracker in the wrong scope.** For an agent with a loop, mint `create_tracker()` once per user turn in a `setup_run` entry node — not inside `call_model`. Per-iteration factory calls produce N `runId`s and trip the at-most-once guards. See [agent-mode-frameworks.md § Custom `StateGraph`](references/agent-mode-frameworks.md).
 > 2. **`load_chat_model` wrapper reuse.** Templates like `langchain-ai/react-agent` ship a `load_chat_model(f"{provider}/{name}")` helper that wraps `init_chat_model(...)` and silently drops every variation parameter. **Delete it** (don't just avoid using it) and replace call sites with `create_langchain_model(ai_config)`.
-> 3. **Fallthrough not flipped after `/configs-create`.** A freshly-created AI Config's fallthrough points at an auto-generated disabled variation, so the SDK returns `enabled=False` until `/configs-targeting` runs. Flip it before Stage 2 verification.
+> 3. **Fallthrough not flipped after `/configs-create`.** A freshly-created config's fallthrough points at an auto-generated disabled variation, so the SDK returns `enabled=False` until `/configs-targeting` runs. Flip it before Stage 2 verification.
 
 ## Coverage — which shapes are well-trodden vs require extrapolation
 
@@ -68,7 +68,7 @@ If a CHANGELOG entry post-dates this skill and changes an API you're about to us
 
 **Sibling skills the user runs at each stage:**
 - `projects` — pre-Stage 2, only if no project exists yet
-- `configs-create` — Stage 2 (creates the AI Config and first variation)
+- `configs-create` — Stage 2 (creates the config and first variation)
 - `tools` — Stage 3 (creates tool definitions and attaches them)
 - `configs-targeting` — between Stage 2 and Stage 4 (promotes the new variation to fallthrough so the SDK actually serves it)
 - `online-evals` — Stage 5 (attaches judges, creates custom judges)
@@ -108,7 +108,7 @@ For each hardcoded target the audit finds, record:
 
 - File path and line range
 - Current value (model name, full prompt text, parameter dict)
-- Target AI Config field (`model.name`, `model.parameters.temperature`, `messages[].content`, `instructions`)
+- Target config field (`model.name`, `model.parameters.temperature`, `messages[].content`, `instructions`)
 - Whether the surrounding call uses function calling / tools (drives Stage 3)
 - Whether the surrounding call has retry logic (affects where Stage 4 tracker calls go)
 
@@ -129,7 +129,7 @@ Hardcoded targets:
 Externalized prompt files: none (or e.g. "prompts/agents.yaml — CrewAI role/goal/backstory")
 Prompt-template registries: none (or e.g. langchain.hub.pull("rlm/rag-prompt") at app.py:14)
 Coverage totals: 3 hardcoded code targets · 0 externalized prompt files · 0 registry pulls
-Proposed plan: single AI Config key `chat-assistant`, mirror fallback, Stage 3 (tools) skipped (no function calling), Stage 4 (tracking) inline, Stage 5 (evals) attach built-in accuracy judge.
+Proposed plan: single config key `chat-assistant`, mirror fallback, Stage 3 (tools) skipped (no function calling), Stage 4 (tracking) inline, Stage 5 (evals) attach built-in accuracy judge.
 ```
 
 **STOP.** Present this summary, state the coverage totals out loud (e.g. "I found **N** hardcoded code targets and **M** externalized prompt files — does that match what you expected?"), and wait for the user to reply with one of four explicit forms:
@@ -182,7 +182,7 @@ This is the first stage that writes code. It has nine sub-steps.
        # that turns a config gap into a boot failure.
        import logging
        logging.getLogger(__name__).warning(
-           "LD_SDK_KEY not set; AI Configs will use fallback values only."
+           "LD_SDK_KEY not set; configs will use fallback values only."
        )
        ldclient.set_config(Config("", offline=True))
 
@@ -198,7 +198,7 @@ This is the first stage that writes code. It has nine sub-steps.
    // key fails fast during waitForInitialization, and every agent_config /
    // completion_config call returns the fallback. Log a warning; do not throw.
    if (!process.env.LD_SDK_KEY) {
-     console.warn('LD_SDK_KEY not set; AI Configs will use fallback values only.');
+     console.warn('LD_SDK_KEY not set; configs will use fallback values only.');
    }
    const ldClient = init(process.env.LD_SDK_KEY ?? 'sdk-offline');
    await ldClient.waitForInitialization({ timeout: 10 }).catch(() => {
@@ -352,7 +352,7 @@ Delegate: **`tools`** (sub-step 2).
 
 Delegate: **`built-in-metrics`** wires the per-request `tracker.track_*` calls (duration, tokens, success/error, feedback) around the provider call. Use **`custom-metrics`** alongside it if the app needs business metrics beyond the built-in AI ones. Note: do not confuse this with `launchdarkly-metric-instrument`, which is for `ldClient.track()` feature metrics — a different API. See [sdk-ai-tracker-patterns.md](references/sdk-ai-tracker-patterns.md) for the full per-method Python + Node matrix that the delegate skill draws on.
 
-Hand off: print the AI Config key, variation key, provider, and whether the call is streaming, then tell the user: *"Run `/built-in-metrics` with these inputs, then come back here."* Do not auto-invoke. Return here for sub-step 5 (verify) once they're done.
+Hand off: print the config key, variation key, provider, and whether the call is streaming, then tell the user: *"Run `/built-in-metrics` with these inputs, then come back here."* Do not auto-invoke. Return here for sub-step 5 (verify) once they're done.
 
 1. **Create the tracker.** Obtain a per-execution tracker via the factory on the config returned in Stage 2: `tracker = config.create_tracker()` (Python) or `const tracker = aiConfig.createTracker();` (Node). Call the factory **once per user turn** and reuse the returned `tracker` for every tracking call in that turn — each call mints a fresh `runId` that tags every event emitted from the turn so they can be correlated via exported events or downstream queries. (The Monitoring tab aggregates today; run-level grouping is a downstream concern — but the `runId` is also what the SDK's at-most-once guards are keyed on, so minting a new one mid-turn breaks the guard semantics regardless of where the events end up.)
 
@@ -422,7 +422,7 @@ Hand off: print the AI Config key, variation key, provider, and whether the call
 
    **Deferred feedback across processes.** If the thumbs-up UI fires in a different process than the one that produced the response, do **not** call `create_tracker()` again in the consumer — that mints a new `runId`. Persist the tracker's resumption token (`tracker.resumption_token` in Python, `tracker.resumptionToken` in Node) alongside the message, then rehydrate the tracker with `LDAIConfigTracker.from_resumption_token(...)` (Python) or `aiClient.createTracker(token, context)` (Node) in the feedback handler.
 
-5. **Verify.** Hit the wrapped endpoint in staging, then open the AI Config in LaunchDarkly → Monitoring tab. Duration, token, and generation counts should appear within 1–2 minutes. If nothing shows up, walk the checklist in [sdk-ai-tracker-patterns.md](references/sdk-ai-tracker-patterns.md) under "Troubleshooting."
+5. **Verify.** Hit the wrapped endpoint in staging, then open the config in LaunchDarkly → Monitoring tab. Duration, token, and generation counts should appear within 1–2 minutes. If nothing shows up, walk the checklist in [sdk-ai-tracker-patterns.md](references/sdk-ai-tracker-patterns.md) under "Troubleshooting."
 
 ### Step 5: Attach evaluations (Stage 5)
 
@@ -430,7 +430,7 @@ Hand off: print the AI Config key, variation key, provider, and whether the call
 
    | Path | When to use | Supports agent mode? |
    |------|-------------|---------------------|
-   | **Offline eval** (recommended default for migration) | Pre-ship regression: run a fixed dataset through the new variation in the LD Playground and score against baseline. Best fit for migration because you want to prove the new AI Config behaves at least as well as the hardcoded version before shipping. | Yes — all modes |
+   | **Offline eval** (recommended default for migration) | Pre-ship regression: run a fixed dataset through the new variation in the LD Playground and score against baseline. Best fit for migration because you want to prove the new config behaves at least as well as the hardcoded version before shipping. | Yes — all modes |
    | **UI-attached auto judges** | Attach one or more judges to a variation in the LD UI; judges run on sampled live requests automatically. Zero code changes. | Completion mode only (the UI widget is completion-only today) |
    | **Programmatic direct-judge** | Call `ai_client.create_judge(...)` inside the request handler and `judge.evaluate(input, output)` on each call. Adds per-request cost and code complexity. Best for continuous live scoring of workflows where sampled auto-judges aren't enough. | Yes — all modes (the SDK handles both identically) |
 
@@ -446,12 +446,12 @@ Hand off: print the AI Config key, variation key, provider, and whether the call
 
    Write this shape into the project's `datasets/README.md` (or equivalent) so the comparison pattern is reproducible after the migration ships.
 
-3. **Hand off to `online-evals`** — only for UI-attached judges (completion mode) or to create custom judge AI Configs that will be referenced by the programmatic path. Tell the user: *"Run `/online-evals` with these inputs, then come back here."* Do not auto-invoke. Pass:
-   - The parent AI Config key and variation key
+3. **Hand off to `online-evals`** — only for UI-attached judges (completion mode) or to create custom judge configs that will be referenced by the programmatic path. Tell the user: *"Run `/online-evals` with these inputs, then come back here."* Do not auto-invoke. Pass:
+   - The parent config key and variation key
    - A list of built-in judges (Accuracy, Relevance, Toxicity) or custom judge keys to create/attach
    - Target environment
 
-   The delegate handles creating custom judge AI Configs, attaching them via the variation PATCH endpoint, and setting fallthrough on each judge config. Offline eval does **not** go through this delegate — it's a Playground workflow, not an API write.
+   The delegate handles creating custom judge configs, attaching them via the variation PATCH endpoint, and setting fallthrough on each judge config. Offline eval does **not** go through this delegate — it's a Playground workflow, not an API write.
 
 4. **For programmatic direct-judge: wire `create_judge` + `evaluate` + `track_judge_result`.** This is the only path at Stage 5 that writes code. The Python shape:
 
@@ -459,7 +459,7 @@ Hand off: print the AI Config key, variation key, provider, and whether the call
    from ldai.client import AIJudgeConfigDefault
 
    judge = ai_client.create_judge(
-       judge_key,                               # judge AI Config key in LD
+       judge_key,                               # judge config key in LD
        ld_context,
        AIJudgeConfigDefault(enabled=False),     # fallback: skip eval on SDK miss
    )
@@ -475,12 +475,12 @@ Hand off: print the AI Config key, variation key, provider, and whether the call
    ```
 
    Four rules:
-   - **`create_judge` returns `Optional[Judge]`.** Always guard with `if judge and judge.enabled:` — it returns `None` if the judge AI Config is disabled for the context or the provider is missing. A direct `.evaluate()` on a `None` return will raise `AttributeError`.
+   - **`create_judge` returns `Optional[Judge]`.** Always guard with `if judge and judge.enabled:` — it returns `None` if the judge config is disabled for the context or the provider is missing. A direct `.evaluate()` on a `None` return will raise `AttributeError`.
    - **Pass `AIJudgeConfigDefault`**, not `AICompletionConfigDefault`. The `create_judge` `default` parameter is typed `Optional[AIJudgeConfigDefault]`; passing the completion type will not type-check and is a doc-level bug in some older examples.
    - **`sampling_rate` is a parameter on `evaluate()`**, not on `create_judge`. It defaults to `1.0` (evaluate every call). For live paths, pass something lower (0.1–0.25) to control cost.
    - **`evaluate()` returns a `JudgeResult`** (never `None`). Check `result.sampled` to know whether the evaluation actually ran, and call `track_judge_result(result)`. Node uses `trackJudgeResult(result)` and `LDJudgeResult` with the same `sampled` field.
 
-   **Ask the user which judge AI Config key to use.** LaunchDarkly ships three built-in judges — Accuracy, Relevance, Toxicity — but the actual AI Config **keys** for the built-ins are not canonical SDK constants and aren't documented. Have the user open **AI Configs > Library** in the LD UI and copy the key of the judge they want to reference, or create a custom judge AI Config via `configs-create` first.
+   **Ask the user which judge config key to use.** LaunchDarkly ships three built-in judges — Accuracy, Relevance, Toxicity — but the actual config **keys** for the built-ins are not canonical SDK constants and aren't documented. Have the user open **AgentControl > Library** in the LD UI and copy the key of the judge they want to reference, or create a custom judge config via `configs-create` first.
 
 5. **Verify.**
    - **UI-attached auto judges:** trigger a request in staging, open the Monitoring tab → "Evaluator metrics" dropdown. Scores appear within 1–2 minutes at the configured sampling rate.
@@ -526,7 +526,7 @@ These are ordered by how likely they are to show up as a first-run failure. The 
 - **If the repo already contains a `load_chat_model(f"{provider}/{name}")` helper, delete it — don't just avoid using it.** This exact shape ships with `langchain-ai/react-agent` and is copied into dozens of derivative repos; look for `utils.load_chat_model`, `utils.build_model`, or any one-arg `init_chat_model` wrapper that splits a `"provider/model"` string. Re-using it is the first-run failure mode: every variation parameter (temperature, max_tokens, top_p, stop sequences) silently drops on the floor because `init_chat_model` only receives the name and provider. `create_langchain_model(ai_config)` is a one-for-one replacement that forwards the whole `model.parameters` dict. Replace every call site, then delete the wrapper file-side so the next reader can't reach for it.
 - **Same rule applies to hand-rolled `resolve_tools` / `TOOL_REGISTRY` / `ALL_TOOLS` helpers.** If the template already has a `resolve_tools(tool_keys)` or an `ALL_TOOLS` module-level list, import `build_structured_tools` from `ldai_langchain.langchain_helper` and delete the hand-rolled version. `build_structured_tools(ai_config, TOOL_REGISTRY_DICT)` reads `ai_config.model.parameters.tools` and wraps the matching callables as LangChain `StructuredTool`s with the LD tool key as the `StructuredTool.name` — so `ToolNode` lookup works without a second mapping. Don't leave both in the repo.
 - Don't put app-scoped knobs directly in `model.parameters`. `create_langchain_model` forwards every key in `parameters` to the provider SDK via `init_chat_model`, so a `max_search_results` / `retry_budget` / `feature_toggle` entry will crash the provider with an unexpected-keyword-argument error. The correct home is `model.custom`, which the provider helpers ignore and the app reads via `ai_config.model.get_custom("key")`. The MCP `update-ai-config-variation` tool does not currently expose top-level `custom`, so pick one of two paths: (a) PATCH the variation via the REST API to set `model.custom` directly, or (b) set it via MCP inside `parameters.custom` (as a nested dict) and use a defensive accessor that reads both locations. Full walk-through with code samples in [langchain-tracking.md § MCP caveat](../built-in-metrics/references/langchain-tracking.md).
-- Don't re-encode tool schemas inside the fallback. When LaunchDarkly is unreachable the fallback should run without tools (or with whatever minimal provider-bound parameters the app needs to keep operating). Building a `_FALLBACK_TOOLS` array that duplicates the AI Config's tool schema re-introduces the hardcoded config the migration was supposed to move out of code.
+- Don't re-encode tool schemas inside the fallback. When LaunchDarkly is unreachable the fallback should run without tools (or with whatever minimal provider-bound parameters the app needs to keep operating). Building a `_FALLBACK_TOOLS` array that duplicates the config's tool schema re-introduces the hardcoded config the migration was supposed to move out of code.
 - Don't import `LaunchDarklyCallbackHandler` from `ldai.langchain` — neither the class nor the dotted module path exists. The Python LangChain helper package is `ldai_langchain` (top-level module, underscore). Use `create_langchain_model(config)` + `track_metrics_of_async(get_ai_metrics_from_response, lambda: llm.ainvoke(messages))` as the canonical pattern.
 
 ### Stage / handoff discipline
@@ -543,7 +543,7 @@ These are ordered by how likely they are to show up as a first-run failure. The 
 - Don't wire evals before the tracker is in place. Judges score traffic; without Stage 4 traffic, there is nothing to judge.
 - Don't frame Stage 5 as "either UI or programmatic." There are **three** paths: offline eval (recommended default for migration), UI-attached auto judges (completion-mode only), and programmatic direct-judge. Offline eval is the one most people skip and usually the right starting point.
 - Don't pass `sampling_rate` to `create_judge` — it's a parameter on `Judge.evaluate()`, not `create_judge()`.
-- Don't hardcode judge AI Config keys (`"accuracy-judge"`, `"relevance-judge"`, etc). The built-in keys are not canonical SDK constants; ask the user to look them up in **AI Configs > Library** in the LD UI.
+- Don't hardcode judge config keys (`"accuracy-judge"`, `"relevance-judge"`, etc). The built-in keys are not canonical SDK constants; ask the user to look them up in **AgentControl > Library** in the LD UI.
 - Don't forget the `if judge and judge.enabled:` guard after `create_judge`. It returns `Optional[Judge]` and returns `None` when the judge config is disabled for the context.
 
 ### API surface gotchas

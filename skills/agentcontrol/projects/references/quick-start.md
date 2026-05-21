@@ -164,7 +164,7 @@ After creating your project:
 
 1. **Save SDK keys** to your environment configuration
 2. **Initialize LaunchDarkly SDK** in your application  
-3. **Create AI Configs** within the project
+3. **Create configs** within the project
 4. **Test the integration** in test environment first
 
 See [Environment Configuration](env-config.md) for saving SDK keys to your codebase.

@@ -1,6 +1,6 @@
 ---
 name: configs-create
-description: "Create and configure AI Configs in LaunchDarkly. Helps you choose between agent vs completion mode, create the config, add variations with models and prompts, and verify the setup."
+description: "Create and configure configs in LaunchDarkly. Helps you choose between agent vs completion mode, create the config, add variations with models and prompts, and verify the setup."
 license: Apache-2.0
 compatibility: Requires the remotely hosted LaunchDarkly MCP server
 metadata:
@@ -8,11 +8,11 @@ metadata:
   version: "1.0.0-experimental"
 ---
 
-# Create AI Config
+# Create Config
 
-You're using a skill that will guide you through creating an AI Config in LaunchDarkly. Your job is to understand the use case, choose the right mode, create the config and its variations, and verify everything is set up correctly.
+You're using a skill that will guide you through creating a config in LaunchDarkly. Your job is to understand the use case, choose the right mode, create the config and its variations, and verify everything is set up correctly.
 
-> **⚠️ This skill creates a config — it does not make it servable.** A freshly-created AI Config has its **fallthrough pointing at an auto-generated disabled variation**, not at the variation you just created. The SDK will return `ai_config.enabled=False` on every evaluation until you flip targeting on and point the fallthrough at your new variation. This is not a bug — it's the default state. **You must run `/configs-targeting` (or the equivalent REST / CLI call shown in Step 5) before verifying against the SDK**, or verification will look like the LD-served path is broken when it isn't. The single most common failure mode users hit with this skill is skipping the targeting step and spending time debugging `enabled=False` in their application code.
+> **⚠️ This skill creates a config — it does not make it servable.** A freshly-created config has its **fallthrough pointing at an auto-generated disabled variation**, not at the variation you just created. The SDK will return `ai_config.enabled=False` on every evaluation until you flip targeting on and point the fallthrough at your new variation. This is not a bug — it's the default state. **You must run `/configs-targeting` (or the equivalent REST / CLI call shown in Step 5) before verifying against the SDK**, or verification will look like the LD-served path is broken when it isn't. The single most common failure mode users hit with this skill is skipping the targeting step and spending time debugging `enabled=False` in their application code.
 
 ## Prerequisites
 
@@ -127,7 +127,7 @@ If you used `setup-ai-config`, verification is automatic: the response includes 
 3. Instructions or messages are present
 4. Parameters are set
 
-**Use `get-ai-config` for the verification call — do not drop to raw `curl` + `jq`.** The MCP tool returns a typed object you can inspect directly. Hand-rolled `jq` filters against the REST response routinely break: the AI Configs detail endpoint returns the variation list under different keys depending on `expand`, and a filter like `.variations.items[]` will fail with `Cannot index array with string "items"` when the response shape is a bare array. If you must call the REST API, use `jq -e .` first to inspect the actual shape before drilling in.
+**Use `get-ai-config` for the verification call — do not drop to raw `curl` + `jq`.** The MCP tool returns a typed object you can inspect directly. Hand-rolled `jq` filters against the REST response routinely break: the configs detail endpoint returns the variation list under different keys depending on `expand`, and a filter like `.variations.items[]` will fail with `Cannot index array with string "items"` when the response shape is a bare array. If you must call the REST API, use `jq -e .` first to inspect the actual shape before drilling in.
 
 **Report results:**
 - Config created with correct structure
@@ -154,7 +154,7 @@ Print this checklist verbatim to the user after Step 4, then wait for confirmati
 > - Fallthrough variation: `{variationKey}` (the one this skill just created)
 >
 > Verify after targeting is flipped by:
-> 1. Opening the AI Config in the LD UI, switching to the correct environment, and confirming "Default rule serves: `{variationName}`" is shown with targeting **On**.
+> 1. Opening the config in the LD UI, switching to the correct environment, and confirming "Default rule serves: `{variationName}`" is shown with targeting **On**.
 > 2. Running a quick test: `ai_config = ai_client.{completion|agent}_config(...)` and asserting `ai_config.enabled is True`.
 
 #### Direct shortcut if the user wants to flip targeting without invoking the sibling skill
@@ -184,7 +184,7 @@ ldcli resources ai-configs update-ai-config-targeting \
   --data '{"instructions":[{"kind":"updateFallthroughVariationOrRollout","variationId":"<id>"}]}'
 ```
 
-Do not use `turnTargetingOn` — that semantic-patch instruction does **not** work for AI Configs. `updateFallthroughVariationOrRollout` is the only instruction that actually flips the fallthrough.
+Do not use `turnTargetingOn` — that semantic-patch instruction does **not** work for configs. `updateFallthroughVariationOrRollout` is the only instruction that actually flips the fallthrough.
 
 ## modelConfigKey Format
 

@@ -1,22 +1,22 @@
 ---
 name: configs-targeting
-description: Configure AI Config targeting rules to control which variations serve to different users. Enable percentage rollouts, attribute-based rules, segment targeting, and guarded rollouts.
+description: Configure config targeting rules to control which variations serve to different users. Enable percentage rollouts, attribute-based rules, segment targeting, and guarded rollouts.
 compatibility: Requires LaunchDarkly API access token with ai-configs:write permission.
 metadata:
   author: launchdarkly
   version: "0.1.0"
 ---
 
-# AI Config Targeting
+# Config Targeting
 
-Configure targeting rules for AI Configs to control which variations serve to different contexts. Works the same for both completion and agent mode.
+Configure targeting rules for configs to control which variations serve to different contexts. Works the same for both completion and agent mode.
 
 ## Prerequisites
 
-- LaunchDarkly account with AI Configs enabled
+- LaunchDarkly account with AgentControl enabled
 - API access token with write permissions
 - Project key and environment key
-- Existing AI Config with variations (use `configs-create` skill)
+- Existing config with variations (use `configs-create` skill)
 
 ## API Key Detection
 
@@ -38,7 +38,7 @@ Targeting rules evaluate in this order (same as feature flags):
 
 ### Semantic Patch API
 
-AI Config targeting uses semantic patch instructions:
+config targeting uses semantic patch instructions:
 
 ```
 PATCH /api/v2/projects/{projectKey}/ai-configs/{configKey}/targeting
@@ -68,7 +68,7 @@ Response includes `variations` array with `_id` (UUID) for each variation.
 
 Edit the default rule to serve the variation you created.
 
-> **Important:** The `turnTargetingOn` instruction does not work for AI Configs. Use `updateFallthroughVariationOrRollout` instead.
+> **Important:** The `turnTargetingOn` instruction does not work for configs. Use `updateFallthroughVariationOrRollout` instead.
 
 ```bash
 # First, get variation IDs from Step 1 response
@@ -159,7 +159,7 @@ import os
 from typing import Dict, List, Optional
 
 class AIConfigTargeting:
-    """Manager for AI Config targeting rules"""
+    """Manager for config targeting rules"""
 
     def __init__(self, api_token: str, project_key: str):
         self.api_token = api_token
@@ -212,9 +212,9 @@ class AIConfigTargeting:
     def enable_config(self, config_key: str, environment: str,
                       variation_key: str = "default") -> bool:
         """
-        Enable an AI Config by setting fallthrough to an enabled variation.
+        Enable a config by setting fallthrough to an enabled variation.
 
-        Note: turnTargetingOn doesn't work for AI Configs. Instead, set the
+        Note: turnTargetingOn doesn't work for configs. Instead, set the
         fallthrough from the disabled variation (index 0) to an enabled one.
         """
         variation_id = self.get_variation_id(config_key, variation_key)
@@ -323,7 +323,7 @@ class AIConfigTargeting:
 
 ## Instruction Reference
 
-> **Note:** `turnTargetingOn` and `turnTargetingOff` do not work for AI Configs. AI Configs have targeting enabled by default. To "enable" a config, set the fallthrough to an enabled variation using `updateFallthroughVariationOrRollout`.
+> **Note:** `turnTargetingOn` and `turnTargetingOff` do not work for configs. configs have targeting enabled by default. To "enable" a config, set the fallthrough to an enabled variation using `updateFallthroughVariationOrRollout`.
 
 ### Rules
 | Kind | Description |
@@ -494,14 +494,14 @@ After configuring targeting:
 
 ## Related Skills
 
-- `configs-create` - Create AI Configs with variations
+- `configs-create` - Create configs with variations
 - `configs-variations` - Manage variations
 - `online-evals` - Attach judges
 - `segments` - Create segments for targeting
 
 ## References
 
-- [Target with AI Configs](https://docs.launchdarkly.com/home/ai-configs/target)
+- [Target with AgentControl](https://docs.launchdarkly.com/home/ai-configs/target)
 - [Targeting Rules](https://docs.launchdarkly.com/home/flags/target-rules)
 - [JSON Targeting](https://docs.launchdarkly.com/home/flags/json-targeting)
 - [Guarded Rollouts](https://docs.launchdarkly.com/home/releases/guarded-rollouts)

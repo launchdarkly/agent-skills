@@ -52,7 +52,7 @@ def map_to_gemini_messages(ld_messages):
     return (" ".join(system_parts) or None), contents
 
 def gemini_config_kwargs(params):
-    """Map AI Config parameter names to google-genai's GenerateContentConfig.
+    """Map config parameter names to google-genai's GenerateContentConfig.
     LaunchDarkly stores max_tokens (snake_case, matching the LD UI); Gemini's
     Python SDK expects max_output_tokens. Drop `tools` — they go on
     GenerateContentConfig.tools directly; leaving them here would double-pass."""
@@ -123,7 +123,7 @@ function mapToGeminiMessages(
   };
 }
 
-// Map AI Config parameter names to @google/genai's GenerateContentConfig keys.
+// Map config parameter names to @google/genai's GenerateContentConfig keys.
 // LaunchDarkly stores max_tokens (snake_case, matching the LD UI); @google/genai
 // expects maxOutputTokens. Drop `tools` — they go on GenerateContentConfig.tools
 // directly; leaving them here would double-pass.

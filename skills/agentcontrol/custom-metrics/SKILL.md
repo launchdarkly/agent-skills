@@ -1,6 +1,6 @@
 ---
 name: custom-metrics
-description: "Create, track, retrieve, update, and delete custom business metrics for AI Configs. Covers full lifecycle: define metric kinds via API, emit events via SDK, and query results."
+description: "Create, track, retrieve, update, and delete custom business metrics for configs. Covers full lifecycle: define metric kinds via API, emit events via SDK, and query results."
 license: Apache-2.0
 compatibility: Requires the LaunchDarkly server SDK and a LaunchDarkly API token with the `writer` role for metric management.
 metadata:
@@ -8,7 +8,7 @@ metadata:
   version: "1.0.0-experimental"
 ---
 
-# Custom Metrics for AI Configs
+# Custom Metrics for Configs
 
 Full lifecycle management of custom business metrics: create metric definitions via API, track events via SDK, retrieve metric data, and manage metrics programmatically.
 
@@ -487,7 +487,7 @@ class SessionMetricsTracker:
 
 Custom metrics appear in:
 - **Metrics** page in LaunchDarkly UI
-- **Monitoring tab** of your AI Config
+- **Monitoring tab** of your config
 - Via API using `get_metric()` or `list_metrics()`
 
 ## Related Skills

@@ -11,22 +11,22 @@
       "lastRun": "2026-05-20T19:16:00.930Z",
       "perTest": [
         {
-          "description": "Create an AI Config for my customer support bot. It uses LangGraph and needs per",
+          "description": "Create a config for my customer support bot. It uses LangGraph and needs per",
           "pass": true,
           "score": 1
         },
         {
-          "description": "I need an AI Config for our blog summarizer. We call the OpenAI API directly wit",
+          "description": "I need a config for our blog summarizer. We call the OpenAI API directly wit",
           "pass": true,
           "score": 1
         },
         {
-          "description": "Create a new AI Config for our analytics agent. Project key is \"data-platform\".\n",
+          "description": "Create a new config for our analytics agent. Project key is \"data-platform\".\n",
           "pass": true,
           "score": 1
         },
         {
-          "description": "Create an AI Config called \"email-assistant\" for composing emails. Project is \"c",
+          "description": "Create a config called \"email-assistant\" for composing emails. Project is \"c",
           "pass": true,
           "score": 0.8333333333333334
         }
@@ -46,12 +46,12 @@
           "score": 0.95
         },
         {
-          "description": "We no longer need the content-writer AI Config. Please remove it from active use",
+          "description": "We no longer need the content-writer config. Please remove it from active use",
           "pass": true,
           "score": 1
         },
         {
-          "description": "Update the support-chatbot AI Config in project \"support-app\": change the name t",
+          "description": "Update the support-chatbot config in project \"support-app\": change the name t",
           "pass": true,
           "score": 1
         },
@@ -76,7 +76,7 @@
       "lastRun": "2026-05-20T19:16:00.936Z",
       "perTest": [
         {
-          "description": "I need to give our support-chatbot AI Config the ability to search our knowledge",
+          "description": "I need to give our support-chatbot config the ability to search our knowledge",
           "pass": true,
           "score": 1
         },

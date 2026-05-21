@@ -15,7 +15,7 @@ One project, different services consume from different environments or contexts.
 **When to use:**
 - All services are part of the same application
 - Want centralized config management
-- Services share the same AI configs
+- Services share the same configs
 
 ```
 Project: "my-app"

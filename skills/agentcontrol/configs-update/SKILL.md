@@ -1,6 +1,6 @@
 ---
 name: configs-update
-description: "Update, archive, and delete LaunchDarkly AI Configs and their variations. Use when you need to modify config properties, change model parameters, update instructions or messages, archive unused configs, or permanently remove them."
+description: "Update, archive, and delete LaunchDarkly configs and their variations. Use when you need to modify config properties, change model parameters, update instructions or messages, archive unused configs, or permanently remove them."
 license: Apache-2.0
 compatibility: Requires the remotely hosted LaunchDarkly MCP server
 metadata:
@@ -8,9 +8,9 @@ metadata:
   version: "1.0.0-experimental"
 ---
 
-# AI Config Update & Lifecycle
+# Config Update & Lifecycle
 
-You're using a skill that will guide you through updating, archiving, and deleting AI Configs and their variations. Your job is to understand the current state of the config, make the changes, and verify the result.
+You're using a skill that will guide you through updating, archiving, and deleting configs and their variations. Your job is to understand the current state of the config, make the changes, and verify the result.
 
 ## Prerequisites
 

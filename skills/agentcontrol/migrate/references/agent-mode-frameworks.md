@@ -1,6 +1,6 @@
 # Agent-Mode Frameworks
 
-How to wire an AI Config in **agent mode** into the frameworks that take a goal/instructions string: LangGraph, CrewAI, Strands, and custom ReAct loops. Also covers the **dynamic tool loading** pattern from the devrel-agents-tutorial — how to extract tool names from `config.tools` at runtime and instantiate the actual tool implementations without hardcoding.
+How to wire a config in **agent mode** into the frameworks that take a goal/instructions string: LangGraph, CrewAI, Strands, and custom ReAct loops. Also covers the **dynamic tool loading** pattern from the devrel-agents-tutorial — how to extract tool names from `config.tools` at runtime and instantiate the actual tool implementations without hardcoding.
 
 ## When to pick agent mode
 
@@ -171,26 +171,26 @@ def build_crew_agent(ai_client, user_id: str):
         return None
 
     # CrewAI expects role/goal/backstory — split the instructions or store them
-    # in the AI Config as three variables and pipe them in at runtime.
+    # in the Config as three variables and pipe them in at runtime.
     return Agent(
         role="Research Analyst",
-        goal="Produce a summary of recent AI Config adoption patterns.",
+        goal="Produce a summary of recent config adoption patterns.",
         backstory=config.instructions,
         llm=config.model.name,  # CrewAI accepts a string or a LangChain model
     )
 ```
 
 **Pattern note:** CrewAI's `Agent` takes three separate fields. If you want to drive all three from LaunchDarkly, either:
-- Use prompt **variables** on the AI Config (`{{role}}`, `{{goal}}`, `{{backstory}}`) and pass them as the `variables` argument to `agent_config(...)`
+- Use prompt **variables** on the config (`{{role}}`, `{{goal}}`, `{{backstory}}`) and pass them as the `variables` argument to `agent_config(...)`
 - Or store a structured JSON blob in `instructions` and parse it in the app
 
-Prompt variables are cleaner and keep the AI Config human-readable in the UI.
+Prompt variables are cleaner and keep the config human-readable in the UI.
 
 ### Strands `Agent`
 
 Strands is a provider-agnostic, async-first agent SDK. The same `Agent` class runs against Anthropic, OpenAI, and Bedrock by swapping the `model` argument; tools are plain `@tool`-decorated Python functions passed through the constructor; and `SlidingWindowConversationManager` keeps short-term memory across `invoke_async` turns without external state. Agent-mode `instructions` maps directly to `Agent(system_prompt=...)`.
 
-Strands does not ship a first-party LaunchDarkly provider package. To serve multiple providers from a single AI Config key, dispatch on `agent_config.provider.name` and construct the matching Strands model class.
+Strands does not ship a first-party LaunchDarkly provider package. To serve multiple providers from a single config key, dispatch on `agent_config.provider.name` and construct the matching Strands model class.
 
 **Provider dispatcher.** Drop `parameters.tools` before passing params into the Strands model class — LaunchDarkly surfaces attached tools via a flat `parameters.tools` shape in the variation payload, but Strands receives tools via the `Agent` constructor. Passing `tools` through a second time via model `params` is an error.
 
@@ -294,7 +294,7 @@ async def run_turn(ai_client, user_id: str, user_input: str):
 - The tracker is Tier 3: `tracker.track_duration_of(...)` + an explicit `track_tokens` call fed by `track_strands_metrics`. See [strands-tracking.md](../../built-in-metrics/references/strands-tracking.md) for the single-call `track_metrics_of_async` variant and the per-field breakdown of `accumulated_usage`.
 - Always `ldclient.get().flush()` before process exit in short-lived scripts — trailing events can otherwise be lost.
 
-**TypeScript caveat.** The Strands TypeScript SDK ships `BedrockModel` and `OpenAIModel` only — it cannot run Anthropic-backed variations. If the app needs to serve both OpenAI and Anthropic from a single AI Config, use the Python SDK.
+**TypeScript caveat.** The Strands TypeScript SDK ships `BedrockModel` and `OpenAIModel` only — it cannot run Anthropic-backed variations. If the app needs to serve both OpenAI and Anthropic from a single config, use the Python SDK.
 
 ### Custom `StateGraph` (bind_tools + ToolNode)
 
@@ -337,7 +337,7 @@ builder.add_edge("tools", "call_model")
 graph = builder.compile()
 ```
 
-After — **run-scoped** architecture. The critical shape for the tracker factory is that **one user turn = one `runId` = one tracker**, not one LLM call = one tracker. A ReAct loop that calls `call_model` three times in a single turn must not mint three trackers, or billing and the Monitoring tab will treat the turn as three separate executions. The fix is to resolve the AI Config and mint the tracker once, in a dedicated entry node, and thread both through graph state for every subsequent node.
+After — **run-scoped** architecture. The critical shape for the tracker factory is that **one user turn = one `runId` = one tracker**, not one LLM call = one tracker. A ReAct loop that calls `call_model` three times in a single turn must not mint three trackers, or billing and the Monitoring tab will treat the turn as three separate executions. The fix is to resolve the config and mint the tracker once, in a dedicated entry node, and thread both through graph state for every subsequent node.
 
 Three nodes, in order:
 
@@ -363,7 +363,7 @@ def make_search(ai_config) -> Callable[..., Any]:
 
 # Registry of factories keyed by LD tool name. Each factory takes the
 # per-run ai_config and returns a ready-to-bind callable. This decouples
-# the AI Config (tool metadata) from the app (implementations) and
+# the Config (tool metadata) from the app (implementations) and
 # means tools never call get_agent_config() themselves.
 TOOL_FACTORIES: Dict[str, Callable[[Any], Callable[..., Any]]] = {
     "search": make_search,
@@ -401,7 +401,7 @@ class State(TypedDict, total=False):
 
 
 async def setup_run(state: State, config: RunnableConfig) -> Dict[str, Any]:
-    """Runs once per user turn. Resolves the AI Config, mints the tracker,
+    """Runs once per user turn. Resolves the config, mints the tracker,
     builds the model and tools, and stashes everything on state.
 
     Node signature takes `config: RunnableConfig` rather than
@@ -740,13 +740,13 @@ def run_turn(ai_client, user_id: str, user_input: str):
         raise
 ```
 
-The call site stays in your control; the AI Config just delivers `instructions`, `model.name`, `model.parameters`, and `tools`. Everything that's stable across the turn (model name, instructions, tool bindings, tracker) is hoisted out of the loop body — the loop itself only does message passing and tool dispatch.
+The call site stays in your control; the config just delivers `instructions`, `model.name`, `model.parameters`, and `tools`. Everything that's stable across the turn (model name, instructions, tool bindings, tracker) is hoisted out of the loop body — the loop itself only does message passing and tool dispatch.
 
 **Do not** call `track_duration` / `track_tokens` / `track_success` inside the `for` body. The at-most-once guards will warn and drop the second-and-later calls on the same tracker, so per-step tracker calls will silently lose data. Accumulate inside the loop, emit once after.
 
 ## Dynamic tool loading — the "tools factory" pattern
 
-The devrel-agents-tutorial uses a **dynamic tool factory** that reads tool names from `config.tools` and instantiates the actual tool implementations at runtime. This decouples the AI Config (which holds tool metadata) from the application (which holds the executable code).
+The devrel-agents-tutorial uses a **dynamic tool factory** that reads tool names from `config.tools` and instantiates the actual tool implementations at runtime. This decouples the config (which holds tool metadata) from the application (which holds the executable code).
 
 ### The pattern
 
@@ -754,7 +754,7 @@ The devrel-agents-tutorial uses a **dynamic tool factory** that reads tool names
 # tools_impl/dynamic_tool_factory.py — adapted from devrel-agents-tutorial
 
 def extract_tool_names(config) -> list[str]:
-    """Read the list of tool names from the AI Config."""
+    """Read the list of tool names from the config."""
     if not hasattr(config, "tools") or not config.tools:
         return []
     return [tool.name if hasattr(tool, "name") else tool.get("name") for tool in config.tools]
@@ -798,7 +798,7 @@ agent = create_agent(
 
 **What this gives you:**
 
-- Toggle a tool on/off by editing the AI Config in LaunchDarkly — no redeploy needed to remove a tool from production
+- Toggle a tool on/off by editing the config in LaunchDarkly — no redeploy needed to remove a tool from production
 - Roll out a new tool to 5% of users by editing targeting rules (combined with `configs-targeting`)
 - Keep the actual tool implementation code in the repo; only metadata lives in LaunchDarkly
 
@@ -817,13 +817,13 @@ Do not hand-write the schema — LangChain already generated it from the functio
 
 ### Dynamic schemas from LaunchDarkly
 
-The devrel tutorial also shows the reverse: reading a JSON schema **from** the AI Config and constructing a Pydantic model at runtime:
+The devrel tutorial also shows the reverse: reading a JSON schema **from** the config and constructing a Pydantic model at runtime:
 
 ```python
 from pydantic import BaseModel, Field, create_model
 
 def _create_dynamic_tool_input(tool_config: dict) -> type[BaseModel]:
-    """Build a Pydantic input schema from an AI Config tool's parameters."""
+    """Build a Pydantic input schema from a config tool's parameters."""
     properties = tool_config.get("properties", {})
     fields = {}
     for name, cfg in properties.items():
@@ -857,9 +857,9 @@ For the full graph pattern, read [agent-graph-reference.md](agent-graph-referenc
 
 ## Keep the provider call in the repo
 
-One rule that applies across all three frameworks: the **provider SDK call** (OpenAI, Anthropic, Bedrock) stays in your code. The AI Config only changes the inputs to that call — model name, instructions, parameters, tool list. It does not replace the provider SDK. That means:
+One rule that applies across all three frameworks: the **provider SDK call** (OpenAI, Anthropic, Bedrock) stays in your code. The config only changes the inputs to that call — model name, instructions, parameters, tool list. It does not replace the provider SDK. That means:
 
 - You keep full control of error handling, retries, timeouts, custom headers
 - You keep full control of streaming logic and backpressure
 - You keep full control of authentication (API keys, IAM roles, Bedrock Converse sessions)
-- The AI Config is additive — removing it gets you back to the original hardcoded app, provided the fallback mirrors the old values
+- The config is additive — removing it gets you back to the original hardcoded app, provided the fallback mirrors the old values

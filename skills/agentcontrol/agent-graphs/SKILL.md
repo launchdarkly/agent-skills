@@ -8,9 +8,9 @@ metadata:
   version: "0.1.0"
 ---
 
-# AI Config Agent Graphs
+# Config Agent Graphs
 
-You're using a skill that will guide you through creating and managing agent graphs in LaunchDarkly. Your job is to design the graph topology, create it with the right edges and handoffs, and verify the routing between AI Config nodes.
+You're using a skill that will guide you through creating and managing agent graphs in LaunchDarkly. Your job is to design the graph topology, create it with the right edges and handoffs, and verify the routing between config nodes.
 
 ## Prerequisites
 
@@ -24,15 +24,15 @@ This skill requires the remotely hosted LaunchDarkly MCP server to be configured
 **Optional MCP tools:**
 - `update-agent-graph` -- modify edges, root config, or description
 - `delete-agent-graph` -- permanently remove a graph
-- `get-ai-config` -- inspect individual AI Configs that serve as nodes
-- `create-ai-config` -- create new AI Configs to use as graph nodes
+- `get-ai-config` -- inspect individual configs that serve as nodes
+- `create-ai-config` -- create new configs to use as graph nodes
 
 ## Core Concepts
 
 ### What Are Agent Graphs?
 
 An agent graph is a directed graph where:
-- **Nodes** are AI Configs (each config is an agent with its own model, prompt, and tools)
+- **Nodes** are configs (each config is an agent with its own model, prompt, and tools)
 - **Edges** define routing between configs (source -> target)
 - **Handoff data** on edges controls how context is passed between agents
 - **Root config** is the entry point — the first agent that receives user input
@@ -55,8 +55,8 @@ An agent graph is a directed graph where:
 
 Each edge has:
 - `key` -- unique identifier for the edge
-- `sourceConfig` -- the AI Config key that routes FROM
-- `targetConfig` -- the AI Config key that routes TO
+- `sourceConfig` -- the config key that routes FROM
+- `targetConfig` -- the config key that routes TO
 - `handoff` (optional) -- data/instructions passed during the transition
 
 ## Core Principles
@@ -73,16 +73,16 @@ Each edge has:
 
 Before creating anything:
 
-1. Identify the agents (AI Configs) needed — each is a graph node
+1. Identify the agents (configs) needed — each is a graph node
 2. Map the routing: which agent hands off to which?
 3. Define handoff data: what context does each edge carry?
 4. Identify the root config: which agent receives initial input?
 5. Check existing graphs with `list-agent-graphs` to avoid duplicates
-6. Check existing AI Configs with `get-ai-config` to see what nodes already exist
+6. Check existing configs with `get-ai-config` to see what nodes already exist
 
 ### Step 2: Ensure Nodes Exist
 
-Each node in the graph must be an existing AI Config. If configs don't exist yet:
+Each node in the graph must be an existing config. If configs don't exist yet:
 1. Use `create-ai-config` to create each agent config
 2. Set up variations with appropriate models and prompts for each agent's role
 3. Verify each config exists with `get-ai-config`
@@ -90,11 +90,11 @@ Each node in the graph must be an existing AI Config. If configs don't exist yet
 ### Step 3: Create the Graph
 
 Use `create-agent-graph` with:
-- `projectKey` -- the project containing the AI Configs
+- `projectKey` -- the project containing the configs
 - `key` -- unique identifier for the graph
 - `name` -- human-readable display name
 - `description` (optional) -- explain the graph's purpose
-- `rootConfigKey` -- the entry-point AI Config key
+- `rootConfigKey` -- the entry-point config key
 - `edges` -- array of connections between configs
 
 ```json
@@ -144,7 +144,7 @@ Use `create-agent-graph` with:
 
 ## What NOT to Do
 
-- Don't create a graph before the AI Config nodes exist
+- Don't create a graph before the config nodes exist
 - Don't forget handoff data when agents need context from predecessors
 - Don't create overly complex graphs — start simple and add nodes as needed
 - Don't delete a graph without understanding if it's actively used in agent workflows

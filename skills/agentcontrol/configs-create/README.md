@@ -1,12 +1,12 @@
-# LaunchDarkly AI Config Create Skill
+# LaunchDarkly Config Create Skill
 
-An Agent Skill for creating AI Configs in LaunchDarkly. Guides choosing agent vs completion mode, creating the config and variations, and verifying the result.
+An Agent Skill for creating configs in LaunchDarkly. Guides choosing agent vs completion mode, creating the config and variations, and verifying the result.
 
 ## Overview
 
 This skill teaches agents how to:
 - Understand the use case and choose agent vs completion mode
-- Create AI Configs using MCP tools (`setup-ai-config` for one-step, or `create-ai-config` + `create-ai-config-variation` for more control)
+- Create configs using MCP tools (`setup-ai-config` for one-step, or `create-ai-config` + `create-ai-config-variation` for more control)
 - Set up model configuration with the correct `modelConfigKey` format
 - Verify creation via the tool response or `get-ai-config`
 
@@ -21,11 +21,11 @@ This skill requires the remotely hosted LaunchDarkly MCP server to be configured
 ## Usage
 
 ```
-Create an AI config for our customer support agent
+Create a config for our customer support agent
 ```
 
 ```
-Set up an AI config for content generation using Claude
+Set up a config for content generation using Claude
 ```
 
 ## Structure
@@ -38,10 +38,10 @@ configs-create/
 
 ## Related
 
-- [AI Config Projects](../projects/): Create projects first
-- [AI Config Tools](../tools/): Add tools after creating config
-- [AI Config Variations](../configs-variations/): Add more variations for experimentation
-- [LaunchDarkly AI Configs Docs](https://docs.launchdarkly.com/home/ai-configs)
+- [config Projects](../projects/): Create projects first
+- [config Tools](../tools/): Add tools after creating config
+- [config Variations](../configs-variations/): Add more variations for experimentation
+- [LaunchDarkly AgentControl Docs](https://docs.launchdarkly.com/home/ai-configs)
 
 ## License
 

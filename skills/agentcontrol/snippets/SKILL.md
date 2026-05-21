@@ -1,6 +1,6 @@
 ---
 name: snippets
-description: "Create and manage prompt snippets — reusable text blocks referenced inside AI Config variation prompts. Keeps common instructions, personas, and guardrails consistent across multiple configs."
+description: "Create and manage prompt snippets — reusable text blocks referenced inside config variation prompts. Keeps common instructions, personas, and guardrails consistent across multiple configs."
 license: Apache-2.0
 compatibility: Requires the remotely hosted LaunchDarkly MCP server
 metadata:
@@ -8,9 +8,9 @@ metadata:
   version: "0.1.0"
 ---
 
-# AI Config Prompt Snippets
+# Config Prompt Snippets
 
-You're using a skill that will guide you through creating and managing prompt snippets in LaunchDarkly. Your job is to identify reusable text, create snippets, reference them in AI Config variations, and verify everything is wired correctly.
+You're using a skill that will guide you through creating and managing prompt snippets in LaunchDarkly. Your job is to identify reusable text, create snippets, reference them in config variations, and verify everything is wired correctly.
 
 ## Prerequisites
 
@@ -30,9 +30,9 @@ This skill requires the remotely hosted LaunchDarkly MCP server to be configured
 
 ### What Are Prompt Snippets?
 
-Prompt snippets are named, versioned text blocks stored at the project level. They contain reusable pieces of prompt text — personas, guardrails, output format instructions, domain knowledge — that can be shared across multiple AI Config variations.
+Prompt snippets are named, versioned text blocks stored at the project level. They contain reusable pieces of prompt text — personas, guardrails, output format instructions, domain knowledge — that can be shared across multiple config variations.
 
-When a snippet is updated, a new version is created. AI Config variations that reference the snippet can pick up the latest version, keeping all your configs in sync.
+When a snippet is updated, a new version is created. config variations that reference the snippet can pick up the latest version, keeping all your configs in sync.
 
 ### When to Use Snippets
 
@@ -64,7 +64,7 @@ When a snippet is updated, a new version is created. AI Config variations that r
 
 Before creating snippets, understand what's shared:
 
-1. List existing AI Configs in the project using `get-ai-config` for each
+1. List existing configs in the project using `get-ai-config` for each
 2. Look for repeated text across variation prompts
 3. Identify text that should stay consistent (guardrails, personas, formats)
 4. Check existing snippets with `list-prompt-snippets` to avoid duplicates
@@ -112,7 +112,7 @@ Use `update-prompt-snippet` to modify an existing snippet. Only pass the fields 
 }
 ```
 
-Each update creates a new version. Existing AI Config variations referencing the snippet can pick up the new version.
+Each update creates a new version. Existing config variations referencing the snippet can pick up the new version.
 
 ## Edge Cases
 

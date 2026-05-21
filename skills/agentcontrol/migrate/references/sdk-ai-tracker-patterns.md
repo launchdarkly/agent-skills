@@ -1,6 +1,6 @@
 # SDK AI Tracker Patterns
 
-The main novel content of this skill — a per-method reference for the LaunchDarkly AI Config tracker in Python and Node side by side. **No existing skill covers this.** The `launchdarkly-metric-instrument` skill is for `ldClient.track()` feature metrics, which is a different API.
+The main novel content of this skill — a per-method reference for the LaunchDarkly config tracker in Python and Node side by side. **No existing skill covers this.** The `launchdarkly-metric-instrument` skill is for `ldClient.track()` feature metrics, which is a different API.
 
 All method names and signatures below describe the current public surface of `launchdarkly-server-sdk-ai` (Python) and `@launchdarkly/server-sdk-ai` (Node). If a method is not listed, it does not exist — do not invent it. For per-release breaking changes and renames, consult the SDK CHANGELOGs:
 
@@ -211,7 +211,7 @@ The full programmatic direct-judge pattern (Python):
 from ldai.client import AIJudgeConfigDefault
 
 judge = ai_client.create_judge(
-    judge_key,                               # judge AI Config key in LD
+    judge_key,                               # judge config key in LD
     ld_context,
     AIJudgeConfigDefault(enabled=False),     # fallback: skip eval on SDK miss
 )
@@ -438,10 +438,10 @@ The same resumption token carries the `runId`, so feedback lands on the same run
 Run the checklist in order. Each step rules out one cause.
 
 1. **SDK key** — is `LD_SDK_KEY` the server-side key (starts with `sdk-`), not the client-side key or the API key?
-2. **Enabled check** — is `ai_config.enabled` / `aiConfig.enabled` `True`? A disabled config will not record traffic. Check the AI Config's targeting in LaunchDarkly and confirm the context matches a rule that serves an enabled variation.
+2. **Enabled check** — is `ai_config.enabled` / `aiConfig.enabled` `True`? A disabled config will not record traffic. Check the config's targeting in LaunchDarkly and confirm the context matches a rule that serves an enabled variation.
 3. **Any tracker call at all** — did `track_success` / `trackSuccess` fire? Without at least one generation-level call, the Monitoring tab has nothing to show. Log a one-liner next to the call to confirm it runs.
-4. **Config key match** — is the string passed to `completion_config` / `completionConfig` exactly the same as the AI Config key in LaunchDarkly? Keys are case-sensitive.
-5. **Mode match** — if the code calls `completion_config` but the AI Config in LaunchDarkly is in agent mode (or vice versa), the SDK call will error out. Check the mode in the UI.
+4. **Config key match** — is the string passed to `completion_config` / `completionConfig` exactly the same as the config key in LaunchDarkly? Keys are case-sensitive.
+5. **Mode match** — if the code calls `completion_config` but the config in LaunchDarkly is in agent mode (or vice versa), the SDK call will error out. Check the mode in the UI.
 6. **Flush on shutdown** — on short-lived processes (tests, scripts), call `ld_client.flush()` before exit. Long-running servers flush automatically on an interval.
 7. **Data delay** — the Monitoring tab updates within 1–2 minutes. If you just deployed, wait and retry before debugging further.
 8. **SDK version** — confirm the installed `launchdarkly-server-sdk-ai` (Python) / `@launchdarkly/server-sdk-ai` (Node) version supports the API the code is calling. Methods like `create_tracker` / `createTracker`, `runId`-grouped metrics, `track_judge_result`, and `trackToolCall` / `trackToolCalls` (Node) were added in recent releases — see the SDK CHANGELOGs linked at the top of this file for the version they landed in.

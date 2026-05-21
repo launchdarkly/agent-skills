@@ -34,7 +34,7 @@ Grep the source tree for provider SDK imports so you know which one the app actu
 
 ### 3. Hardcoded model configs
 
-Look for the three things that need to move into the AI Config:
+Look for the three things that need to move into the config:
 
 1. **Model name** — grep for string literals:
    - `"gpt-4o"`, `"gpt-4o-mini"`, `"gpt-4-turbo"`, `"o1"`, `"o1-mini"`
@@ -51,7 +51,7 @@ For each hit, record the file path, line number, and current value.
 
 ### 4. External prompt files & registries
 
-Prompts often live outside `.py` / `.ts` source. **Open every plausible config file and read it before declaring the audit complete** — code-only grep will miss prompts loaded from YAML, prompt-template registries, or framework-specific manifests, and the resulting AI Config will not cover the real prompt surface area.
+Prompts often live outside `.py` / `.ts` source. **Open every plausible config file and read it before declaring the audit complete** — code-only grep will miss prompts loaded from YAML, prompt-template registries, or framework-specific manifests, and the resulting config will not cover the real prompt surface area.
 
 **File-extension scan targets** (run from repo root):
 
@@ -72,14 +72,14 @@ Prompts often live outside `.py` / `.ts` source. **Open every plausible config f
 | Framework | Where prompts live |
 |-----------|---------------------|
 | **CrewAI** | `agents.yaml` and `tasks.yaml` carry `role` / `goal` / `backstory` / `description` / `expected_output` per agent or task |
-| **LangChain** | `.prompt` files (Promptfile format); any `langchain.hub.pull("name/key")` call — pulled prompts are remote and must either be inlined into the AI Config or replaced with a `messages` array sourced from the hub at audit time |
+| **LangChain** | `.prompt` files (Promptfile format); any `langchain.hub.pull("name/key")` call — pulled prompts are remote and must either be inlined into the config or replaced with a `messages` array sourced from the hub at audit time |
 | **LangSmith** | `client.pull_prompt(...)` calls referencing a remote prompt repo |
 | **Pydantic / Settings** | classes with `prompt_*` fields backed by env vars or YAML overlays (Hydra / OmegaConf / Dynaconf) |
 | **Helm / k8s ConfigMap** | prompts stored as values overrides — search `values*.yaml` and `templates/*configmap*.yaml` |
 
 **For each hit, record**: file path, line range, the key holding the prompt, the loader call site that reads it, and any template placeholder syntax (Mustache vs Jinja vs Python `.format()`). The placeholder rewrite in Stage 2 sub-step 5 needs to know the source syntax to convert it to Mustache.
 
-If a fallback file is already in use (see [fallback-defaults-pattern.md](fallback-defaults-pattern.md) — JSON/YAML loaded at startup), distinguish it from prompts that flow into the provider call. The fallback path is intentional infrastructure; only the latter migrates into the AI Config.
+If a fallback file is already in use (see [fallback-defaults-pattern.md](fallback-defaults-pattern.md) — JSON/YAML loaded at startup), distinguish it from prompts that flow into the provider call. The fallback path is intentional infrastructure; only the latter migrates into the config.
 
 ### 5. Template placeholders in prompts
 
@@ -103,7 +103,7 @@ Configuration that governs *tool* or *app* behavior rather than *model* behavior
 - Environment variables read inside tool implementations
 - Constants declared in `tools.py` or a config module that a tool reads at call time
 
-If a value changes agent behavior between variations — it belongs in the AI Config. Stage 2 sub-step 5 (fallback) puts these in `ModelConfig(custom={...})`, **not** `parameters` (which is forwarded to the provider SDK and will crash on unknown kwargs). Tools read them via `ai_config.model.get_custom("key")`.
+If a value changes agent behavior between variations — it belongs in the config. Stage 2 sub-step 5 (fallback) puts these in `ModelConfig(custom={...})`, **not** `parameters` (which is forwarded to the provider SDK and will crash on unknown kwargs). Tools read them via `ai_config.model.get_custom("key")`.
 
 ### 7. Existing LaunchDarkly SDK usage
 
@@ -151,7 +151,7 @@ Feeds into Stage 2 (install + wrap). Quoted from the `ai-configs-relaunch-guides
 | LangChain / LangGraph | `@launchdarkly/server-sdk-ai-langchain` | `createLangChainModel(config)` (forwards all variation parameters and handles provider-name mapping) + `getAIMetricsFromResponse` with `trackMetricsOf` |
 | Vercel AI SDK | `@launchdarkly/server-sdk-ai-vercel` | `getAIMetricsFromResponse` + `trackMetricsOf`, or `VercelRunnerFactory.createVercelModel(aiConfig)` for a managed runner |
 
-Python currently ships helper packages for OpenAI (`ldai_openai`) and LangChain (`ldai_langchain`). The LangChain Python package exposes `create_langchain_model(config)` (builds a LangChain chat model from the AI Config, forwarding every variation parameter and mapping LD provider names to LangChain equivalents), `convert_messages_to_langchain`, and `get_ai_metrics_from_response` — the same package covers LangGraph. Use `create_langchain_model(config)` + `track_metrics_of_async(get_ai_metrics_from_response, lambda: llm.ainvoke(messages))` as the canonical single-call pattern. See [langchain-tracking.md](../../built-in-metrics/references/langchain-tracking.md) for both LangChain and LangGraph patterns and [sdk-ai-tracker-patterns.md](sdk-ai-tracker-patterns.md) for the full tracker-method matrix.
+Python currently ships helper packages for OpenAI (`ldai_openai`) and LangChain (`ldai_langchain`). The LangChain Python package exposes `create_langchain_model(config)` (builds a LangChain chat model from the config, forwarding every variation parameter and mapping LD provider names to LangChain equivalents), `convert_messages_to_langchain`, and `get_ai_metrics_from_response` — the same package covers LangGraph. Use `create_langchain_model(config)` + `track_metrics_of_async(get_ai_metrics_from_response, lambda: llm.ainvoke(messages))` as the canonical single-call pattern. See [langchain-tracking.md](../../built-in-metrics/references/langchain-tracking.md) for both LangChain and LangGraph patterns and [sdk-ai-tracker-patterns.md](sdk-ai-tracker-patterns.md) for the full tracker-method matrix.
 
 ## Phase 1 output format
 
@@ -182,7 +182,7 @@ Coverage totals:             N hardcoded code targets · M externalized prompt f
 
 Proposed plan:
   Stage 1 (Audit):    Read-only manifest of hardcoded targets; flag placeholders for Mustache rewrite and knobs for model.custom
-  Stage 2 (Wrap):     Install SDK, create AI Config 'chat-assistant', inline fallback mirrors current values (Mustache syntax), rewrite the call site
+  Stage 2 (Wrap):     Install SDK, create config 'chat-assistant', inline fallback mirrors current values (Mustache syntax), rewrite the call site
   Stage 3 (Tools):    Skipped (no function calling) / Attach 2 tools via tools
   Stage 4 (Tracking): Inline tracker wiring (track_duration + track_tokens + track_success/error) — run-scoped tracker for agent loops
   Stage 5 (Evals):    Attach built-in 'accuracy' judge at 0.25 sampling via online-evals

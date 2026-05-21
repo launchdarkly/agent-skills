@@ -1,6 +1,6 @@
-# LaunchDarkly AI Config Variations Skill
+# LaunchDarkly Config Variations Skill
 
-An Agent Skill for creating and managing AI Config variations to experiment with different models, prompts, and parameters.
+An Agent Skill for creating and managing config variations to experiment with different models, prompts, and parameters.
 
 ## Overview
 
@@ -37,10 +37,10 @@ configs-variations/
 
 ## Related
 
-- [AI Config Create](../configs-create/): Create the config first
-- [AI Config Update](../configs-update/): Modify existing variations
-- [AI Config Tools](../tools/): Attach tools to variations
-- [LaunchDarkly AI Configs Docs](https://docs.launchdarkly.com/home/ai-configs)
+- [config Create](../configs-create/): Create the config first
+- [config Update](../configs-update/): Modify existing variations
+- [config Tools](../tools/): Attach tools to variations
+- [LaunchDarkly AgentControl Docs](https://docs.launchdarkly.com/home/ai-configs)
 
 ## License
 

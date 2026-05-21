@@ -284,7 +284,7 @@
     "key": "{{configKey}}",
     "name": "{{configName}}",
     "mode": "agent",
-    "description": "AI Config",
+    "description": "config",
     "tags": [],
     "archived": false,
     "variations": [

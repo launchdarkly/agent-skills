@@ -79,7 +79,7 @@ Pick the style that matches the rest of the codebase — the two variants record
 
 ## Provider dispatch stays in your code
 
-Strands model classes are provider-specific (`AnthropicModel`, `OpenAIModel`, `BedrockModel`). To serve more than one provider from a single AI Config key, dispatch on `agent_config.provider.name` before constructing the `Agent`. See [agent-mode-frameworks.md § Strands Agent](../../migrate/references/agent-mode-frameworks.md) for the `create_strands_model` dispatcher, including the rule that `parameters.tools` must be dropped before being passed into the Strands model class (tools flow through the `Agent` constructor, not through model params).
+Strands model classes are provider-specific (`AnthropicModel`, `OpenAIModel`, `BedrockModel`). To serve more than one provider from a single config key, dispatch on `agent_config.provider.name` before constructing the `Agent`. See [agent-mode-frameworks.md § Strands Agent](../../migrate/references/agent-mode-frameworks.md) for the `create_strands_model` dispatcher, including the rule that `parameters.tools` must be dropped before being passed into the Strands model class (tools flow through the `Agent` constructor, not through model params).
 
 ## Always flush before exit
 

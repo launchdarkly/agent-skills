@@ -4,7 +4,7 @@
 #   promptfoo eval -c shared/defaults.yaml -c aiconfig-tools/promptfooconfig.yaml
 #
 # The aiconfig-tools skill covers creating AI tool definitions and attaching
-# them to AI Config variations. Key invariant: tools must be created with
+# them to config variations. Key invariant: tools must be created with
 # raw JSON Schema format (not OpenAI function-calling wrapper), and must be
 # created before being attached.
 description: "End-to-end evaluation of the aiconfig-tools skill"
@@ -25,7 +25,7 @@ tests:
   - description: "Creates a tool with correct raw JSON Schema and attaches it to a variation"
     vars:
       user_request: >
-        I need to give our support-chatbot AI Config the ability to search our
+        I need to give our support-chatbot config the ability to search our
         knowledge base. Create a tool called "search-knowledge-base" with a
         query parameter and a limit parameter, then attach it to the "default"
         variation. Project key is "support-app".

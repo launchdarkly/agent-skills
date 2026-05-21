@@ -1,6 +1,6 @@
 ---
 name: tools
-description: "Give your AI agents capabilities through tools (function calling). Helps you identify what your AI needs to do, create tool definitions, and attach them to AI Config variations."
+description: "Give your AI agents capabilities through tools (function calling). Helps you identify what your AI needs to do, create tool definitions, and attach them to config variations."
 license: Apache-2.0
 compatibility: Requires the remotely hosted LaunchDarkly MCP server
 metadata:
@@ -8,7 +8,7 @@ metadata:
   version: "1.0.0-experimental"
 ---
 
-# AI Config Tools
+# Config Tools
 
 You're using a skill that will guide you through adding capabilities to your AI agents through tools (function calling). Your job is to identify what your AI needs to do, create tool definitions, attach them to variations, and verify they work.
 
@@ -18,7 +18,7 @@ This skill requires the remotely hosted LaunchDarkly MCP server to be configured
 
 **Required MCP tools:**
 - `create-ai-tool` -- create a new tool definition with a schema
-- `update-ai-config-variation` -- attach tools to an AI Config variation
+- `update-ai-config-variation` -- attach tools to a config variation
 - `get-ai-config` -- verify tools are attached to the variation
 
 **Optional MCP tools:**

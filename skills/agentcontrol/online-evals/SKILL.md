@@ -1,21 +1,21 @@
 ---
 name: online-evals
-description: Attach judges to AI Config variations for automatic LLM-as-a-judge evaluation. Create custom judges, configure sampling rates, and monitor quality scores.
+description: Attach judges to config variations for automatic LLM-as-a-judge evaluation. Create custom judges, configure sampling rates, and monitor quality scores.
 compatibility: Requires LaunchDarkly API access token with ai-configs:write permission. SDK versions Python v0.20.0+ or Node.js v0.20.0+ for automatic metric recording and the consolidated `track_judge_result` / `trackJudgeResult` API.
 metadata:
   author: launchdarkly
   version: "0.1.0"
 ---
 
-# AI Config Online Evaluations
+# Config Online Evaluations
 
-Attach judges to AI Config variations for automatic quality scoring using LLM-as-a-judge methodology. Judges evaluate responses and return scores between 0.0 and 1.0.
+Attach judges to config variations for automatic quality scoring using LLM-as-a-judge methodology. Judges evaluate responses and return scores between 0.0 and 1.0.
 
 ## Prerequisites
 
-- LaunchDarkly account with AI Configs enabled
+- LaunchDarkly account with AgentControl enabled
 - API access token with write permissions
-- Existing AI Config with variations (use `configs-create` skill)
+- Existing config with variations (use `configs-create` skill)
 - For automatic metric recording and the consolidated judge-result API: Python AI SDK v0.20.0+ or Node.js AI SDK v0.20.0+
 
 ## API Key Detection
@@ -28,7 +28,7 @@ Attach judges to AI Config variations for automatic quality scoring using LLM-as
 
 ### What Are Judges?
 
-Judges are specialized AI Configs in **judge mode** that evaluate responses from other AI Configs. They use an LLM to score outputs and return structured results:
+Judges are specialized configs in **judge mode** that evaluate responses from other configs. They use an LLM to score outputs and return structured results:
 
 ```json
 {
@@ -49,7 +49,7 @@ LaunchDarkly provides three pre-configured judges:
 
 ### Completion Mode Only
 
-Judges can only be attached to **completion mode** AI Configs in the UI. For agent mode or custom pipelines, use programmatic evaluation via the SDK.
+Judges can only be attached to **completion mode** configs in the UI. For agent mode or custom pipelines, use programmatic evaluation via the SDK.
 
 ### Restrictions
 
@@ -61,7 +61,7 @@ Judges can only be attached to **completion mode** AI Configs in the UI. For age
 
 ### Step 1: Create Custom Judges (Optional)
 
-For domain-specific evaluation, create judge AI Configs:
+For domain-specific evaluation, create judge configs:
 
 ```bash
 # Create judge config
@@ -128,9 +128,9 @@ curl -X PATCH "https://app.launchdarkly.com/api/v2/projects/{projectKey}/ai-conf
 
 ### Step 3: Set Fallthrough on Judges
 
-Each judge AI Config needs its fallthrough set to the enabled variation. AI Configs default to the "disabled" variation (index 0).
+Each judge config needs its fallthrough set to the enabled variation. configs default to the "disabled" variation (index 0).
 
-> **Note:** `turnTargetingOn` does not work for AI Configs. Use `updateFallthroughVariationOrRollout` instead.
+> **Note:** `turnTargetingOn` does not work for configs. Use `updateFallthroughVariationOrRollout` instead.
 
 ```bash
 # First get the variation ID for "Default" from GET targeting response
@@ -155,7 +155,7 @@ import os
 from typing import Optional
 
 class AIConfigJudges:
-    """Manager for AI Config judge attachments"""
+    """Manager for config judge attachments"""
 
     def __init__(self, api_token: str, project_key: str):
         self.api_token = api_token
@@ -173,7 +173,7 @@ class AIConfigJudges:
         Attach judges to a variation.
 
         Args:
-            config_key: AI Config key
+            config_key: config key
             variation_key: Variation key
             judges: List of {"judgeConfigKey": str, "samplingRate": float}
         """
@@ -193,7 +193,7 @@ class AIConfigJudges:
                      system_prompt: str, model: str = "OpenAI.gpt-4o-mini",
                      is_inverted: bool = False) -> dict:
         """
-        Create a judge AI Config.
+        Create a judge config.
 
         Args:
             key: Judge config key
@@ -237,7 +237,7 @@ class AIConfigJudges:
         """
         Set fallthrough to enable a judge config.
 
-        Note: turnTargetingOn doesn't work for AI Configs. Instead, set the
+        Note: turnTargetingOn doesn't work for configs. Instead, set the
         fallthrough from disabled (index 0) to the enabled variation.
         """
         # Get variation ID
@@ -307,7 +307,7 @@ async def async_main():
 
     default_value = AICompletionConfigDefault(enabled=False)
 
-    # create_model() initializes with judges from AI Config
+    # create_model() initializes with judges from Config
     model = await aiclient.create_model(ai_config_key, context, default_value, {})
 
     if not model:
@@ -382,7 +382,7 @@ async def async_main():
         print("Judge evaluation was skipped (sample rate or configuration issue)")
         return
 
-    # Track the consolidated result on the AI Config tracker if needed:
+    # Track the consolidated result on the Config tracker if needed:
     # tracker = ai_config.create_tracker()
     # tracker.track_judge_result(judge_result)
 
@@ -395,7 +395,7 @@ async def async_main():
     ldclient.get().close()
 ```
 
-> **Note:** Direct evaluation does not automatically record metrics. Obtain a tracker via `ai_config.create_tracker()` / `aiConfig.createTracker()` and call `tracker.track_judge_result(result)` / `tracker.trackJudgeResult(result)` to record scores for the AI Config you're evaluating.
+> **Note:** Direct evaluation does not automatically record metrics. Obtain a tracker via `ai_config.create_tracker()` / `aiConfig.createTracker()` and call `tracker.track_judge_result(result)` / `tracker.trackJudgeResult(result)` to record scores for the config you're evaluating.
 
 ## Sampling Rates
 
@@ -405,7 +405,7 @@ You can adjust sampling rates at any time from the Judges section of a variation
 
 ## Viewing Results
 
-1. Navigate to **AI Configs** > select your config
+1. Navigate to **configs** > select your config
 2. Click **Monitoring** tab
 3. Select **Evaluator metrics** from dropdown
 4. View scores by variation and time range
@@ -437,7 +437,7 @@ After attaching judges:
 
 ## Related Skills
 
-- `configs-create` - Create AI Configs and judges
+- `configs-create` - Create configs and judges
 - `configs-targeting` - Configure targeting rules
 - `configs-variations` - Manage variations
 
