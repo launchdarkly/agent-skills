@@ -43,7 +43,8 @@ export ANTHROPIC_API_KEY=sk-ant-...
 npm run eval:all
 ```
 
-Run from the repository root. To run a single suite, use `npm run eval:<suite-name>` (e.g., `eval:aiconfig-create`). View results with `npm run eval:view`.
+Run from the repository root. To run a single suite, `cd evals` and use `npm run eval:<suite-name>` (e.g., `eval:aiconfig-create`). View results with `npm run eval:view`.
+
 
 ## Documentation
 
