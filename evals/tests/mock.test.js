@@ -259,6 +259,91 @@ test("get-ai-config-health falls back to template for unknown key", () => {
 });
 
 // ---------------------------------------------------------------------------
+// clone-ai-config-variation
+// ---------------------------------------------------------------------------
+
+test("clone-ai-config-variation appends cloned variation to state", () => {
+  const state = createMockState();
+  renderMockResponse(TEMPLATES["setup-ai-config"], {
+    key: "my-bot", name: "My Bot", mode: "agent",
+    variationKey: "default", variationName: "Default",
+    modelConfigKey: "OpenAI.gpt-4o", modelName: "gpt-4o",
+    instructions: "Original instructions.",
+  }, "setup-ai-config", state);
+
+  const result = renderMockResponse(TEMPLATES["clone-ai-config-variation"], {
+    configKey: "my-bot",
+    sourceVariationKey: "default",
+    key: "cost-test",
+    name: "Cost Test",
+    modelConfigKey: "OpenAI.gpt-4o-mini",
+    modelName: "gpt-4o-mini",
+  }, "clone-ai-config-variation", state);
+
+  assert.equal(result.created.key, "cost-test");
+  assert.equal(result.created.modelConfigKey, "OpenAI.gpt-4o-mini");
+  assert.equal(result.source.key, "default");
+  assert.equal(state.configs["my-bot"].variations.length, 2);
+  assert.equal(state.configs["my-bot"].variations[1].key, "cost-test");
+});
+
+test("clone-ai-config-variation reflects in subsequent get-ai-config", () => {
+  const state = createMockState();
+  renderMockResponse(TEMPLATES["setup-ai-config"], {
+    key: "bot", name: "Bot", mode: "agent",
+    variationKey: "default", variationName: "Default",
+    modelConfigKey: "OpenAI.gpt-4o", modelName: "gpt-4o",
+    instructions: "Help.",
+  }, "setup-ai-config", state);
+
+  renderMockResponse(TEMPLATES["clone-ai-config-variation"], {
+    configKey: "bot",
+    sourceVariationKey: "default",
+    key: "new-var",
+    name: "New Variation",
+  }, "clone-ai-config-variation", state);
+
+  const cfg = renderMockResponse(TEMPLATES["get-ai-config"], {
+    configKey: "bot",
+  }, "get-ai-config", state);
+
+  assert.equal(cfg.variations.length, 2);
+  assert.ok(cfg.variations.find((v) => v.key === "new-var"), "cloned variation should appear in get-ai-config");
+});
+
+test("clone-ai-config-variation works with SEED_CONFIGS source", () => {
+  const state = createMockState();
+  const result = renderMockResponse(TEMPLATES["clone-ai-config-variation"], {
+    configKey: "support-chatbot",
+    sourceVariationKey: "default",
+    key: "experimental",
+    name: "Experimental",
+  }, "clone-ai-config-variation", state);
+
+  assert.equal(result.created.key, "experimental");
+  assert.equal(result.source.key, "default");
+  assert.ok(state.configs["support-chatbot"], "seed config should be loaded into state");
+  assert.equal(state.configs["support-chatbot"].variations.length, 2);
+});
+
+test("clone-ai-config-variation falls back to template when source variation not found", () => {
+  const state = createMockState();
+  renderMockResponse(TEMPLATES["create-ai-config"], {
+    key: "my-config", name: "My Config", mode: "agent",
+  }, "create-ai-config", state);
+
+  // source variation doesn't exist — should fall back to template render, not throw
+  assert.doesNotThrow(() =>
+    renderMockResponse(TEMPLATES["clone-ai-config-variation"], {
+      configKey: "my-config",
+      sourceVariationKey: "nonexistent",
+      key: "new-var",
+      name: "New",
+    }, "clone-ai-config-variation", state)
+  );
+});
+
+// ---------------------------------------------------------------------------
 // create-flag / get-flag (flag state)
 // ---------------------------------------------------------------------------
 

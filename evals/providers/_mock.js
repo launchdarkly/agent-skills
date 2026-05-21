@@ -303,6 +303,36 @@ function renderMockResponse(template, input, toolName, state) {
     return walk(template, replacements);
   }
 
+  if (toolName === "clone-ai-config-variation") {
+    const configKey = input.configKey;
+    if (!state.configs[configKey] && SEED_CONFIGS[configKey]) {
+      state.configs[configKey] = JSON.parse(JSON.stringify(SEED_CONFIGS[configKey]));
+    }
+    const cfg = state.configs[configKey];
+    if (cfg) {
+      const sourceVariation = (cfg.variations || []).find(
+        (v) => v.key === input.sourceVariationKey,
+      );
+      if (sourceVariation) {
+        const newVariation = {
+          ...sourceVariation,
+          key: input.key,
+          name: input.name !== undefined ? input.name : sourceVariation.name,
+          ...(input.modelConfigKey !== undefined ? { modelConfigKey: input.modelConfigKey } : {}),
+          ...(input.modelName !== undefined ? { modelName: input.modelName } : {}),
+          ...(input.instructions !== undefined ? { instructions: input.instructions } : {}),
+          ...(input.messages !== undefined ? { messages: input.messages } : {}),
+          ...(input.parameters !== undefined ? { parameters: input.parameters } : {}),
+          ...(input.tools !== undefined ? { tools: input.tools } : {}),
+          status: "active",
+        };
+        cfg.variations = [...(cfg.variations || []), newVariation];
+        return { configKey, source: sourceVariation, created: newVariation };
+      }
+    }
+    return walk(template, replacements);
+  }
+
   if (toolName === "create-flag" || toolName === "create-feature-flag") {
     const flag = walk(template, replacements);
     state.flags[input.key || input.flagKey] = flag;
