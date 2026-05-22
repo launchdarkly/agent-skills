@@ -1,4 +1,4 @@
-# LaunchDarkly AI Config Projects Skill
+# LaunchDarkly Config Projects Skill
 
 An Agent Skill for setting up LaunchDarkly project management in a codebase. Guides exploration of the stack, assessment of the right approach, and integration that fits the architecture.
 
@@ -30,7 +30,7 @@ Examples:
 Once installed, the skill activates automatically when you ask about project setup:
 
 ```
-Set up a LaunchDarkly project for our AI configs
+Set up a LaunchDarkly project for our configs
 ```
 
 ```
@@ -61,7 +61,7 @@ projects/
 
 ## Related
 
-- [LaunchDarkly AI Configs](https://docs.launchdarkly.com/home/ai-configs): Create AI Configs after setting up projects
+- [LaunchDarkly AgentControl](https://docs.launchdarkly.com/home/ai-configs): Create configs after setting up projects
 - [LaunchDarkly Docs](https://docs.launchdarkly.com)
 - [Agent Skills Specification](https://agentskills.io/specification)
 

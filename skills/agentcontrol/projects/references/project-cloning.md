@@ -117,9 +117,9 @@ clone_for_regions("customer-ai", ["us", "eu", "apac"])
 ```
 
 **Result:**
-- `customer-ai-us` - Customer AI - US
-- `customer-ai-eu` - Customer AI - EU
-- `customer-ai-apac` - Customer AI - APAC
+- `customer-ai-us` - Customer Agent - US
+- `customer-ai-eu` - Customer Agent - EU
+- `customer-ai-apac` - Customer Agent - APAC
 
 ## Multi-Tenant Cloning
 
@@ -174,9 +174,9 @@ cloneForTenants('saas-ai', tenants);
 ```
 
 **Result:**
-- `saas-ai-acme` - SaaS AI - Acme Corp
-- `saas-ai-globex` - SaaS AI - Globex Inc
-- `saas-ai-initech` - SaaS AI - Initech
+- `saas-ai-acme` - SaaS Agent - Acme Corp
+- `saas-ai-globex` - SaaS Agent - Globex Inc
+- `saas-ai-initech` - SaaS Agent - Initech
 
 ## Team-Based Cloning
 
@@ -200,7 +200,7 @@ def clone_for_teams(template_project: str, teams: List[str]):
     
     for team in teams:
         new_key = f"{team}-ai"
-        new_name = f"{team.title()} Team AI"
+        new_name = f"{team.title()} Team Agent"
         
         print(f"Creating {new_key} for {team} team...")
         project = clone_project(
@@ -240,8 +240,8 @@ def clone_from_csv(source_key: str, csv_file: str):
     
     CSV format:
         project_key,project_name,tags
-        mobile-ai-us,Mobile AI US,"mobile,us,production"
-        mobile-ai-eu,Mobile AI EU,"mobile,eu,production"
+        mobile-ai-us,Mobile Agent US,"mobile,us,production"
+        mobile-ai-eu,Mobile Agent EU,"mobile,eu,production"
     """
     pm = ProjectManager()
     created_projects = []
@@ -267,10 +267,10 @@ clone_from_csv("ai-template", "projects.csv")
 **projects.csv:**
 ```csv
 project_key,project_name,tags
-mobile-ai-us,Mobile AI US,"mobile,us,production"
-mobile-ai-eu,Mobile AI EU,"mobile,eu,production"
-web-ai-us,Web AI US,"web,us,production"
-web-ai-eu,Web AI EU,"web,eu,production"
+mobile-ai-us,Mobile Agent US,"mobile,us,production"
+mobile-ai-eu,Mobile Agent EU,"mobile,eu,production"
+web-ai-us,Web Agent US,"web,us,production"
+web-ai-eu,Web Agent EU,"web,eu,production"
 ```
 
 ## Automated SDK Key Management
@@ -340,9 +340,9 @@ def clone_projects_parallel(clones: List[Dict[str, str]], max_workers: int = 5):
 
 # Usage
 clones = [
-    {"source_key": "template", "new_key": "team-a-ai", "new_name": "Team A AI"},
-    {"source_key": "template", "new_key": "team-b-ai", "new_name": "Team B AI"},
-    {"source_key": "template", "new_key": "team-c-ai", "new_name": "Team C AI"},
+    {"source_key": "template", "new_key": "team-a-ai", "new_name": "Team A Agent"},
+    {"source_key": "template", "new_key": "team-b-ai", "new_name": "Team B Agent"},
+    {"source_key": "template", "new_key": "team-c-ai", "new_name": "Team C Agent"},
 ]
 
 clone_projects_parallel(clones)

@@ -1,11 +1,11 @@
-# LaunchDarkly AI Config Targeting Skill
+# LaunchDarkly Config Targeting Skill
 
-An Agent Skill for configuring AI Config targeting rules via the LaunchDarkly API.
+An Agent Skill for configuring config targeting rules via the LaunchDarkly API.
 
 ## Overview
 
 This skill teaches agents how to:
-- Turn targeting on/off for AI Configs
+- Turn targeting on/off for configs
 - Add attribute-based targeting rules
 - Configure percentage rollouts for A/B testing
 - Set fallthrough (default) variations
@@ -18,7 +18,7 @@ Copy `skills/agentcontrol/configs-targeting/` into your agent client's skills pa
 ## Prerequisites
 
 - LaunchDarkly API access token with `ai-configs:write` permission
-- Existing AI Config with variations (use `configs-create` skill)
+- Existing config with variations (use `configs-create` skill)
 - Understanding of contexts (see `context-basic` skill)
 
 ## Usage
@@ -41,9 +41,9 @@ configs-targeting/
 
 ## Related
 
-- [AI Config Create](../configs-create/) - Create AI Configs first
-- [AI Config Variations](../configs-variations/) - Create variations to target
-- [AI Config Online Evals](../online-evals/) - Attach judges
+- [config Create](../configs-create/) - Create configs first
+- [config Variations](../configs-variations/) - Create variations to target
+- [config Online Evals](../online-evals/) - Attach judges
 - [Targeting Docs](https://docs.launchdarkly.com/home/ai-configs/target)
 
 ## License

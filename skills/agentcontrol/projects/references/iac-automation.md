@@ -36,13 +36,13 @@ variable "launchdarkly_access_token" {
 
 resource "launchdarkly_project" "customer_ai" {
   key  = "customer-ai"
-  name = "Customer AI Service"
+  name = "Customer Agent Service"
   tags = ["ai-configs", "production", "terraform"]
 }
 
 resource "launchdarkly_project" "platform_ai" {
   key  = "platform-ai"
-  name = "Platform AI Service"
+  name = "Platform Agent Service"
   tags = ["ai-configs", "production", "terraform"]
 }
 
@@ -283,10 +283,10 @@ Manage projects with Ansible:
   vars:
     launchdarkly_api_token: "{{ lookup('env', 'LAUNCHDARKLY_API_TOKEN') }}"
     projects:
-      - name: "Customer AI Service"
+      - name: "Customer Agent Service"
         key: "customer-ai"
         tags: ["ai-configs", "production"]
-      - name: "Platform AI Service"
+      - name: "Platform Agent Service"
         key: "platform-ai"
         tags: ["ai-configs", "production"]
   
@@ -345,14 +345,14 @@ import pulumi_launchdarkly as launchdarkly
 customer_ai = launchdarkly.Project(
     "customer-ai",
     key="customer-ai",
-    name="Customer AI Service",
+    name="Customer Agent Service",
     tags=["ai-configs", "production", "pulumi"]
 )
 
 platform_ai = launchdarkly.Project(
     "platform-ai",
     key="platform-ai",
-    name="Platform AI Service",
+    name="Platform Agent Service",
     tags=["ai-configs", "production", "pulumi"]
 )
 
@@ -371,13 +371,13 @@ import * as launchdarkly from "@pulumi/launchdarkly";
 // Create projects
 const customerAi = new launchdarkly.Project("customer-ai", {
     key: "customer-ai",
-    name: "Customer AI Service",
+    name: "Customer Agent Service",
     tags: ["ai-configs", "production", "pulumi"],
 });
 
 const platformAi = new launchdarkly.Project("platform-ai", {
     key: "platform-ai",
-    name: "Platform AI Service",
+    name: "Platform Agent Service",
     tags: ["ai-configs", "production", "pulumi"],
 });
 
@@ -435,7 +435,7 @@ metadata:
   name: customer-ai
 spec:
   key: customer-ai
-  name: Customer AI Service
+  name: Customer Agent Service
   tags:
     - ai-configs
     - production
@@ -513,7 +513,7 @@ setup-env:
 
 **Usage:**
 ```bash
-make create-project NAME="My AI" KEY=my-ai TAGS=ai-configs,production
+make create-project NAME="My Agent" KEY=my-ai TAGS=ai-configs,production
 make list-projects
 make get-key PROJECT=my-ai ENV=production
 make setup-env PROJECT=my-ai

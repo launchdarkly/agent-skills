@@ -1,6 +1,6 @@
-# LaunchDarkly AI Config Update Skill
+# LaunchDarkly Config Update Skill
 
-An Agent Skill for updating, archiving, and deleting AI Configs and their variations.
+An Agent Skill for updating, archiving, and deleting configs and their variations.
 
 ## Overview
 
@@ -43,9 +43,9 @@ configs-update/
 
 ## Related
 
-- [AI Config Create](../configs-create/): Create configs
-- [AI Config Variations](../configs-variations/): Add or test variations
-- [LaunchDarkly AI Configs Docs](https://docs.launchdarkly.com/home/ai-configs)
+- [config Create](../configs-create/): Create configs
+- [config Variations](../configs-variations/): Add or test variations
+- [LaunchDarkly AgentControl Docs](https://docs.launchdarkly.com/home/ai-configs)
 
 ## License
 

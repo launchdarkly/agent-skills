@@ -1,6 +1,6 @@
 ---
 name: custom-metrics
-description: "Create, track, retrieve, update, and delete custom business metrics for AI Configs. Covers full lifecycle: define metric kinds via API, emit events via SDK, and query results."
+description: "Create, track, retrieve, update, and delete custom business metrics for configs. Covers full lifecycle: define metric kinds via API, emit events via SDK, and query results."
 license: Apache-2.0
 compatibility: Requires the LaunchDarkly server SDK and a LaunchDarkly API token with the `writer` role for metric management.
 metadata:
@@ -8,7 +8,7 @@ metadata:
   version: "1.0.0-experimental"
 ---
 
-# Custom Metrics for AI Configs
+# Custom Metrics for Configs
 
 Full lifecycle management of custom business metrics: create metric definitions via API, track events via SDK, retrieve metric data, and manage metrics programmatically.
 
@@ -16,7 +16,7 @@ Full lifecycle management of custom business metrics: create metric definitions 
 
 - LaunchDarkly SDK initialized (see `sdk`)
 - LaunchDarkly API token with `writer` role for metric management
-- Understanding of built-in AI metrics (see `built-in-metrics`)
+- Understanding of built-in agent metrics (see `built-in-metrics`)
 
 ## API Key Detection
 
@@ -126,7 +126,7 @@ def create_metric(
 ```
 
 **Metric Kinds:**
-- `custom` - Track any event (most common for AI metrics)
+- `custom` - Track any event (most common for agent metrics)
 - `pageview` - Track page views
 - `click` - Track click events
 
@@ -210,7 +210,7 @@ def track_satisfaction(ld_client, user_id: str, score: float, feedback_type: str
         )
 
 def track_revenue(ld_client, user_id: str, revenue: float, source: str):
-    """Track revenue generated after AI interaction."""
+    """Track revenue generated after agent interaction."""
     context = Context.builder(user_id).set("tier", "premium").build()
 
     if revenue > 0:
@@ -370,10 +370,10 @@ ld_client = ldclient.get()
 create_metric(
     PROJECT_KEY,
     "ai.task.completion",
-    name="AI Task Completion Rate",
+    name="Agent Task Completion Rate",
     kind="custom",
     is_numeric=True,
-    description="Tracks successful AI task completions"
+    description="Tracks successful agent task completions"
 )
 
 # 2. Track events
@@ -387,7 +387,7 @@ ld_client.flush()
 metric = get_metric(PROJECT_KEY, "ai.task.completion")
 
 # 4. Update metric name
-rename_metric(PROJECT_KEY, "ai.task.completion", "AI Task Success Rate")
+rename_metric(PROJECT_KEY, "ai.task.completion", "Agent Task Success Rate")
 
 # 5. List all metrics
 list_metrics(PROJECT_KEY)
@@ -487,13 +487,13 @@ class SessionMetricsTracker:
 
 Custom metrics appear in:
 - **Metrics** page in LaunchDarkly UI
-- **Monitoring tab** of your AI Config
+- **Monitoring tab** of your config
 - Via API using `get_metric()` or `list_metrics()`
 
 ## Related Skills
 
 - `sdk` - SDK setup
-- `built-in-metrics` - Built-in AI metrics (tokens, duration, cost)
+- `built-in-metrics` - Built-in agent metrics (tokens, duration, cost)
 - `online-evals` - Quality metrics via judges
 
 ## References

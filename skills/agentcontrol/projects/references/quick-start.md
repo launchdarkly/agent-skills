@@ -22,7 +22,7 @@ Content-Type: application/json
 **Minimal Payload:**
 ```json
 {
-  "name": "My AI Project",
+  "name": "My Agent Project",
   "key": "my-ai-project"
 }
 ```
@@ -30,7 +30,7 @@ Content-Type: application/json
 **Recommended Payload:**
 ```json
 {
-  "name": "Customer Support AI",
+  "name": "Customer Support Agent",
   "key": "support-ai",
   "tags": ["ai-configs", "production"]
 }
@@ -41,7 +41,7 @@ Content-Type: application/json
 ### Success (201 Created)
 ```json
 {
-  "name": "Customer Support AI",
+  "name": "Customer Support Agent",
   "key": "support-ai",
   "environments": {
     "items": [
@@ -140,7 +140,7 @@ Before creating a new project, you may want to check what exists.
 {
   "items": [
     {
-      "name": "Customer Support AI",
+      "name": "Customer Support Agent",
       "key": "support-ai",
       "tags": ["ai-configs"]
     }
@@ -164,7 +164,7 @@ After creating your project:
 
 1. **Save SDK keys** to your environment configuration
 2. **Initialize LaunchDarkly SDK** in your application  
-3. **Create AI Configs** within the project
+3. **Create configs** within the project
 4. **Test the integration** in test environment first
 
 See [Environment Configuration](env-config.md) for saving SDK keys to your codebase.

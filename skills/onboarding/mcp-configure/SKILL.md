@@ -107,7 +107,7 @@ First, tell the user how to create a token if they don't already have one:
 Then ask how they want to add the token to the MCP config:
 
 **D4-LOCAL -- BLOCKING:** Call your structured question tool now.
-- question: "The local MCP server needs an API access token to authenticate with LaunchDarkly. You can create one at app.launchdarkly.com/settings/authorization/tokens/new. Once you have the token, how would you like to add it to your MCP config? We recommend adding it yourself — there is a non-zero risk when an AI agent handles secrets, as tokens may persist in conversation history, logs, or model context."
+- question: "The local MCP server needs an API access token to authenticate with LaunchDarkly. You can create one at app.launchdarkly.com/settings/authorization/tokens/new. Once you have the token, how would you like to add it to your MCP config? We recommend adding it yourself — there is a non-zero risk when an agent handles secrets, as tokens may persist in conversation history, logs, or model context."
 - options:
   - "I'll add the token to the config myself — just tell me which file and variable"
   - "I have the token ready — go ahead and help me wire up the config"

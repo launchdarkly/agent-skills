@@ -1,13 +1,13 @@
-# LaunchDarkly AI Config Tools Skill
+# LaunchDarkly Config Tools Skill
 
-An Agent Skill for creating tools (function calling) and attaching them to AI Config variations. Guides identifying capabilities, creating tool schemas, and verifying attachment.
+An Agent Skill for creating tools (function calling) and attaching them to config variations. Guides identifying capabilities, creating tool schemas, and verifying attachment.
 
 ## Overview
 
 This skill teaches agents how to:
-- Identify what capabilities the AI needs
+- Identify what capabilities the agent needs
 - Create tool definitions using the `create-ai-tool` MCP tool
-- Attach tools to AI Config variations via `update-ai-config-variation`
+- Attach tools to config variations via `update-ai-config-variation`
 - Verify tools are properly connected via `get-ai-config`
 
 ## Installation (Local)
@@ -38,9 +38,9 @@ tools/
 
 ## Related
 
-- [AI Config Create](../configs-create/): Create the config before adding tools
-- [AI Config Variations](../configs-variations/): Manage variations that tools attach to
-- [LaunchDarkly AI Configs Docs](https://docs.launchdarkly.com/home/ai-configs)
+- [config Create](../configs-create/): Create the config before adding tools
+- [config Variations](../configs-variations/): Manage variations that tools attach to
+- [LaunchDarkly AgentControl Docs](https://docs.launchdarkly.com/home/ai-configs)
 
 ## License
 

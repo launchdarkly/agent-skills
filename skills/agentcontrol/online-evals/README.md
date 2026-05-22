@@ -1,12 +1,12 @@
-# LaunchDarkly AI Config Online Evaluations Skill
+# LaunchDarkly Config Online Evaluations Skill
 
-An Agent Skill for attaching judges to AI Config variations for automatic LLM-as-a-judge evaluation.
+An Agent Skill for attaching judges to config variations for automatic LLM-as-a-judge evaluation.
 
 ## Overview
 
 This skill teaches agents how to:
-- Create custom judge AI Configs with evaluation criteria
-- Attach judges to AI Config variations via API
+- Create custom judge configs with evaluation criteria
+- Attach judges to config variations via API
 - Configure sampling rates for cost control
 - Monitor evaluation results in the dashboard
 
@@ -17,7 +17,7 @@ Copy `skills/agentcontrol/online-evals/` into your agent client's skills path.
 ## Prerequisites
 
 - LaunchDarkly API access token with `ai-configs:write` permission
-- Existing AI Config with variations (use `configs-create` skill)
+- Existing config with variations (use `configs-create` skill)
 - For custom judges: understanding of LLM-as-a-judge methodology
 
 ## Usage
@@ -40,9 +40,9 @@ online-evals/
 
 ## Related
 
-- [AI Config Create](../configs-create/) - Create AI Configs first
-- [AI Config Targeting](../configs-targeting/) - Enable targeting on judges
-- [AI Config Variations](../configs-variations/) - Manage variations
+- [config Create](../configs-create/) - Create configs first
+- [config Targeting](../configs-targeting/) - Enable targeting on judges
+- [config Variations](../configs-variations/) - Manage variations
 - [Online Evaluations Docs](https://docs.launchdarkly.com/home/ai-configs/online-evaluations)
 
 ## License

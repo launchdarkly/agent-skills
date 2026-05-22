@@ -247,7 +247,7 @@
         "key": "support-chatbot",
         "name": "Support Chatbot",
         "mode": "agent",
-        "description": "AI-powered support agent for customer tickets",
+        "description": "Agent-powered support agent for customer tickets",
         "tags": [
           "support",
           "production"
@@ -284,7 +284,7 @@
     "key": "{{configKey}}",
     "name": "{{configName}}",
     "mode": "agent",
-    "description": "AI Config",
+    "description": "config",
     "tags": [],
     "archived": false,
     "variations": [

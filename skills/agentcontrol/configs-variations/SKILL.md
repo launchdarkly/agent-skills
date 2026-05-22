@@ -1,6 +1,6 @@
 ---
 name: configs-variations
-description: "Experiment with AI configurations by creating and managing variations. Helps you test different models, prompts, and parameters to find what works best through systematic experimentation."
+description: "Experiment with configs by creating and managing variations. Helps you test different models, prompts, and parameters to find what works best through systematic experimentation."
 license: Apache-2.0
 compatibility: Requires the remotely hosted LaunchDarkly MCP server
 metadata:
@@ -8,9 +8,9 @@ metadata:
   version: "1.0.0-experimental"
 ---
 
-# AI Config Variations
+# Config Variations
 
-You're using a skill that will guide you through testing and optimizing AI configurations through variations. Your job is to design experiments, create variations, and systematically find what works best.
+You're using a skill that will guide you through testing and optimizing configs through variations. Your job is to design experiments, create variations, and systematically find what works best.
 
 ## Prerequisites
 

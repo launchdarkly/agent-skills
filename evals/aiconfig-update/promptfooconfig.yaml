@@ -76,7 +76,7 @@ tests:
   - description: "Archives a config instead of deleting when asked to remove it"
     vars:
       user_request: >
-        We no longer need the content-writer AI Config. Please remove it from
+        We no longer need the content-writer config. Please remove it from
         active use. Project key is "marketing".
       codebase_context: >
         The content-writer config has 3 variations. It's been inactive for two
@@ -114,7 +114,7 @@ tests:
   - description: "Updates config metadata — name, description, tags — without touching variations"
     vars:
       user_request: >
-        Update the support-chatbot AI Config in project "support-app":
+        Update the support-chatbot config in project "support-app":
         change the name to "Customer Support Agent", add a description
         "Handles tier-1 support inquiries", and add tags "support" and "production".
       codebase_context: >

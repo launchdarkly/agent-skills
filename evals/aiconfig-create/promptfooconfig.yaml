@@ -28,7 +28,7 @@ tests:
   - description: "Happy path: creates agent-mode config for a LangGraph chatbot using setup-ai-config"
     vars:
       user_request: >
-        Create an AI Config for my customer support bot. It uses LangGraph and
+        Create a config for my customer support bot. It uses LangGraph and
         needs persistent instructions. The project key is "acme-app".
         Use Claude Sonnet as the model.
       codebase_context: ""
@@ -82,7 +82,7 @@ tests:
 
       - type: llm-rubric
         value: |
-          Evaluate whether the agent correctly created an AI Config in agent mode.
+          Evaluate whether the agent correctly created a config in agent mode.
           Score 1.0 if all of the following are met:
           1. The agent chose agent mode (appropriate for LangGraph with persistent instructions).
           2. The agent created a config with a meaningful key and name derived from the use case.
@@ -100,7 +100,7 @@ tests:
   - description: "Completion mode: creates completion-mode config for direct OpenAI API use"
     vars:
       user_request: >
-        I need an AI Config for our blog summarizer. We call the OpenAI API
+        I need a config for our blog summarizer. We call the OpenAI API
         directly with a messages array (system + user). Project key is "blog-app",
         use gpt-4o.
       codebase_context: >
@@ -151,7 +151,7 @@ tests:
   - description: "Exploration: browses existing configs before creating when context is sparse"
     vars:
       user_request: >
-        Create a new AI Config for our analytics agent. Project key is "data-platform".
+        Create a new config for our analytics agent. Project key is "data-platform".
       codebase_context: ""
     assert:
       - type: javascript
@@ -184,7 +184,7 @@ tests:
   - description: "Post-creation: response mentions targeting step or aiconfig-targeting"
     vars:
       user_request: >
-        Create an AI Config called "email-assistant" for composing emails.
+        Create a config called "email-assistant" for composing emails.
         Project is "comms-app", use gpt-4o-mini in completion mode.
       codebase_context: ""
     assert:

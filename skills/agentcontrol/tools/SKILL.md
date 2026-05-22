@@ -1,6 +1,6 @@
 ---
 name: tools
-description: "Give your AI agents capabilities through tools (function calling). Helps you identify what your AI needs to do, create tool definitions, and attach them to AI Config variations."
+description: "Give your agents capabilities through tools (function calling). Helps you identify what your agent needs to do, create tool definitions, and attach them to config variations."
 license: Apache-2.0
 compatibility: Requires the remotely hosted LaunchDarkly MCP server
 metadata:
@@ -8,9 +8,9 @@ metadata:
   version: "1.0.0-experimental"
 ---
 
-# AI Config Tools
+# Config Tools
 
-You're using a skill that will guide you through adding capabilities to your AI agents through tools (function calling). Your job is to identify what your AI needs to do, create tool definitions, attach them to variations, and verify they work.
+You're using a skill that will guide you through adding capabilities to your agents through tools (function calling). Your job is to identify what your agent needs to do, create tool definitions, attach them to variations, and verify they work.
 
 ## Prerequisites
 
@@ -18,7 +18,7 @@ This skill requires the remotely hosted LaunchDarkly MCP server to be configured
 
 **Required MCP tools:**
 - `create-ai-tool` -- create a new tool definition with a schema
-- `update-ai-config-variation` -- attach tools to an AI Config variation
+- `update-ai-config-variation` -- attach tools to a config variation
 - `get-ai-config` -- verify tools are attached to the variation
 
 **Optional MCP tools:**
@@ -27,7 +27,7 @@ This skill requires the remotely hosted LaunchDarkly MCP server to be configured
 
 ## Core Principles
 
-1. **Start with Capabilities**: Think about what your AI needs to do before creating tools
+1. **Start with Capabilities**: Think about what your agent needs to do before creating tools
 2. **Framework Matters**: LangGraph/CrewAI often auto-generate schemas; OpenAI SDK needs manual schemas
 3. **Create Before Attach**: Tools must exist before you can attach them to variations
 4. **Verify**: The agent fetches the config to confirm attachment
@@ -37,7 +37,7 @@ This skill requires the remotely hosted LaunchDarkly MCP server to be configured
 
 ### Step 1: Identify Needed Capabilities
 
-What should the AI be able to do?
+What should the agent be able to do?
 - Query databases, call APIs, perform calculations, send notifications
 - Check what exists in the codebase (API clients, functions)
 - Consider framework: LangGraph/LangChain auto-generate schemas; direct SDK needs manual schemas

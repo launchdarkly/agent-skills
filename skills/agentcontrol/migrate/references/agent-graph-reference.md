@@ -6,7 +6,7 @@
 
 ## What an agent graph is
 
-An **agent graph** is a directed graph where each node is its own AI Config (with its own instructions, model, parameters, and tools) and each edge carries routing metadata for handoffs. A supervisor node routes incoming requests to worker nodes based on the supervisor's output; worker nodes may themselves route to other workers or terminate. The graph lives in LaunchDarkly — both its topology and each node's config are managed as versioned resources and can be changed at runtime without redeploying.
+An **agent graph** is a directed graph where each node is its own config (with its own instructions, model, parameters, and tools) and each edge carries routing metadata for handoffs. A supervisor node routes incoming requests to worker nodes based on the supervisor's output; worker nodes may themselves route to other workers or terminate. The graph lives in LaunchDarkly — both its topology and each node's config are managed as versioned resources and can be changed at runtime without redeploying.
 
 Why use it:
 
@@ -21,7 +21,7 @@ The current Python API (verified against `launchdarkly-server-sdk-ai` main branc
 
 ```python
 def agent_graph(self, key: str, context: Context) -> AgentGraphDefinition:
-    """Retrieve an AI agent graph by key."""
+    """Retrieve an agent graph by key."""
 
 async def create_agent_graph(
     self,
@@ -219,7 +219,7 @@ Do this in phases, not one big bang:
 1. **Pick one worker node to migrate first.** Use the single-agent skill workflow on that worker in isolation — extract, wrap, tools, tracking, evals. Leave the rest of the multi-agent app hardcoded.
 2. **Confirm the wrapped worker runs in production** for the traffic it serves today, with metrics flowing in the Monitoring tab.
 3. **Migrate the supervisor** the same way — single-agent workflow — but keep its routing logic hardcoded initially (a big if/elif over the other workers).
-4. **Create the AI Graph in LaunchDarkly** via the UI. Define nodes (one per worker + supervisor) and edges (with `handoff.route` metadata).
+4. **Create the agent graph in LaunchDarkly** via the UI. Define nodes (one per worker + supervisor) and edges (with `handoff.route` metadata).
 5. **Replace the hardcoded router** with the traversal pattern above. Call `ai_client.agent_graph(...)` instead of assembling the pipeline by hand.
 6. **Verify the Monitoring tab** shows the graph-level metrics (`track_path`, `track_duration`, `track_total_tokens`, handoff success/failure counts) in addition to the per-node metrics.
 7. **Only then** start moving routing decisions into LaunchDarkly edges and using targeting to change the graph topology per user segment.

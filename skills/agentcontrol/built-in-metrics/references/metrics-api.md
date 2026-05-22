@@ -1,6 +1,6 @@
 # Metrics API
 
-Retrieve AI Config metrics via the LaunchDarkly REST API.
+Retrieve config metrics via the LaunchDarkly REST API.
 
 ## Endpoint
 
@@ -26,7 +26,7 @@ import time
 import os
 
 def get_ai_config_metrics(project_key: str, config_key: str, env: str = "production", hours: int = 24):
-    """Get AI Config metrics for the last N hours."""
+    """Get config metrics for the last N hours."""
     API_TOKEN = os.environ.get("LAUNCHDARKLY_API_TOKEN")
 
     now = int(time.time())

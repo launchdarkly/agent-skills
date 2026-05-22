@@ -1,6 +1,6 @@
 # LaunchDarkly Agent Skills
 
-LaunchDarkly's public collection of AI agent skills and playbooks. These skills encode repeatable workflows for working with LaunchDarkly, so coding agents can execute common tasks safely and consistently.
+LaunchDarkly's public collection of agent skills and playbooks. These skills encode repeatable workflows for working with LaunchDarkly, so coding agents can execute common tasks safely and consistently.
 
 ## What Is This Repo?
 
@@ -18,19 +18,19 @@ Agent Skills are modular, text-based playbooks that teach an agent how to perfor
 | `feature-flags/launchdarkly-flag-cleanup` | Safely remove flags from code using LaunchDarkly as the source of truth |
 | `feature-flags/launchdarkly-guarded-rollout` | Configure guarded rollouts with progressive traffic, metric monitoring, and rollback |
 
-### AI Configs
+### AgentControl
 
 | Skill | Description |
 |-------|-------------|
-| `agentcontrol/configs-create` | Create AI Configs with variations for agent or completion mode |
-| `agentcontrol/migrate` | Migrate an app with hardcoded LLM prompts to AI Configs in five stages (extract, wrap, tools, tracking, evals) |
-| `agentcontrol/configs-update` | Update and delete AI Configs, manage lifecycle |
-| `agentcontrol/configs-variations` | Manage AI Config variations for A/B testing |
+| `agentcontrol/configs-create` | Create configs with variations for agent or completion mode |
+| `agentcontrol/migrate` | Migrate an app with hardcoded LLM prompts to AgentControl in five stages (extract, wrap, tools, tracking, evals) |
+| `agentcontrol/configs-update` | Update and delete configs, manage lifecycle |
+| `agentcontrol/configs-variations` | Manage config variations for A/B testing |
 | `agentcontrol/tools` | Create and attach tools for function calling |
-| `agentcontrol/projects` | Create and manage projects to organize AI Configs |
-| `agentcontrol/online-evals` | Attach LLM-as-a-judge evaluators to AI Configs |
-| `agentcontrol/configs-targeting` | Configure targeting rules for AI Config rollouts |
-| `agentcontrol/snippets` | Create and manage reusable prompt snippets across AI Configs |
+| `agentcontrol/projects` | Create and manage projects to organize configs |
+| `agentcontrol/online-evals` | Attach LLM-as-a-judge evaluators to configs |
+| `agentcontrol/configs-targeting` | Configure targeting rules for config rollouts |
+| `agentcontrol/snippets` | Create and manage reusable prompt snippets across configs |
 | `agentcontrol/agent-graphs` | Create and manage multi-agent graphs with routing and handoffs |
 
 ### Experiments

@@ -9,7 +9,7 @@ Three helpers do the heavy lifting. Use them — skipping any silently drops val
 
 | Helper | Purpose |
 |---|---|
-| `create_langchain_model(config)` (Python) / `createLangChainModel(config)` (Node, bare export) | Build a LangChain chat model from the AI Config. Forwards **all** variation parameters (temperature, max_tokens, top_p, and so on), picks the correct LangChain chat class based on `config.provider.name`, and handles provider-name mapping internally (for example, LaunchDarkly's `"gemini"` → LangChain's `"google_genai"`). |
+| `create_langchain_model(config)` (Python) / `createLangChainModel(config)` (Node, bare export) | Build a LangChain chat model from the config. Forwards **all** variation parameters (temperature, max_tokens, top_p, and so on), picks the correct LangChain chat class based on `config.provider.name`, and handles provider-name mapping internally (for example, LaunchDarkly's `"gemini"` → LangChain's `"google_genai"`). |
 | `build_structured_tools(config, registry)` (Python, `ldai_langchain.langchain_helper`) | Read `config.model.parameters.tools` and wrap the matching entries in your `{name: callable}` registry as LangChain `StructuredTool` instances ready for `bind_tools`. This is the first-class replacement for hand-rolled `resolve_tools` / `TOOL_REGISTRY` / `ALL_TOOLS` patterns — it handles async callables via `coroutine=` and uses the LD tool key as the `StructuredTool.name`, so `ToolNode` lookup works without extra mapping. |
 | `get_ai_metrics_from_response` (Python top-level import) / `getAIMetricsFromResponse` (Node, bare export) | Extract token usage from a LangChain response. Pass as the extractor argument to `track_metrics_of` / `trackMetricsOf`. |
 | `LangChainRunnerFactory` (Node) | Managed-runner factory: `new LangChainRunnerFactory().createModel(aiConfig)` wires the chat model into a `ManagedModel` that handles tracking end-to-end (Tier 1). |
@@ -65,7 +65,7 @@ Nothing in the tracker or provider packages reads `custom` — it's a pass-throu
 
 ## Tier 2 — LangChain (single model, not a graph)
 
-The common case: a one-shot LangChain call (ChatOpenAI, ChatAnthropic, ChatGoogleGenerativeAI, ChatBedrockConverse, etc.) against an AI Config in completion mode.
+The common case: a one-shot LangChain call (ChatOpenAI, ChatAnthropic, ChatGoogleGenerativeAI, ChatBedrockConverse, etc.) against a config in completion mode.
 
 **Python:**
 
@@ -250,7 +250,7 @@ for (const msg of result.messages ?? []) {
 
 `get_ai_metrics_from_response` / `getAIMetricsFromResponse` is defined on a single LangChain `AIMessage`. A LangGraph run produces N messages (model turn, tool result, model turn, tool result, final). If you pass the whole `result` to the extractor, you miss most of the token usage. Iterating and summing is deliberate — it's the same pattern the LaunchDarkly LangGraph guide uses.
 
-## Binding AI-Config-attached tools with `build_structured_tools`
+## Binding config-attached tools with `build_structured_tools`
 
 If the variation has tools attached (via `/tools`), use `build_structured_tools` rather than hand-rolling a `TOOL_REGISTRY` / `resolve_tools` / `ALL_TOOLS` shape. The helper reads `ai_config.model.parameters.tools`, picks the matching entries from your `{name: callable}` registry, wraps them as LangChain `StructuredTool` instances, and preserves the LD tool key as the `StructuredTool.name` (so `ToolNode(...)` lookup works without a second mapping).
 

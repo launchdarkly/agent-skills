@@ -1,16 +1,16 @@
 ---
 name: built-in-metrics
-description: "Instrument an existing codebase with LaunchDarkly AI Config tracking. Walks the four-tier ladder (managed runner → provider package → custom extractor + trackMetricsOf → raw manual) and picks the lowest-ceremony option that still captures duration, tokens, and success/error."
+description: "Instrument an existing codebase with LaunchDarkly config tracking. Walks the four-tier ladder (managed runner → provider package → custom extractor + trackMetricsOf → raw manual) and picks the lowest-ceremony option that still captures duration, tokens, and success/error."
 license: Apache-2.0
-compatibility: Requires the LaunchDarkly server-side AI SDK (`launchdarkly-server-sdk-ai>=0.20.0` for Python or `@launchdarkly/server-sdk-ai>=0.20.0` for Node) and an existing AI Config.
+compatibility: Requires the LaunchDarkly server-side AI SDK (`launchdarkly-server-sdk-ai>=0.20.0` for Python or `@launchdarkly/server-sdk-ai>=0.20.0` for Node) and an existing config.
 metadata:
   author: launchdarkly
   version: "1.0.0-experimental"
 ---
 
-# AI Metrics Instrumentation
+# Agent Metrics Instrumentation
 
-You're using a skill that wires LaunchDarkly AI metrics around an existing provider call. Your job is to audit what's already there, pick the right tier from the ladder below, and implement it with the **least ceremony that still captures the metrics the Monitoring tab needs** (duration, input/output tokens, success/error, plus TTFT when streaming).
+You're using a skill that wires LaunchDarkly agent metrics around an existing provider call. Your job is to audit what's already there, pick the right tier from the ladder below, and implement it with the **least ceremony that still captures the metrics the Monitoring tab needs** (duration, input/output tokens, success/error, plus TTFT when streaming).
 
 The single most important thing to get right: **default to the highest tier that fits the shape of the call**. Going lower ("just write the manual tracker calls") looks flexible but costs you drift, missed metrics, and legacy patterns the SDKs have moved past.
 
@@ -38,7 +38,7 @@ Before picking a tier, find the provider call and answer these questions:
 - [ ] **Provider?** OpenAI, Anthropic, Bedrock, Gemini, Azure, custom HTTP? → cross-reference with the package availability matrix below.
 - [ ] **Streaming?** If yes, you'll need TTFT tracking, which means Tier 4 for the TTFT part even if the rest is Tier 2.
 - [ ] **Language?** Python or Node? Provider-package coverage differs between them.
-- [ ] **Already using an AI Config?** If not, route to `configs-create` first — tracking requires a tracker, which is obtained by calling `create_tracker()` / `createTracker()` on the config object returned by `completion_config()` / `completionConfig()` / `createModel()`.
+- [ ] **Already using a config?** If not, route to `configs-create` first — tracking requires a tracker, which is obtained by calling `create_tracker()` / `createTracker()` on the config object returned by `completion_config()` / `completionConfig()` / `createModel()`.
 - [ ] **On the current SDK API?** If the call site uses `aiclient.config(...)` / `aiClient.config(...)` or constructs an `AIConfig(...)` / `LDAIConfig` default, it's on the pre-0.20 surface. Migrate it as part of this work before adding tracking:
    - `aiclient.config(...)` → `aiclient.completion_config(...)` for one-shot/chat or `aiclient.agent_config(...)` for agent mode (mirror the call signature). Node is the same with camelCase.
    - `AIConfig(...)` default → `AICompletionConfigDefault(...)` or `AIAgentConfigDefault(...)` (Node: `LDAICompletionConfigDefault` / `LDAIAgentConfigDefault`). `AIConfig` is the base class the SDK returns; it isn't a valid default-value constructor — the typed `*Default` variants are.
@@ -77,7 +77,7 @@ Guardrails that apply to every tier:
 Confirm the Monitoring tab fills in:
 
 - [ ] Run one real request through the instrumented path.
-- [ ] Open the AI Config in LaunchDarkly → **Monitoring** tab. Duration, token counts, and generation counts should appear within 1–2 minutes.
+- [ ] Open the config in LaunchDarkly → **Monitoring** tab. Duration, token counts, and generation counts should appear within 1–2 minutes.
 - [ ] Force an error (bad API key, zero `max_tokens`, whatever) and confirm the error count increments.
 - [ ] If streaming: verify TTFT appears. If it doesn't, you probably wrapped the stream creation with `trackMetricsOf` but didn't add the manual `trackTimeToFirstToken` call — see [streaming-tracking.md](references/streaming-tracking.md).
 
@@ -103,7 +103,7 @@ Obtain a tracker via the factory on the config object: `tracker = config.create_
 
 ## Related skills
 
-- `configs-create` — prerequisite if the app doesn't have an AI Config yet
-- `custom-metrics` — business metrics (conversion, resolution, retention) layered on top of the AI metrics this skill captures
+- `configs-create` — prerequisite if the app doesn't have a config yet
+- `custom-metrics` — business metrics (conversion, resolution, retention) layered on top of the agent metrics this skill captures
 - `online-evals` — automatic quality scoring (LLM-as-judge) on sampled live requests; complementary to the metrics here
-- `migrate` — Stage 4 of the hardcoded-to-AI-Configs migration delegates to this skill
+- `migrate` — Stage 4 of the hardcoded-to-AgentControl migration delegates to this skill
