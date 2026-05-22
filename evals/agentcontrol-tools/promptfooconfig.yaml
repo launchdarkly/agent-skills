@@ -1,13 +1,13 @@
 # yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
 #
 # Run with shared defaults:
-#   promptfoo eval -c shared/defaults.yaml -c aiconfig-tools/promptfooconfig.yaml
+#   promptfoo eval -c shared/defaults.yaml -c agentcontrol-tools/promptfooconfig.yaml
 #
-# The aiconfig-tools skill covers creating agent tool definitions and attaching
+# The agentcontrol-tools skill covers creating agent tool definitions and attaching
 # them to config variations. Key invariant: tools must be created with
 # raw JSON Schema format (not OpenAI function-calling wrapper), and must be
 # created before being attached.
-description: "End-to-end evaluation of the aiconfig-tools skill"
+description: "End-to-end evaluation of the agentcontrol-tools skill"
 
 prompts:
   - file://../../skills/agentcontrol/tools/SKILL.md
@@ -67,7 +67,7 @@ tests:
       - type: llm-rubric
         threshold: 0.75
         value: |
-          Evaluate the aiconfig-tools workflow:
+          Evaluate the agentcontrol-tools workflow:
           1. Did it create the tool first with create-ai-tool?
           2. Did the tool schema use raw JSON Schema format (type: object, properties)?
           3. Did the schema include both requested parameters (query, limit)?

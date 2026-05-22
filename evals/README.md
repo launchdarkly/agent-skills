@@ -28,17 +28,17 @@ Run these after any changes to the provider, mock, or shared utilities to catch 
 # From evals/
 
 # Run a single suite (all test cases)
-npm run eval:aiconfig-create         # ai-configs/aiconfig-create
-npm run eval:aiconfig-update         # ai-configs/aiconfig-update
-npm run eval:aiconfig-tools          # ai-configs/aiconfig-tools
-npm run eval:aiconfig-variations     # ai-configs/aiconfig-variations
+npm run eval:configs-create           # agentcontrol/configs-create
+npm run eval:configs-update           # agentcontrol/configs-update
+npm run eval:agentcontrol-tools       # agentcontrol/tools
+npm run eval:configs-variations       # agentcontrol/configs-variations
 npm run eval:flag-create             # feature-flags/launchdarkly-flag-create
 
 # Quick smoke check — first test case only (~15-20s, ~$0.05)
-npm run eval:aiconfig-create:single
-npm run eval:aiconfig-update:single
-npm run eval:aiconfig-tools:single
-npm run eval:aiconfig-variations:single
+npm run eval:configs-create:single
+npm run eval:configs-update:single
+npm run eval:agentcontrol-tools:single
+npm run eval:configs-variations:single
 npm run eval:flag-create:single
 
 # Aggregate and CI operations
@@ -147,7 +147,7 @@ This handles agents that call `get-foo` before AND after mutation; using `indexO
 
 ### Cross-model evaluation (`run-models.js`)
 
-The cross-model runner evaluates all suites against one or more model aliases without touching the canonical `eval-scores.json`. Results are written to `<suite>/results.<alias>.json` (e.g., `aiconfig-create/results.haiku.json`).
+The cross-model runner evaluates all suites against one or more model aliases without touching the canonical `eval-scores.json`. Results are written to `<suite>/results.<alias>.json` (e.g., `configs-create/results.haiku.json`).
 
 ```bash
 npm run eval:haiku                   # claude-haiku-4-5-20251001
@@ -222,7 +222,7 @@ Read the SKILL.md and note every MCP tool it references. Verify each tool exists
 mkdir <skill-name>
 ```
 
-Use the same name as the skill directory (e.g., `aiconfig-create`). Create `promptfooconfig.yaml`:
+Use the same name as the skill directory (e.g., `configs-create`). Create `promptfooconfig.yaml`:
 
 ```yaml
 # yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
@@ -264,7 +264,7 @@ Add an entry to `scripts/_manifest.js`:
 ```js
 {
   suite: "<skill-name>",
-  skillKey: "<domain>/<skill-name>",   // e.g. "ai-configs/aiconfig-create"
+  skillKey: "<domain>/<skill-name>",   // e.g. "agentcontrol/configs-create"
   skillDir: "skills/<domain>/<skill-name>",
   readme: "skills/<domain>/<skill-name>/README.md",
 },
@@ -364,7 +364,7 @@ Running `npm run eval:all` writes a summary at the repo root:
   "updatedAt": "2026-05-19T00:00:00Z",
   "lastCommit": "fc69376",
   "skills": {
-    "ai-configs/aiconfig-create": {
+    "agentcontrol/configs-create": {
       "score": 100,
       "passed": 4,
       "total": 4,
@@ -377,6 +377,6 @@ Running `npm run eval:all` writes a summary at the repo root:
 ```
 
 - `lastCommit` — the short git SHA at the time of the last `eval:all` run. Used by `eval:diff` to determine which suites have changed since scores were recorded.
-- `skillKey` — the canonical key is `<domain>/<skill-name>` (e.g., `ai-configs/aiconfig-create`).
+- `skillKey` — the canonical key is `<domain>/<skill-name>` (e.g., `agentcontrol/configs-create`).
 
 Run `node scripts/aggregate.js` (without `--run`) to rebuild this file from existing `<suite>/results.json` files without making any API calls.

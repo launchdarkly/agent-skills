@@ -14,25 +14,25 @@
  */
 const SUITES = [
   {
-    suite: "aiconfig-create",
+    suite: "configs-create",
     skillKey: "agentcontrol/configs-create",
     skillDir: "skills/agentcontrol/configs-create",
     readme: "skills/agentcontrol/configs-create/README.md",
   },
   {
-    suite: "aiconfig-update",
+    suite: "configs-update",
     skillKey: "agentcontrol/configs-update",
     skillDir: "skills/agentcontrol/configs-update",
     readme: "skills/agentcontrol/configs-update/README.md",
   },
   {
-    suite: "aiconfig-tools",
+    suite: "agentcontrol-tools",
     skillKey: "agentcontrol/tools",
     skillDir: "skills/agentcontrol/tools",
     readme: "skills/agentcontrol/tools/README.md",
   },
   {
-    suite: "aiconfig-variations",
+    suite: "configs-variations",
     skillKey: "agentcontrol/configs-variations",
     skillDir: "skills/agentcontrol/configs-variations",
     readme: "skills/agentcontrol/configs-variations/README.md",

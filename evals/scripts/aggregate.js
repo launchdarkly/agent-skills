@@ -6,7 +6,7 @@
  * Modes:
  *   node scripts/aggregate.js              # rebuild from existing results.json
  *   node scripts/aggregate.js --run        # run every suite then aggregate
- *   node scripts/aggregate.js --run --only=aiconfig-create,aiconfig-update
+ *   node scripts/aggregate.js --run --only=configs-create,configs-update
  *
  * Exits 0 on success, 1 on failure.
  */
