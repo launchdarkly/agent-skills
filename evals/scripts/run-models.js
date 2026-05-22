@@ -9,7 +9,7 @@
  *
  * Usage:
  *   node scripts/run-models.js --model=haiku
- *   node scripts/run-models.js --model=sonnet --only=aiconfig-create
+ *   node scripts/run-models.js --model=sonnet --only=configs-create
  *   node scripts/run-models.js --models=haiku,sonnet,opus
  *
  * Output:
@@ -78,7 +78,7 @@ function usage() {
     "Examples:",
     "  npm run eval:haiku",
     "  npm run eval:matrix",
-    "  node scripts/run-models.js --model=haiku --only=aiconfig-create",
+    "  node scripts/run-models.js --model=haiku --only=configs-create",
   ].join("\n");
 }
 

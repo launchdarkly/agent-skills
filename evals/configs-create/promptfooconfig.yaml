@@ -1,13 +1,13 @@
 # yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
 #
 # Run with shared defaults:
-#   promptfoo eval -c shared/defaults.yaml -c aiconfig-create/promptfooconfig.yaml
+#   promptfoo eval -c shared/defaults.yaml -c configs-create/promptfooconfig.yaml
 #
-# The aiconfig-create skill guides the agent through choosing agent vs
+# The configs-create skill guides the agent through choosing agent vs
 # completion mode, creating a config + variation, and verifying the setup.
 # The recommended path is setup-ai-config (one-step); the agent may also
 # use create-ai-config + create-ai-config-variation for more control.
-description: "End-to-end evaluation of the aiconfig-create skill"
+description: "End-to-end evaluation of the configs-create skill"
 
 prompts:
   - file://../../skills/agentcontrol/configs-create/SKILL.md
@@ -179,9 +179,9 @@ tests:
   # ------------------------------------------------------------------
   # Test 4: Targeting reminder
   # After creation, the skill should remind the user they need to run
-  # targeting (/aiconfig-targeting) before the SDK returns enabled=True.
+  # targeting (/configs-targeting) before the SDK returns enabled=True.
   # ------------------------------------------------------------------
-  - description: "Post-creation: response mentions targeting step or aiconfig-targeting"
+  - description: "Post-creation: response mentions targeting step or configs-targeting"
     vars:
       user_request: >
         Create a config called "email-assistant" for composing emails.
@@ -202,7 +202,7 @@ tests:
           after creation. Score 1.0 if the response:
           1. Confirms the config was created successfully.
           2. Mentions that targeting must be configured before the SDK returns enabled=True,
-             OR references the /aiconfig-targeting skill, OR notes the fallthrough points at
+             OR references the /configs-targeting skill, OR notes the fallthrough points at
              a disabled variation.
           Score 0.5 if it mentions the config was created but omits the targeting warning.
           Score 0.0 if it neither confirms creation nor mentions targeting.

@@ -1,12 +1,12 @@
 # yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
 #
 # Run with shared defaults:
-#   promptfoo eval -c shared/defaults.yaml -c aiconfig-variations/promptfooconfig.yaml
+#   promptfoo eval -c shared/defaults.yaml -c configs-variations/promptfooconfig.yaml
 #
-# The aiconfig-variations skill covers cloning a variation to test one change
+# The configs-variations skill covers cloning a variation to test one change
 # at a time (the primary path), creating from scratch (when explicitly asked),
 # and safety rules around not deleting the baseline variation.
-description: "End-to-end evaluation of the aiconfig-variations skill"
+description: "End-to-end evaluation of the configs-variations skill"
 
 prompts:
   - file://../../skills/agentcontrol/configs-variations/SKILL.md

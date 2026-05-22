@@ -30,7 +30,7 @@ function resolveModel(input) {
 /**
  * Reverse-lookup a friendly alias for a model id, falling back to the model
  * id itself. Used to label per-model output files like
- * `aiconfig-create/results.haiku.json`.
+ * `configs-create/results.haiku.json`.
  */
 function aliasFor(modelId) {
   for (const [alias, id] of Object.entries(MODEL_ALIASES)) {

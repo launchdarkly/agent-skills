@@ -1,11 +1,11 @@
 # yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
 #
 # Run with shared defaults:
-#   promptfoo eval -c shared/defaults.yaml -c aiconfig-update/promptfooconfig.yaml
+#   promptfoo eval -c shared/defaults.yaml -c configs-update/promptfooconfig.yaml
 #
-# The aiconfig-update skill covers updating variation model/prompts/parameters,
+# The configs-update skill covers updating variation model/prompts/parameters,
 # updating config metadata, archiving instead of deleting, and verification.
-description: "End-to-end evaluation of the aiconfig-update skill"
+description: "End-to-end evaluation of the configs-update skill"
 
 prompts:
   - file://../../skills/agentcontrol/configs-update/SKILL.md
@@ -62,7 +62,7 @@ tests:
       - type: llm-rubric
         threshold: 0.7
         value: |
-          Evaluate the aiconfig-update workflow:
+          Evaluate the configs-update workflow:
           1. Did it explore current state (health or get-ai-config) before mutating?
           2. Did it use update-ai-config-variation to change the model?
           3. Did it use correct Provider.model-id format for modelConfigKey (e.g. OpenAI.gpt-4o-mini)?
