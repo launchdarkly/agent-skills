@@ -21,11 +21,11 @@ Orchestrates LaunchDarkly setup in an existing codebase: on kickoff, show a **ro
   - **Step 5 (SDK keys):** If MCP is not configured (or the user declined it), account status becomes relevant at D7 when the user needs to provide keys. If they cannot provide keys, offer the resolved signup link (see [Source Attribution](#source-attribution)).
   - This eliminates the upfront "Do you have an account?" question and lets the workflow itself surface whether the user needs to sign up.
 - **Keys and tokens (defer until needed):** Collect these only when the path requires them.
-  - **Step 4 -- MCP:** **Hosted MCP** uses OAuth; no API token or SDK key needed to configure it. **Local `npx` MCP** (federal/EU, etc.): API access token per [mcp-configure](mcp-configure/SKILL.md) and [MCP Config Templates](mcp-configure/references/mcp-config-templates.md).
+  - **Step 4 -- MCP:** **Hosted MCP** uses OAuth; no API token or SDK key needed to configure it.
   - **Step 5 -- SDK:** **SDK keys / client-side ID / mobile key** when wiring env in [Apply code changes](sdk-install/apply/SKILL.md), after the integration plan is confirmed. **`ldcli` / REST** for discovery: use **`ldcli login`** or an access token when you first run those commands, not at hello.
   - **Key type must match the integration:** server-side SDK -> **SDK key**; browser/client-side SDK -> **Client-side ID**; mobile -> **Mobile key**. Env variable names and bundler rules: [Apply code changes](sdk-install/apply/SKILL.md).
 
-**MCP (preferred):** Complete **Step 4** via [mcp-configure/SKILL.md](mcp-configure/SKILL.md) before SDK work when possible. If MCP is unavailable or the user opts out, use **ldcli** / **REST** fallbacks described in that skill (including [MCP Config Templates](mcp-configure/references/mcp-config-templates.md) for local `npx` fallback when hosted MCP does not apply) -- onboarding must still be completable.
+**MCP (preferred):** Complete **Step 4** via [mcp-configure/SKILL.md](mcp-configure/SKILL.md) before SDK work when possible. If MCP is unavailable or the user opts out, use **ldcli** / **REST** fallbacks described in that skill -- onboarding must still be completable.
 
 **Optional MCP tools (when configured):**
 
@@ -116,7 +116,6 @@ Do NOT treat the user's initial request (e.g. "onboard me," "set up LaunchDarkly
 
 | ID | Location | Question |
 |----|----------|----------|
-| D4-LOCAL | Step 4 (local MCP) | User chooses whether to handle the access token themselves (recommended) or let the agent help |
 | D5-NOAPP | Step 5 -- detect | No runnable app found: user points to app or requests demo |
 | D5-UNCLEAR | Step 5 -- detect | Weak evidence: user confirms the correct app folder |
 | D5 | Step 5 -- detect | SDK confirmation / one-vs-both-SDKs scope choice |
@@ -322,7 +321,7 @@ This is **not** the same file as `LAUNCHDARKLY_ONBOARDING.md`. The onboarding lo
 
 - [mcp-configure/SKILL.md](mcp-configure/SKILL.md) -- hosted MCP, verify, edge cases (**follow this first**)
 - [MCP UI links](mcp-configure/references/mcp-ui-links.md) -- HTTPS + `command:` links to open MCP settings per editor
-- [MCP Config Templates](mcp-configure/references/mcp-config-templates.md) -- per-agent JSON; **Local server via `npx`** when hosted MCP is unavailable
+- [MCP Config Templates](mcp-configure/references/mcp-config-templates.md) -- per-agent JSON for hosted MCP
 
 **Step 5 -- SDK install (nested skills)**
 

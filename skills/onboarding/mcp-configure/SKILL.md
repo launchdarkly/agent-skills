@@ -12,7 +12,7 @@ metadata:
 
 Configures the LaunchDarkly hosted MCP server so flag management skills and onboarding can use MCP tools. Uses OAuth for authentication — no API keys needed for the hosted server.
 
-This skill is nested under [LaunchDarkly onboarding](../SKILL.md); the parent skill's **Step 4** hands off here. **Hosted MCP** is the default. For **federal/EU** or other cases where hosted is unavailable, use the **Local server via `npx`** section in [MCP Config Templates](references/mcp-config-templates.md) and [local MCP server docs](https://launchdarkly.com/docs/home/getting-started/mcp-local).
+This skill is nested under [LaunchDarkly onboarding](../SKILL.md); the parent skill's **Step 4** hands off here. **Hosted MCP** is the default and the only supported option for this onboarding flow.
 
 ## Prerequisites
 
@@ -94,37 +94,6 @@ After adding the config, the user needs to enable and authorize the server. MCP 
 3. **If restart doesn't help**, fall back to ldcli/API for Steps 5-6. Note the fallback in the onboarding log. Do **not** block the rest of onboarding.
 4. If the failure looks like a config issue (wrong file path, missing OAuth, server not enabled), mention the likely cause so the user can fix it on their own time — but do not block progress.
 
-For **local `npx` server** verification, see [MCP Config Templates — Verify (local server)](references/mcp-config-templates.md#verify-local-server).
-
-## Local MCP: Access Token Setup
-
-When the user needs the **local `npx` server** (federal/EU or other cases where hosted MCP is unavailable), the server requires a `LAUNCHDARKLY_ACCESS_TOKEN`. This is a sensitive credential.
-
-First, tell the user how to create a token if they don't already have one:
-
-> Create an API access token at [app.launchdarkly.com/settings/authorization/tokens/new](https://app.launchdarkly.com/settings/authorization/tokens/new). Give it a descriptive name (e.g. "MCP server") and at minimum the **Reader** role. Copy the token — you won't be able to see it again after leaving the page.
-
-Then ask how they want to add the token to the MCP config:
-
-**D4-LOCAL -- BLOCKING:** Call your structured question tool now.
-- question: "The local MCP server needs an API access token to authenticate with LaunchDarkly. You can create one at app.launchdarkly.com/settings/authorization/tokens/new. Once you have the token, how would you like to add it to your MCP config? We recommend adding it yourself — there is a non-zero risk when an agent handles secrets, as tokens may persist in conversation history, logs, or model context."
-- options:
-  - "I'll add the token to the config myself — just tell me which file and variable"
-  - "I have the token ready — go ahead and help me wire up the config"
-- STOP. Do not write the question as text. Do not write any token value to a config file before the user selects an option.
-
-**If the user adds the token themselves:**
-1. Tell them the config file path for their agent (see [MCP Config Templates](references/mcp-config-templates.md))
-2. Tell them to set `LAUNCHDARKLY_ACCESS_TOKEN` as the value — either as an environment variable or directly in the config file
-3. Remind them to add the config file to `.gitignore` if the token is inline
-4. Wait for them to confirm, then proceed to Step 5 (Enable and Verify)
-
-**If the user wants agent-assisted setup:**
-1. Ensure the config file is in `.gitignore` before writing
-2. Write the config per [MCP Config Templates](references/mcp-config-templates.md)
-3. Remind the user that the token will be visible in the config file and conversation history
-4. Proceed to Step 5 (Enable and Verify)
-
 ## Edge Cases
 
 - **User already has MCP configured:** Verify by checking for existing LD MCP entries in the config.
@@ -140,19 +109,17 @@ Then ask how they want to add the token to the MCP config:
 
     If they agree, remove the deprecated entries and ensure the unified `mcp/launchdarkly` config is present. See [MCP Config Templates](references/mcp-config-templates.md). If they decline, note the deprecation and continue.
 - **User has the old npx-based local server:** Migrate them. Remove the old `npx @launchdarkly/mcp-server` entry and any `LD_ACCESS_TOKEN` env vars. Replace with the hosted server config. See [MCP Config Templates — Migration](references/mcp-config-templates.md#migrating-from-old-configurations).
-- **Federal or EU instances:** The hosted MCP server is not available for federal or EU environments. Use [local MCP server docs](https://launchdarkly.com/docs/home/getting-started/mcp-local) and the **Local server via `npx`** section in [MCP Config Templates](references/mcp-config-templates.md). Follow the [Local MCP: Access Token Setup](#local-mcp-access-token-setup) flow for token handling.
 - **Agent not in known list:** Provide the generic pattern: the user needs to add an MCP server entry pointing to `https://mcp.launchdarkly.com/mcp/launchdarkly` using whatever format their agent expects.
 - **User opts out of MCP during onboarding:** Document that choice and continue with the parent skill's ldcli/API fallbacks for environments and flags; do not block SDK work.
 
 ## What NOT to Do
 
-- Don't configure the old npx-based local server by default. Prefer the hosted server for standard regions.
+- Don't configure the old npx-based local server. Use the hosted server.
 - Don't ask for or store API keys for the hosted server. The hosted server uses OAuth.
 - Don't configure the old separate FM/AgentControl servers. Use the unified `mcp/launchdarkly` server.
-- Don't handle the access token for local MCP without asking the user first via the D4-LOCAL decision point.
 
 ## References
 
 - [MCP UI links](references/mcp-ui-links.md) — HTTPS + `command:` links to open MCP settings (Cursor, VS Code, Claude Code, Windsurf, GitHub)
-- [MCP Config Templates](references/mcp-config-templates.md) — hosted OAuth JSON per agent; **Local server via `npx`** fallback; migration from old local server
+- [MCP Config Templates](references/mcp-config-templates.md) — hosted OAuth JSON per agent; migration from old configurations
 - [Official MCP docs](https://launchdarkly.com/docs/home/getting-started/mcp-hosted) — full hosted setup guide
