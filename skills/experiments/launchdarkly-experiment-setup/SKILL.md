@@ -25,7 +25,7 @@ This skill requires the remotely hosted LaunchDarkly MCP server to be configured
 - `list-experiments` — browse existing experiments in the project.
 - `update-experiment` — update fields on the experiment or its current iteration. Honours `mutableFieldsByStatus`, so what's editable depends on whether the iteration is `not_started`, `running`, or `stopped`. Returns rejected inputs under `skipped`.
 - `save-and-start-experiment-iteration` — the API-recommended way to change locked fields on a running experiment. Stops the current iteration, creates a new draft with the supplied field updates, and starts it in one call.
-- `stop-experiment-iteration` — stop the running iteration. Optionally record a `winningTreatmentId` + `winningReason`.
+- `stop-experiment-iteration` — stop the running iteration. You must declare a winner: pass the `winningTreatmentId` (and a `winningReason`). If no variation outperformed, pick the baseline/control as the winner.
 - `list-metrics`, `create-metric`, `list-metric-events` — manage metrics referenced by the experiment.
 
 ## Core Concepts
@@ -198,7 +198,9 @@ Example: swap the treatment allocation and add a metric in a single call.
 
 ### Step 7: Stop the Iteration
 
-When you've reached significance or made a call, stop the iteration. Pass the winning treatment's id (returned in `get-experiment` as `_id` on each treatment) so the result is recorded.
+When you've reached significance or made a call, stop the iteration. **A winning treatment is required to stop** — LaunchDarkly does not let you end an iteration without declaring a winner. Pass the winning treatment's id (returned in `get-experiment` as `_id` on each treatment) plus a `winningReason`.
+
+If the experiment was inconclusive or no variation beat the control, declare the **baseline/control treatment as the winner** and say so in `winningReason` (e.g. "Inconclusive — no significant lift, keeping control"). There is no "stop without a winner" path.
 
 ```json
 {
@@ -211,7 +213,7 @@ When you've reached significance or made a call, stop the iteration. Pass the wi
 ```
 
 **Report results:**
-- Iteration stopped with `winningTreatmentId` (or "no winner declared" if intentional).
+- Iteration stopped with the declared `winningTreatmentId` (the control/baseline if inconclusive).
 - Lift / significance summary on the primary metric.
 - Next steps (ship the winner, roll back, or start a follow-up iteration).
 
