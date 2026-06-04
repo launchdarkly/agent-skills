@@ -12,6 +12,23 @@ metadata:
 
 You're using a skill that standardizes quick `/flag` requests. Your job is to parse the user intent, resolve the requested flag with minimal friction, return an actionable summary, and route to deeper workflows when needed.
 
+## Scope Boundary
+
+This skill is a **read-only lookup entrypoint**. It returns flag details and routes forward.
+
+**Hard constraints — you MUST NOT:**
+
+- Create, toggle, update, or delete flags
+- Assess whether a flag is safe to remove, stale, or ready for cleanup
+- Provide a "verdict", "safe to remove" conclusion, removal steps, or "before removing" advice
+- Offer to archive or delete the flag
+
+**When the user asks about removal or staleness**, your entire response for that part must be the flag summary table followed by this exact routing message (you may rephrase slightly but must keep the substance):
+
+> This quick lookup can only show you the flag's current config. To assess whether it's safe to remove, you need the **flag discovery** or **flag cleanup** skill — they scan code references, check status across all environments, and analyze downstream dependencies.
+
+That's it. No analysis. No bullet points. No verdict. The removal question is answered by the routing message, not by you.
+
 ## Prerequisites
 
 This skill requires the remotely hosted LaunchDarkly MCP server to be configured in your environment.
@@ -65,15 +82,25 @@ For a resolved flag, call `get-flag` and return:
 4. Rule/target complexity (simple vs complex)
 5. Direct LaunchDarkly URL for the flag (when project + key are known)
 
-If the user asks "is this safe to remove?" or similar, transition to the flag discovery or cleanup workflow instead of improvising a partial readiness check.
+**If the user asked about removal, staleness, or cleanup** (e.g., "is this safe to remove?", "can I clean this up?", "is this stale?"):
+
+Show ONLY the summary table above, then write:
+
+> This quick lookup can only show you the flag's current config. To assess whether it's safe to remove, you need the **flag discovery** or **flag cleanup** skill — they scan code references, check status across all environments, and analyze downstream dependencies.
+
+Do not add a verdict, bullet-point analysis, removal steps, "before removing" checklist, or an offer to archive/delete. The removal question is **fully answered by the routing message above**. Proceed to Step 4.
 
 ### Step 4: Route to the Right Follow-up Workflow
 
-After returning details, route explicitly when asked:
+After returning the summary, check whether the user's request implies a deeper workflow. If it does, **name the skill and stop** — do not attempt the workflow yourself.
 
-- Creation/change request -> [flag create skill](../launchdarkly-flag-create/SKILL.md)
-- Targeting/rollout change -> [flag targeting skill](../launchdarkly-flag-targeting/SKILL.md)
-- Staleness/removal/readiness -> [flag discovery skill](../launchdarkly-flag-discovery/SKILL.md) and [flag cleanup skill](../launchdarkly-flag-cleanup/SKILL.md)
+| User intent | Route to |
+|---|---|
+| Create or modify a flag | [flag create skill](../launchdarkly-flag-create/SKILL.md) |
+| Change targeting or rollout | [flag targeting skill](../launchdarkly-flag-targeting/SKILL.md) |
+| "Is this safe to remove?", "Is this stale?", cleanup | [flag discovery](../launchdarkly-flag-discovery/SKILL.md) / [flag cleanup](../launchdarkly-flag-cleanup/SKILL.md) |
+
+For removal/staleness questions specifically: follow the Scope Boundary instructions above — summary table only, then route. No verdict.
 
 ## Output Style
 
@@ -89,3 +116,4 @@ Keep `/flag` responses brief and operational:
 - Prefer disambiguation over guessing when multiple flags match.
 - Treat project + environment as first-class context; avoid hidden assumptions.
 - When sharing rollout percentages, always use human-readable percentages.
+- **Never improvise removal, staleness, or cleanup analysis.** Always route to the dedicated skill.

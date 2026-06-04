@@ -43,6 +43,12 @@ const SUITES = [
     skillDir: "skills/feature-flags/launchdarkly-flag-create",
     readme: "skills/feature-flags/launchdarkly-flag-create/README.md",
   },
+  {
+    suite: "launchdarkly-flag-command",
+    skillKey: "feature-flags/launchdarkly-flag-command",
+    skillDir: "skills/feature-flags/launchdarkly-flag-command",
+    readme: "skills/feature-flags/launchdarkly-flag-command/README.md",
+  },
 ];
 
 /**
