@@ -1,0 +1,15 @@
+node_modules/
+.env
+.promptfoo/
+results*.json
+results*.html
+
+# Per-suite results written by npm run eval:<suite> and scripts/aggregate.js.
+# These are inputs to scripts/aggregate.js; the aggregated artifact
+# (eval-scores.json at repo root) is the public source of truth.
+*/results.json
+
+# Per-skill isolated cwds built by the provider so the SDK only discovers
+# the one skill being evaluated. Regenerated on each run, never committed.
+.tmp-skill-fixtures/
+.DS_Store

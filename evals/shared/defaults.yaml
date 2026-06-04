@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+#
+# Shared defaults for every skill eval suite under evals/<skill>/.
+#
+# Wired into each suite at run time via:
+#   promptfoo eval -c shared/defaults.yaml -c <skill>/promptfooconfig.yaml
+#
+# promptfoo's combineConfigs deep-merges defaultTest.options, concatenates
+# defaultTest.assert arrays, and dedupes providers, so each suite only needs
+# to declare what's specific to it (description, prompts, providers, tests,
+# and any extra suite-specific assertions).
+description: "shared defaults"
+
+prompts: []
+providers: []
+
+defaultTest:
+  # Each test case must reach this weighted-average score to count as
+  # passing. Evaluated per-test so a single critical path failure can't
+  # be masked by other tests passing.
+  threshold: 0.75
+  options:
+    provider: "{{env.RUBRIC_MODEL}}"
+    transform: file://./transform.js
+  assert:
+    - type: javascript
+      value: file://./output-valid.js
+      weight: 0
+      metric: output_valid
+    # 180s accommodates multi-turn flows (60-150s typical). Fast single-action
+    # skills can override per-suite if a tighter cap matters.
+    - type: latency
+      threshold: 180000

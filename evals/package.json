@@ -1,0 +1,34 @@
+{
+  "name": "@launchdarkly/skill-evals",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "eval:configs-create": "promptfoo eval -c shared/defaults.yaml -c configs-create/promptfooconfig.yaml --env-file .env --no-cache -o configs-create/results.json",
+    "eval:configs-create:single": "promptfoo eval -c shared/defaults.yaml -c configs-create/promptfooconfig.yaml --env-file .env --no-cache --filter-first-n 1",
+    "eval:configs-update": "promptfoo eval -c shared/defaults.yaml -c configs-update/promptfooconfig.yaml --env-file .env --no-cache -o configs-update/results.json",
+    "eval:configs-update:single": "promptfoo eval -c shared/defaults.yaml -c configs-update/promptfooconfig.yaml --env-file .env --no-cache --filter-first-n 1",
+    "eval:agentcontrol-tools": "promptfoo eval -c shared/defaults.yaml -c agentcontrol-tools/promptfooconfig.yaml --env-file .env --no-cache -o agentcontrol-tools/results.json",
+    "eval:agentcontrol-tools:single": "promptfoo eval -c shared/defaults.yaml -c agentcontrol-tools/promptfooconfig.yaml --env-file .env --no-cache --filter-first-n 1",
+    "eval:configs-variations": "promptfoo eval -c shared/defaults.yaml -c configs-variations/promptfooconfig.yaml --env-file .env --no-cache -o configs-variations/results.json",
+    "eval:configs-variations:single": "promptfoo eval -c shared/defaults.yaml -c configs-variations/promptfooconfig.yaml --env-file .env --no-cache --filter-first-n 1",
+    "eval:flag-create": "promptfoo eval -c shared/defaults.yaml -c launchdarkly-flag-create/promptfooconfig.yaml --env-file .env --no-cache -o launchdarkly-flag-create/results.json",
+    "eval:flag-create:single": "promptfoo eval -c shared/defaults.yaml -c launchdarkly-flag-create/promptfooconfig.yaml --env-file .env --no-cache --filter-first-n 1",
+    "eval:all": "node scripts/aggregate.js --run",
+    "eval:aggregate": "node scripts/aggregate.js",
+    "eval:diff": "node scripts/diff-changed-skills.js",
+    "eval:badges": "node scripts/render-badges.js",
+    "test": "node --test tests/*.test.js",
+    "eval:view": "promptfoo view",
+    "eval:haiku": "node scripts/run-models.js --model=haiku",
+    "eval:sonnet": "node scripts/run-models.js --model=sonnet",
+    "eval:opus": "node scripts/run-models.js --model=opus",
+    "eval:matrix": "node scripts/run-models.js --models=haiku,sonnet,opus"
+  },
+  "devDependencies": {
+    "promptfoo": "^0.121.0",
+    "zod": "^3.22.4"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.144"
+  }
+}

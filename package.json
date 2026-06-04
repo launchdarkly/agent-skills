@@ -1,0 +1,10 @@
+{
+  "name": "launchdarkly-ai-tooling",
+  "private": true,
+  "description": "LaunchDarkly agent skills; use scripts here for repo-wide dev tasks.",
+  "scripts": {
+    "eval": "npm run eval:all --prefix evals",
+    "eval:all": "npm run eval:all --prefix evals",
+    "eval:view": "npm run eval:view --prefix evals"
+  }
+}
