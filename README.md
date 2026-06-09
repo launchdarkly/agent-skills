@@ -52,10 +52,13 @@ Agent Skills are modular, text-based playbooks that teach an agent how to perfor
 
 This repo is a [Claude Code plugin](https://code.claude.com/docs/en/create-plugins). Installing it gives you all the skills above plus the LaunchDarkly MCP server.
 
-1. Open Claude Code and run `/plugin install`.
-2. Search for **LaunchDarkly**, or install directly from the repo URL:
+1. Add this repo as a plugin marketplace in Claude Code:
    ```
-   https://github.com/launchdarkly/ai-tooling
+   /plugin marketplace add launchdarkly/ai-tooling
+   ```
+2. Install the plugin:
+   ```
+   /plugin install launchdarkly@launchdarkly-ai-tooling
    ```
 3. Authenticate the LaunchDarkly MCP server when prompted with your [API access token](https://docs.launchdarkly.com/home/account/api).
 
