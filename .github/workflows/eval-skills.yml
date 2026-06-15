@@ -13,11 +13,14 @@ name: Skill Evals
 # touching one skill costs roughly one suite's worth of API tokens.
 
 on:
+  # No `paths:` filter on pull_request — branch protection requires
+  # "Unit tests", "Aggregate scores", and "Evaluate gate" on every PR, and a
+  # path-filtered workflow leaves those checks stuck in "Expected — Waiting
+  # for status to be reported" for PRs that don't touch skills/ or evals/,
+  # blocking merge. The workflow fires on every PR; the `diff` job and the
+  # job-level `if:` conditions ensure that unchanged-skills PRs short-circuit
+  # to skipped (which counts as success for required checks).
   pull_request:
-    paths:
-      - "skills/**"
-      - "evals/**"
-      - ".github/workflows/eval-skills.yml"
   schedule:
     # 09:17 UTC daily - off the hour to avoid lining up with API rate limits.
     - cron: "17 9 * * *"
