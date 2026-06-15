@@ -1,0 +1,15 @@
+{
+  "name": "launchdarkly-ai-tooling",
+  "owner": {
+    "name": "LaunchDarkly",
+    "email": "support@launchdarkly.com",
+    "url": "https://launchdarkly.com"
+  },
+  "plugins": [
+    {
+      "name": "launchdarkly",
+      "description": "LaunchDarkly agent skills and MCP servers for feature flag management, AgentControl, and metrics",
+      "source": "."
+    }
+  ]
+}
