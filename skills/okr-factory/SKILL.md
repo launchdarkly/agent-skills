@@ -64,7 +64,6 @@ This skill requires the `ld` CLI (LD Tools / research repo) to be available, eit
 - `ld atlas tql` — find the user's goals
 - `ld atlas goal-full` — get full goal details (parents, subgoals, metric targets, prior updates)
 - `ld atlas goal-update` — post the final OKR score/update to a **goal** (`ld atlas update` is project-only — do not use it for goals)
-- `ld atlas goal-update-delete` — undo a posted goal update by id
 
 **Evidence-gathering tools:**
 - `ld github activity` — PRs merged, reviews, commits over the check-in period
@@ -85,7 +84,7 @@ Start by figuring out who we're writing updates for.
 2. Greet them by first name. Confirm this is who we're updating for.
 3. If updating for someone else, resolve their Atlas AAID. **Note:** `ld atlas people` TQL filters (`=`, `~`, `CONTAINS`) silently return everyone — they do not filter server-side. So pass the name as the fuzzy query, dump JSON, and grep client-side for the matching email/name to pull the `account_id`:
    ```bash
-   ld atlas people "Dave Williams" --first 300 --output json \
+   ld atlas people "Dave Williams" --first 100 --output json \
      | python3 -c "import sys,json;[print(n['name'],n['email'],n['account_id']) for e in json.load(sys.stdin)['edges'] for n in [e['node']] if 'williams' in (n.get('email') or '').lower()]"
    ```
    `ld who "<name>"` also resolves GitHub/Slack/email in one shot.
@@ -225,7 +224,7 @@ Score recommendation:
   closeable with connection pooling work already scoped. No blockers.
   Change this? Reply with: on_track / at_risk / off_track
 
-Update text to post (149/280 chars):
+Update text to post (160/280 chars):
 ```
 ```
 Hot-path optimization landed — staging P99 down to 58ms from 75ms. Production rollout next week. Connection pooling work scoped to close remaining gap to <50ms.
@@ -243,7 +242,7 @@ Same structure for the Atlas update, plus a companion summary below it:
 Score recommendation:
   [same as above]
 
-Update text to post (149/280 chars):
+Update text to post (160/280 chars):
 ```
 ```
 Hot-path optimization landed — staging P99 down to 58ms from 75ms. Production rollout next week. Connection pooling work scoped to close remaining gap to <50ms.
@@ -276,17 +275,12 @@ Activity: 4 PRs merged, 2 tickets closed, 6 reviews given.
    ```
    - `--status` sets the 🟢/🟠/🔴 badge. `--score` is the projected % (optional; defaults to a midpoint per status: on_track→85, at_risk→55, off_track→20). Pass `--score` when you have a real number.
    - **The text is positional and capped at ~280 chars.** Longer text posts but truncates in some views — condense the draft to its headline for the posted text.
-   - The command prints an `update_id`. **Capture it** — it's the undo handle.
 5. If the goal (or its scored sub-goal) has a metric target and there's a new value, move it in the same update:
    ```bash
    ld atlas goal-update "<GOAL-KEY>" "<text>" --status on_track --score 85 --metric "<metricTargetId>=<newValue>"
    ```
    Get `<metricTargetId>` from `goal-full` (`metricTargets[].node.id`). The metric often lives on a **sub-goal**, not the parent OKR.
-6. **Undo:** to revert a post, use the captured id:
-   ```bash
-   ld atlas goal-update-delete "<GOAL-KEY>" "<update_id>"
-   ```
-7. Confirm each post succeeded. Provide a summary:
+6. Confirm each post succeeded. Provide a summary:
    ```
    ✅ Posted 4 updates:
    • LAUNC-3205 — 🟢 ON TRACK (score: 75)
