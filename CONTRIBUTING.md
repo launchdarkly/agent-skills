@@ -34,6 +34,18 @@ skills/your-skill-name/
 
 Point your agent client at the `skills/` directory. Specific setup depends on the client.
 
+### LLM evals (Promptfoo, metrics skills)
+
+The metrics skills have a Promptfoo suite under `tests/`. Run it before merging substantive changes to those skills or the evals (requires an Anthropic API key):
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+npm run eval:all
+```
+
+Run from the repository root. To run a single suite, `cd evals` and use `npm run eval:<suite-name>` (e.g., `eval:aiconfig-create`). View results with `npm run eval:view`.
+
+
 ## Documentation
 
 Keep `SKILL.md` under 500 lines. If you need more space, add reference documents.

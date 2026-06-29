@@ -1,0 +1,171 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+#
+# Run with shared defaults:
+#   promptfoo eval -c shared/defaults.yaml -c launchdarkly-flag-command/promptfooconfig.yaml
+#
+# The launchdarkly-flag-command skill is a read-only routing entrypoint for
+# quick `/flag <query>` lookups. It resolves a flag via list-flags / get-flag,
+# returns a brief operational summary, and routes to deeper skills when needed.
+# It should NEVER call destructive tools (create, toggle, update, delete).
+description: "End-to-end evaluation of the launchdarkly-flag-command skill"
+
+prompts:
+  - file://../../skills/feature-flags/launchdarkly-flag-command/SKILL.md
+
+providers:
+  - id: file://../providers/claude-skill-agent-sdk.js
+    label: claude-skill-agent-sdk
+    config:
+      skill_slug: launchdarkly-flag-command
+
+tests:
+  # ------------------------------------------------------------------
+  # Test 1: Happy path — exact key lookup returns a useful summary
+  # ------------------------------------------------------------------
+  - description: "Happy path: resolves an exact flag key and returns operational summary"
+    vars:
+      user_request: >
+        Find flag search-v2. Project key is "web-app".
+      codebase_context: ""
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const pass = tools.includes('list-flags') || tools.includes('get-flag');
+          return { pass, score: pass ? 1 : 0, reason: 'Tools: ' + tools.join(' -> ') };
+        metric: calls_lookup_tool
+        weight: 3
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const forbidden = ['create-flag', 'create-feature-flag', 'delete-flag', 'toggle-flag', 'update-feature-flag', 'update-flag-settings'];
+          const called = forbidden.filter(f => tools.includes(f));
+          const pass = called.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'No destructive tools' : 'Called: ' + called.join(', ') };
+        metric: no_destructive_tools
+        weight: 3
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const pass = tools.includes('get-flag');
+          return { pass, score: pass ? 1 : 0, reason: 'Tools: ' + tools.join(' -> ') };
+        metric: calls_get_flag
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The user typed "/flag search-v2" — a quick flag lookup command.
+          Evaluate whether the agent returned a useful operational summary:
+          1. Did it identify the flag by key and/or name?
+          2. Did it include the environment state (on/off)?
+          3. Was the response brief and operational (not a full lifecycle analysis)?
+          4. Did it avoid creating, toggling, or modifying any flags?
+          Score 1.0 if all four are met. Deduct 0.25 for each criterion missed.
+        metric: workflow_quality
+        weight: 2
+
+  # ------------------------------------------------------------------
+  # Test 2: Disambiguation — ambiguous query returns candidate list
+  # The mock list-flags returns two backend-tagged flags. A vague query
+  # should trigger disambiguation rather than silent guessing.
+  # ------------------------------------------------------------------
+  - description: "Disambiguation: presents candidates when query is ambiguous"
+    vars:
+      user_request: >
+        Show me flags related to backend services. Project key is "web-app".
+      codebase_context: ""
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const pass = tools.includes('list-flags') || tools.includes('list-feature-flags');
+          return { pass, score: pass ? 1 : 0, reason: 'Tools: ' + tools.join(' -> ') };
+        metric: calls_list_flags
+        weight: 3
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const forbidden = ['create-flag', 'create-feature-flag', 'delete-flag', 'toggle-flag', 'update-feature-flag', 'update-flag-settings'];
+          const called = forbidden.filter(f => tools.includes(f));
+          const pass = called.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'No destructive tools' : 'Called: ' + called.join(', ') };
+        metric: no_destructive_tools
+        weight: 3
+
+      - type: llm-rubric
+        value: |
+          The user asked to "show me flags related to backend services" — an
+          exploratory query that should return multiple candidates.
+          The skill says: "If multiple plausible matches exist, return a short
+          disambiguation list (key + name + state) and ask the user to pick."
+          Evaluate:
+          1. Did the agent search for flags using list-flags or list-feature-flags?
+          2. Did it present multiple flag candidates rather than silently picking one?
+          3. Was the response brief and operational?
+          4. Did it avoid modifying any flags?
+          Score 1.0 if all four. Deduct 0.25 per miss.
+        metric: workflow_quality
+        weight: 2
+
+  # ------------------------------------------------------------------
+  # Test 3: Routing — "is this safe to remove?" routes to cleanup skill
+  # The skill explicitly says: transition to the flag discovery or cleanup
+  # workflow instead of improvising a partial readiness check.
+  # ------------------------------------------------------------------
+  - description: "Routing: delegates removal question to cleanup skill instead of improvising"
+    vars:
+      user_request: >
+        Look up flag search-v2 in project "web-app". I want to assess if it's
+        safe to remove — which skill or workflow should I use for that?
+      codebase_context: ""
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const pass = tools.includes('list-flags') || tools.includes('get-flag');
+          return { pass, score: pass ? 1 : 0, reason: 'Tools: ' + tools.join(' -> ') };
+        metric: calls_lookup_tool
+        weight: 3
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const forbidden = ['create-flag', 'create-feature-flag', 'delete-flag', 'toggle-flag', 'update-feature-flag', 'update-flag-settings'];
+          const called = forbidden.filter(f => tools.includes(f));
+          const pass = called.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'No destructive tools' : 'Called: ' + called.join(', ') };
+        metric: no_destructive_tools
+        weight: 3
+
+      - type: javascript
+        value: |
+          const resp = (output.response || '').toLowerCase();
+          const routes = [
+            'flag discovery', 'flag cleanup', 'flag-discovery', 'flag-cleanup',
+            'discovery skill', 'cleanup skill', 'discovery or cleanup',
+            'cleanup or discovery', 'cleanup workflow', 'discovery workflow',
+            'dedicated skill', 'dedicated workflow'
+          ];
+          const found = routes.find(r => resp.includes(r));
+          const pass = Boolean(found);
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'Routes to: ' + found : 'No routing keyword found in response' };
+        metric: routes_to_cleanup_skill
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The user asked to look up a flag and wanted to know which skill to use
+          for removal assessment. Evaluate the agent's response:
+          1. Did the agent look up the flag and show a summary table?
+          2. Did it recommend or mention the flag discovery or flag cleanup skill
+             for the removal assessment?
+          3. Did the response include flag details (key, targeting state, variations)?
+          4. Did it avoid modifying or deleting any flags?
+          Score 1.0 if all four. Deduct 0.25 per miss. It is acceptable for the
+          agent to also include some observations about the flag data alongside
+          the routing recommendation — the key criterion is #2.
+        metric: workflow_quality
+        weight: 1

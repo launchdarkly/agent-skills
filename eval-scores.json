@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-05-20T19:16:00.938Z",
+  "skills": {
+    "agentcontrol/configs-create": {
+      "score": 100,
+      "passed": 4,
+      "total": 4,
+      "status": "passing",
+      "lastCommit": "8441bf2",
+      "lastRun": "2026-05-20T19:16:00.930Z",
+      "perTest": [
+        {
+          "description": "Create a config for my customer support bot. It uses LangGraph and needs per",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "I need a config for our blog summarizer. We call the OpenAI API directly wit",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "Create a new config for our analytics agent. Project key is \"data-platform\".\n",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "Create a config called \"email-assistant\" for composing emails. Project is \"c",
+          "pass": true,
+          "score": 0.8333333333333334
+        }
+      ]
+    },
+    "agentcontrol/configs-update": {
+      "score": 80,
+      "passed": 4,
+      "total": 5,
+      "status": "passing",
+      "lastCommit": "8441bf2",
+      "lastRun": "2026-05-20T19:16:00.934Z",
+      "perTest": [
+        {
+          "description": "I need to switch the model on the default variation of our support-chatbot confi",
+          "pass": true,
+          "score": 0.95
+        },
+        {
+          "description": "We no longer need the content-writer config. Please remove it from active use",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "Update the support-chatbot config in project \"support-app\": change the name t",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "The old code-reviewer config in project \"dev-tools\" is completely obsolete. We s",
+          "pass": false,
+          "score": 0.5
+        },
+        {
+          "description": "Update the temperature parameter on the default variation of our support-chatbot",
+          "pass": true,
+          "score": 0.9444444444444444
+        }
+      ]
+    },
+    "agentcontrol/tools": {
+      "score": 75,
+      "passed": 3,
+      "total": 4,
+      "status": "passing",
+      "lastCommit": "8441bf2",
+      "lastRun": "2026-05-20T19:16:00.936Z",
+      "perTest": [
+        {
+          "description": "I need to give our support-chatbot config the ability to search our knowledge",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "Create an agent tool called \"create-ticket\" that accepts title (required string), p",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "I want to add a tool to our support-chatbot for looking up customer orders. Befo",
+          "pass": false,
+          "score": 0.3125
+        },
+        {
+          "description": "Attach a new \"fetch-weather\" tool to the travel-assistant config's default varia",
+          "pass": true,
+          "score": 1
+        }
+      ]
+    },
+    "agentcontrol/configs-variations": {
+      "score": 80,
+      "passed": 4,
+      "total": 5,
+      "status": "passing",
+      "lastCommit": "8441bf2",
+      "lastRun": "2026-05-20T19:16:00.937Z",
+      "perTest": [
+        {
+          "description": "I want to test if gpt-4o-mini can handle our support chatbot as well as gpt-4o b",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "I want to experiment with a more concise prompt for our support-chatbot config. ",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "Add a new variation to our code-reviewer config that uses Anthropic Claude Sonne",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "I want to replace the default variation of support-chatbot with a new Claude-bas",
+          "pass": false,
+          "score": 0.3333333333333333
+        },
+        {
+          "description": "Clone the default variation of content-writer to test gpt-4o-mini. Project key i",
+          "pass": true,
+          "score": 1
+        }
+      ]
+    },
+    "feature-flags/launchdarkly-flag-create": {
+      "score": 100,
+      "passed": 3,
+      "total": 3,
+      "status": "passing",
+      "lastCommit": "8441bf2",
+      "lastRun": "2026-05-20T19:16:00.938Z",
+      "perTest": [
+        {
+          "description": "I need to wrap our new checkout flow in a feature flag so we can roll it out gra",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "Add a feature flag for our new dark mode feature. Project key is \"web-app\".\n",
+          "pass": true,
+          "score": 1
+        },
+        {
+          "description": "Create a feature flag for our A/B test of the new onboarding flow. Project key i",
+          "pass": true,
+          "score": 1
+        }
+      ]
+    }
+  }
+}
