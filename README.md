@@ -27,6 +27,12 @@ Agent Skills are modular, text-based playbooks that teach an agent how to perfor
 | `ai-configs/aiconfig-tools` | Create and attach tools for function calling |
 | `ai-configs/aiconfig-projects` | Create and manage projects to organize AI Configs |
 
+### OKRs & Planning
+
+| Skill | Description |
+|-------|-------------|
+| `okr-factory` | Automate monthly/bi-weekly OKR check-ins: find your Atlas goals, gather evidence from PRs/Jira/Slack, draft a scored status update (🟢/🟠/🔴), and post it with your approval |
+
 ## Install as a Cursor Plugin
 
 This repo is a [Cursor plugin](https://cursor.com/docs/plugins/building). Installing it gives you all the skills above plus the LaunchDarkly MCP server, so the agent can read and modify your flags directly.

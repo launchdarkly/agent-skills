@@ -109,6 +109,23 @@
         "devops",
         "mcp"
       ]
+    },
+    {
+      "name": "okr-factory",
+      "description": "Automate OKR check-in updates for individual contributors. Resolves the user in Atlas, finds their goals, gathers evidence from GitHub PRs, Jira, Slack and Atlas, then drafts a scored status update (🟢/🟠/🔴) ready to post. Use for monthly or bi-weekly OKR check-ins or any \"my OKR update is due\" request.",
+      "path": "skills/okr-factory",
+      "version": "0.2.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the LD Tools (research) CLI or MCP with valid Atlas, GitHub, Jira, and Slack auth. Posts via ld atlas goal-update.",
+      "tags": [
+        "okr",
+        "goals",
+        "atlas",
+        "okr-check-in",
+        "status-update",
+        "individual-contributor",
+        "productivity"
+      ]
     }
   ]
 }
