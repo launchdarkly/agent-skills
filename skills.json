@@ -265,23 +265,6 @@
       ]
     },
     {
-      "name": "okr-factory",
-      "description": "Automate OKR check-in updates for individual contributors. Resolves the user in Atlas, finds their goals, gathers evidence from GitHub PRs, Jira, Slack and Atlas, then drafts a scored status update (🟢/🟠/🔴) ready to post. Use for monthly or bi-weekly OKR check-ins or any \"my OKR update is due\" request.",
-      "path": "skills/okr-factory",
-      "version": "0.2.0",
-      "license": "Apache-2.0",
-      "compatibility": "Requires the LD Tools (research) CLI or MCP with valid Atlas, GitHub, Jira, and Slack auth. Posts via ld atlas goal-update.",
-      "tags": [
-        "okr",
-        "goals",
-        "atlas",
-        "okr-check-in",
-        "status-update",
-        "individual-contributor",
-        "productivity"
-      ]
-    },
-    {
       "name": "launchdarkly-guarded-rollout",
       "description": "Configure guarded rollouts with progressive traffic increases, metric monitoring, and automatic rollback. Use when releasing features gradually with safety thresholds.",
       "path": "skills/feature-flags/launchdarkly-guarded-rollout",
@@ -328,6 +311,14 @@
       "version": "0.1.0",
       "license": "Apache-2.0",
       "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
+    },
+    {
+      "name": "okr-factory",
+      "description": "Automate OKR check-in updates for individual contributors. Gathers evidence from Atlas goals, GitHub PRs, Jira tickets, Slack threads, and Google Calendar, then drafts detailed status updates ready to post. Use when a user needs to do their monthly or bi-weekly OKR check-in, update Atlas goals, or says anything about OKR updates being due.",
+      "path": "skills/okr-factory",
+      "version": "0.2.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the LD Tools (research) CLI or MCP with valid Atlas, GitHub, Jira, and Slack auth. Posts via `ld atlas goal-update`."
     },
     {
       "name": "onboarding",
