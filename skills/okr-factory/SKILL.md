@@ -64,7 +64,7 @@ This skill requires the `ld` CLI (LD Tools / research repo) to be available, eit
 - `ld atlas tql` — find the user's goals
 - `ld atlas goal-full` — get full goal details (parents, subgoals, metric targets, prior updates)
 - `ld atlas goal-update` — post the final OKR score/update to a **goal** (`ld atlas update` is project-only — do not use it for goals)
-- `ld atlas goal-edit` — edit a goal's name or description (e.g., fix dead Slack channel references); at least one of `--name`/`--description` required
+- `ld atlas goal-edit` — edit a goal's name or description (e.g., fix dead Slack channel references); at least one of `--name`/`--description` required; description accepts plain text with `[text](url)` links
 
 **Evidence-gathering tools:**
 - `ld github activity` — PRs merged, reviews, commits over the check-in period
@@ -274,13 +274,13 @@ Activity: 4 PRs merged, 2 tickets closed, 6 reviews given.
    ```bash
    ld atlas goal-update "<GOAL-KEY>" "<update-text>" --status <on_track|at_risk|off_track> [--score <0-100>]
    ```
-   - `--status` sets the 🟢/🟠/🔴 badge. `--score` is the projected % (optional; defaults to a midpoint per status: on_track→85, at_risk→55, off_track→20). Pass `--score` when you have a real number.
+   - `--status` sets the 🟢/🟠/🔴 badge. `--score` is the projected % (optional; a default is applied per status when omitted). Always pass `--score` explicitly when you have a real projection number.
    - **The text is positional and capped at ~280 chars.** Longer text posts but truncates in some views — condense the draft to its headline for the posted text.
 5. If the goal (or its scored sub-goal) has a metric target and there's a new value, move it in the same update:
    ```bash
    ld atlas goal-update "<GOAL-KEY>" "<text>" --status on_track --score 85 --metric "<metricTargetAri>=<newValue>"
    ```
-   Get `<metricTargetAri>` from `goal-full` — use **`metricTargets[].node.ari`** (the full ARI, e.g. `ari:cloud:townsquare::metric-target/<uuid>`). Do **not** use `metricTargets[].node.id` (base64 global ID) or a bare UUID — both will 400 with a cryptic "Failed to convert argument value" error. The metric often lives on a **sub-goal**, not the parent OKR.
+   Get `<metricTargetAri>` from `goal-full` — use **`metricTargets[].node.ari`** (the full ARI, e.g. `ari:cloud:townsquare::metric-target/<uuid>`). The tool auto-normalises bare UUIDs and base64 `node.id` values, but normalization can silently fall through and return the raw string, which will 400. The ARI is the only format guaranteed to work. The metric often lives on a **sub-goal**, not the parent OKR.
 
    Update text supports `[link text](https://url)` syntax — these render as clickable links in Atlas, useful when citing evidence (e.g. `[TF blog post](https://...)`). Links count toward the 280-char budget.
 6. Confirm each post succeeded. Provide a summary:
@@ -328,7 +328,7 @@ Use this decision tree when determining the recommended score:
 
 - If `ld atlas tql 'owner = currentUser()'` returns nothing, resolve the AAID explicitly (see Step 1 — fuzzy `ld atlas people` dump + client-side grep) and query `ld atlas tql 'owner = "<AAID>"'`. Do **not** rely on `owner.name CONTAINS` — TQL name filters are not honored server-side.
 - **Status vs. score are distinct on goals.** `--score` records the number; `--status` sets the colored badge. Posting a score alone (via the older API) leaves the badge "Pending" — `goal-update` sends both, so always pass `--status`.
-- **`--metric` requires the ARI, not the ID.** Use `metricTargets[].node.ari` from `goal-full` output — passing `node.id` (base64) or a bare UUID will 400 with "Failed to convert argument value".
+- **`--metric` requires the ARI, not the ID.** Use `metricTargets[].node.ari` from `goal-full` output. Bare UUIDs and base64 `node.id` are auto-normalised but normalization can silently fall through — if the base64 doesn't decode to a clean `TypeName:uuid` shape, the raw string is passed to the API and will 400. Always use the ARI.
 - **Goal description edits require `goal-edit`.** There is no way to edit a goal's description text via `goal-update`. Use `ld atlas goal-edit "<KEY>" --description "..."` to fix dead Slack channel references or stale context. Description accepts plain text plus `[text](url)` links.
 - Previous update text is your best friend for matching the user's voice and format.
 - **Never default to On Track without reasoning.** Always show the scoring math and let the user decide.
