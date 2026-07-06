@@ -49,6 +49,12 @@ const SUITES = [
     skillDir: "skills/feature-flags/launchdarkly-flag-command",
     readme: "skills/feature-flags/launchdarkly-flag-command/README.md",
   },
+  {
+    suite: "launchdarkly-experiment-hypothesis-builder",
+    skillKey: "experiments/launchdarkly-experiment-hypothesis-builder",
+    skillDir: "skills/experiments/launchdarkly-experiment-hypothesis-builder",
+    readme: "skills/experiments/launchdarkly-experiment-hypothesis-builder/README.md",
+  },
 ];
 
 /**

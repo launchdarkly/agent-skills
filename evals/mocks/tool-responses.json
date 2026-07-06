@@ -1,4 +1,18 @@
 {
+  "list-metrics": {
+    "metrics": [
+      { "key": "checkout-conversion", "name": "Checkout conversion", "kind": "custom", "measureType": "occurrence", "successCriteria": "HigherThanBaseline", "tags": ["growth"] },
+      { "key": "signup-completed", "name": "Signup completed", "kind": "custom", "measureType": "occurrence", "successCriteria": "HigherThanBaseline", "tags": ["growth"] },
+      { "key": "page-load-time", "name": "Page load time", "kind": "custom", "measureType": "value", "unit": "ms", "successCriteria": "LowerThanBaseline", "tags": ["performance"] },
+      { "key": "error-rate", "name": "Error rate", "kind": "custom", "measureType": "occurrence", "successCriteria": "LowerThanBaseline", "tags": ["guardrail"] }
+    ],
+    "totalCount": 4,
+    "pageInfo": { "limit": 20, "offset": 0 }
+  },
+  "list-metric-events": {
+    "events": [{ "eventKey": "{{eventKey}}", "count": 1240, "lastSeen": "2026-07-01T00:00:00Z" }],
+    "totalCount": 1
+  },
   "list-flags": {
     "flags": [
       {

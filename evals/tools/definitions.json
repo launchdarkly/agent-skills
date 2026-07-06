@@ -509,5 +509,31 @@
       },
       "required": ["projectKey"]
     }
+  },
+  {
+    "name": "list-metrics",
+    "description": "Search and browse metrics in a project. Use query to search by metric name or key. Matching is LITERAL case-insensitive substring, not semantic. Returns a paginated list.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "query": { "type": "string", "description": "Search by metric name or key (literal case-insensitive substring)" },
+        "limit": { "type": "number", "description": "Max number of results (default 20)" }
+      },
+      "required": ["projectKey"]
+    }
+  },
+  {
+    "name": "list-metric-events",
+    "description": "List recent events for a metric event key to check whether the metric is receiving data (event health).",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "environmentKey": { "type": "string", "description": "Environment key (defaults to production)" },
+        "eventKey": { "type": "string", "description": "The event key to inspect" }
+      },
+      "required": ["projectKey", "eventKey"]
+    }
   }
 ]
