@@ -39,6 +39,7 @@ Agent Skills are modular, text-based playbooks that teach an agent how to perfor
 | Skill | Description |
 |-------|-------------|
 | `experiments/launchdarkly-experiment-setup` | Set up experiments with metrics, treatments, and data collection |
+| `experiments/launchdarkly-experiment-hypothesis-builder` | Coach a strong, testable hypothesis and hand off a pre-resolved config to experiment setup (draft) |
 
 ### Metrics
 

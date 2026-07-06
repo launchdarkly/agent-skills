@@ -164,6 +164,14 @@
       "compatibility": "Requires SDK installed (parent Step 5) and LaunchDarkly project access"
     },
     {
+      "name": "launchdarkly-experiment-hypothesis-builder",
+      "description": "Help a user craft a strong, testable LaunchDarkly experiment hypothesis and extract the structured fields (intervention, primary metric + direction, expected effect, guardrails, audience) needed to auto-scaffold the rest of the experiment. Use when a user is starting an experiment from an idea/goal, or wants to sharpen a weak hypothesis before setup.",
+      "path": "skills/experiments/launchdarkly-experiment-hypothesis-builder",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server. Pairs with launchdarkly-experiment-setup, which it hands off to."
+    },
+    {
       "name": "launchdarkly-experiment-setup",
       "description": "Set up and run experiments in LaunchDarkly. Create experiments with metrics, treatments, and flag config, start iterations to collect data, swap design between iterations, and stop with a winner.",
       "path": "skills/experiments/launchdarkly-experiment-setup",
