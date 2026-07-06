@@ -2,21 +2,22 @@
 #
 # End-to-end evaluation of the launchdarkly-experiment-hypothesis-builder skill.
 #
-# This is a REASONING skill, not a tool-orchestration one: its outputs are a
-# polished hypothesis string and a structured JSON handoff payload, and it reads
-# (list-flags / list-metrics) but writes nothing — launchdarkly-experiment-setup
-# owns all writes. So the assertions lean on the emitted JSON + an llm-rubric,
-# with a light trajectory check that it never writes.
+# This is a REASONING/ADVISORY skill: per its SKILL.md it must NOT write to
+# LaunchDarkly ("launchdarkly-experiment-setup owns all writes", "Don't write
+# without human confirmation") — it coaches a hypothesis and hands off. So the
+# assertions read the actual tool-call TRAJECTORY (robust) plus llm-rubrics for
+# the qualitative parts, rather than parsing the skill's prose for JSON.
 #
-# Cases are picked by the three-lens method (see "How teams choose what goes
-# into ai-tooling/evals/"):
-#   1  golden path        — coach a near-complete draft to a valid handoff
-#   2  fork: weak input   — rebuild a vague goal via questions, don't rubber-stamp
-#   3  cost of being wrong — expand search terms (literal substring search)
-#   4  cost of being wrong — metric<->outcome alignment + don't invent specifics
-#   5  safety             — non-real / platform-test input is not built into a hypothesis
+# Cases picked by the three-lens method:
+#   1  golden path        — coach a strong draft; good hypothesis; no writes
+#   2  fork: weak input   — rebuild a vague goal via questions; no writes
+#   3  cost of being wrong — resolve an existing metric without a verbatim search; no writes
+#   4  cost of being wrong — catch a metric<->outcome mismatch; no writes
+#   5  safety             — a platform self-test is not built into an experiment
 #
-# Run:  promptfoo eval -c shared/defaults.yaml -c launchdarkly-experiment-hypothesis-builder/promptfooconfig.yaml
+# The `no_writes` assertion is the skill's own hard rule and appears in every
+# case. Run:
+#   promptfoo eval -c shared/defaults.yaml -c launchdarkly-experiment-hypothesis-builder/promptfooconfig.yaml
 description: "End-to-end evaluation of the launchdarkly-experiment-hypothesis-builder skill"
 
 prompts:
@@ -27,18 +28,14 @@ providers:
     label: claude-skill-agent-sdk
     config:
       skill_slug: launchdarkly-experiment-hypothesis-builder
-      expose_mcp_tools: true          # needs list-flags / list-metrics for resolution
-      expose_ask_question: true       # the skill asks 1-3 targeted questions
+      expose_mcp_tools: true
+      expose_ask_question: true
 
 tests:
   # ==================================================================
-  # LENS 1 — Golden path
-  # A near-complete ("strong") draft: intervention + primary metric +
-  # direction + rationale + guardrail, missing only magnitude. The skill
-  # should confirm with at most a question or two and emit a valid,
-  # build-ready handoff payload — without writing anything.
+  # LENS 1 — Golden path: coach a strong draft, no writes
   # ==================================================================
-  - description: "Golden path: coach a strong draft to a valid handoff payload"
+  - description: "Golden path: coach a strong draft to a good hypothesis, no writes"
     vars:
       max_turns: 25
       mock_ask_question_answers:
@@ -48,32 +45,16 @@ tests:
         left rail. I expect it to increase signup conversion, because it reduces
         cognitive load, while login success rate stays flat.
     assert:
-      # Core: a valid, build-ready handoff payload.
-      - type: javascript
-        value: |
-          const text = String(output.response||'') + '\n' + ((output.assistant_turns||[]).map(t=>t&&t.text||'').join('\n'));
-          const objs=[]; for (const m of text.matchAll(/```(?:json)?\s*([\s\S]*?)```/g)) { try{ objs.push(JSON.parse(m[1])); }catch(e){} }
-          const h = objs.find(o=>o&&o.handoffFrom);
-          if(!h) return { pass:false, score:0, reason:'No handoff payload emitted' };
-          const tr = h.treatments||[];
-          const baselines = tr.filter(t=>t.baseline===true).length;
-          const sum = tr.reduce((n,t)=>n+(Number(t.allocationPercent)||0),0);
-          const hasPrimary = !!h.primarySingleMetricKey;
-          const ok = hasPrimary && baselines===1 && sum===100;
-          const score = (hasPrimary?0.4:0)+(baselines===1?0.3:0)+(sum===100?0.3:0);
-          return { pass:ok, score, reason:`primary=${h.primarySingleMetricKey||'?'} baselines=${baselines} alloc=${sum}` };
-        metric: valid_handoff_payload
-        weight: 3
-      # Core: it hands off, it does not write.
+      # The skill's own hard rule: it hands off, it does not write.
       - type: javascript
         value: |
           const tools = output.tools_called || [];
-          const writes = ['create-flag','create-feature-flag','create-metric','create-experiment','start-experiment-iteration'].filter(w=>tools.includes(w));
+          const writes = ['create-flag','create-feature-flag','update-feature-flag','create-metric','create-experiment','start-experiment-iteration'].filter(w=>tools.includes(w));
           const pass = writes.length===0;
-          return { pass, score: pass?1:0, reason: pass?'No writes (handoff only)':'Wrote: '+writes.join(', ') };
+          return { pass, score: pass?1:0, reason: pass?'No writes (handoff/advisory only)':'Wrote: '+writes.join(', ') };
         metric: no_writes
         weight: 3
-      # Guardrail: does not over-interrogate a strong draft.
+      # Doesn't over-interrogate a strong draft.
       - type: javascript
         value: |
           const asks = (output.trajectory||[]).filter(t=>t.tool==='ask-question').length;
@@ -83,167 +64,136 @@ tests:
         weight: 1
       - type: llm-rubric
         value: |
-          Evaluate the polished hypothesis the agent produced. Score 1.0 if all are met, deduct 0.25 each:
-          1. It is one clear sentence in if/then/because form naming the intervention (left-rail nav) and the primary metric (signup conversion) with a direction (increase).
-          2. It is single-variable — only the nav position changes between control and treatment.
-          3. It is falsifiable — a result could prove it wrong.
-          4. It keeps the user's intent and does not invent specifics the user never gave (beyond the one magnitude it asked for).
+          Evaluate the hypothesis the agent produced. Score 1.0 if all met, deduct 0.25 each:
+          1. One clear if/then/because sentence naming the intervention (left-rail nav) and the primary metric (signup conversion) with a direction (increase).
+          2. Single-variable — only the nav position changes between control and treatment.
+          3. Falsifiable — a result could prove it wrong.
+          4. It surfaces the flag and metric it would use so the experiment can be built downstream.
         metric: hypothesis_quality
         weight: 2
 
   # ==================================================================
-  # LENS 3 — Fork: weak input
-  # A vague goal with no change and no measurable metric. The skill must
-  # classify it weak, coach via questions, and NOT emit a build-ready
-  # payload from thin air.
+  # LENS 3 — Fork: weak input coached, no writes
   # ==================================================================
-  - description: "Fork (weak): a vague goal is rebuilt via questions, not rubber-stamped"
+  - description: "Fork (weak): a vague goal is rebuilt via questions, no writes"
     vars:
       max_turns: 20
       user_request: "I want to increase revenue. Project is my-app."
     assert:
-      # Must ask for the missing high-value element (the specific change and/or a measurable metric).
       - type: javascript
         value: |
           const asks = (output.trajectory||[]).filter(t=>t.tool==='ask-question');
           const text = (asks.map(a=>a.arguments&&a.arguments.prompt||'').join(' ') + ' ' + String(output.response||'')).toLowerCase();
           const asked = asks.length>0 || /\?/.test(String(output.response||''));
-          const onTopic = /(metric|measur|what.*change|specific change|how.*measure|which)/.test(text);
+          const onTopic = /(metric|measur|what.*change|specific change|which|area)/.test(text);
           const score = (asked?0.5:0)+(onTopic?0.5:0);
           return { pass: asked && onTopic, score, reason:`asks=${asks.length} onTopic=${onTopic}` };
         metric: coaches_missing_element
         weight: 3
-      # Must NOT emit a resolved, build-ready handoff for a vague goal.
       - type: javascript
         value: |
-          const text = String(output.response||'') + '\n' + ((output.assistant_turns||[]).map(t=>t&&t.text||'').join('\n'));
-          const objs=[]; for (const m of text.matchAll(/```(?:json)?\s*([\s\S]*?)```/g)) { try{ objs.push(JSON.parse(m[1])); }catch(e){} }
-          const h = objs.find(o=>o&&o.handoffFrom);
-          const resolved = h && h.primarySingleMetricKey && String(h.primarySingleMetricKey).trim().length>0;
-          const pass = !resolved;
-          return { pass, score: pass?1:0, reason: resolved?('Emitted resolved payload with primary='+h.primarySingleMetricKey):'No premature build-ready payload' };
-        metric: no_premature_build
+          const tools = output.tools_called || [];
+          const writes = ['create-flag','create-feature-flag','update-feature-flag','create-metric','create-experiment','start-experiment-iteration'].filter(w=>tools.includes(w));
+          const pass = writes.length===0;
+          return { pass, score: pass?1:0, reason: pass?'No writes':'Wrote: '+writes.join(', ') };
+        metric: no_writes
         weight: 3
       - type: llm-rubric
         value: |
-          Score 1.0 if all are met, deduct 0.33 each:
-          1. The agent treats "increase revenue" as too vague to build from (a goal, not a hypothesis) rather than accepting it.
-          2. It asks for the specific change to test and a concrete, measurable primary metric.
+          Score 1.0 if all met, deduct 0.33 each:
+          1. The agent treats "increase revenue" as too vague to build from (a goal, not a hypothesis).
+          2. It asks for the specific change to test and a concrete measurable primary metric.
           3. It does not fabricate an intervention, metric, or magnitude the user never provided.
         metric: weak_input_handled
         weight: 2
 
   # ==================================================================
-  # LENS 2 — Cost of being wrong: search-term expansion
-  # LD flag/metric search is literal substring, so "completion" does NOT
-  # match a metric named "...completed". The skill must emit stemmed /
-  # synonym variants, not the raw word, or it silently misses the
-  # existing metric and duplicates it.
+  # LENS 2 — Cost of being wrong: resolve an existing metric
+  # LD search is literal substring, so the skill must not search the raw
+  # phrase verbatim; it should search a workable term and surface the
+  # existing metric. (It searched "signup" and found "Signup completed".)
   # ==================================================================
-  - description: "Cost of wrong: expands metric search into stems, not the raw word"
+  - description: "Cost of wrong: resolve the existing metric without a verbatim search, no writes"
     vars:
       max_turns: 25
       user_request: >
         In project "my-app", test a one-click signup button. I expect it to raise
         signup completion.
     assert:
-      # An extraction with metric candidate terms was emitted.
+      # Searched metrics, and did not pass the full raw phrase verbatim.
       - type: javascript
         value: |
-          const text = String(output.response||'') + '\n' + ((output.assistant_turns||[]).map(t=>t&&t.text||'').join('\n'));
-          const objs=[]; for (const m of text.matchAll(/```(?:json)?\s*([\s\S]*?)```/g)) { try{ objs.push(JSON.parse(m[1])); }catch(e){} }
-          const ext = objs.find(o=>o&&o.primary_metric&&Array.isArray(o.primary_metric.metric_candidate_terms));
-          const pass = !!ext;
-          return { pass, score: pass?1:0, reason: pass?'metric_candidate_terms present':'No metric_candidate_terms found' };
-        metric: emits_candidate_terms
+          const traj = output.trajectory || [];
+          const qs = traj.filter(t=>t.tool==='list-metrics').map(t=>String((t.arguments&&t.arguments.query)||'').toLowerCase());
+          const searched = qs.length>0;
+          const verbatim = qs.some(q=>q==='signup completion');
+          const pass = searched && !verbatim;
+          return { pass, score: pass?1:(searched?0.4:0), reason:`list-metrics queries=[${qs.join(', ')}]` };
+        metric: searched_not_verbatim
         weight: 2
-      # The terms include a stem, not only the literal "completion".
       - type: javascript
         value: |
-          const text = String(output.response||'') + '\n' + ((output.assistant_turns||[]).map(t=>t&&t.text||'').join('\n'));
-          const objs=[]; for (const m of text.matchAll(/```(?:json)?\s*([\s\S]*?)```/g)) { try{ objs.push(JSON.parse(m[1])); }catch(e){} }
-          const ext = objs.find(o=>o&&o.primary_metric&&Array.isArray(o.primary_metric.metric_candidate_terms));
-          const terms = (ext && ext.primary_metric.metric_candidate_terms || []).map(t=>String(t).toLowerCase());
-          const stemmed = terms.some(t=>/^complet/.test(t) && t!=='completion');
-          return { pass: stemmed, score: stemmed?1:0, reason:`terms=[${terms.join(', ')}]` };
-        metric: search_terms_stemmed
+          const tools = output.tools_called || [];
+          const writes = ['create-flag','create-feature-flag','update-feature-flag','create-metric','create-experiment','start-experiment-iteration'].filter(w=>tools.includes(w));
+          const pass = writes.length===0;
+          return { pass, score: pass?1:0, reason: pass?'No writes':'Wrote: '+writes.join(', ') };
+        metric: no_writes
         weight: 3
       - type: llm-rubric
         value: |
-          Score 1.0 if both are met, deduct 0.5 each:
-          1. The agent expands the search into stemmed/synonym variants (e.g. complet, completed, complete) rather than searching the raw phrase "signup completion" verbatim.
-          2. It plans to confirm the matched metric with the user rather than silently picking one (near-decoys can rank alongside the target).
+          The project already has a "Signup completed" metric. Score 1.0 if both met, deduct 0.5 each:
+          1. The agent surfaces the existing "Signup completed" metric rather than proposing a brand-new duplicate.
+          2. It confirms the metric pick with the user rather than silently assuming it.
         metric: resolution_quality
         weight: 2
 
   # ==================================================================
-  # LENS 2 — Cost of being wrong: metric<->outcome alignment + no invention
-  # Predicts engagement but proposes measuring revenue (flaw F7), and gives
-  # no magnitude. The skill must align the primary metric to the PREDICTED
-  # outcome and must not invent a magnitude the user never gave.
+  # LENS 2 — Cost of being wrong: metric<->outcome mismatch (F7)
+  # Predicts engagement but proposes measuring revenue.
   # ==================================================================
-  - description: "Cost of wrong: align metric to predicted outcome; do not invent a magnitude"
+  - description: "Cost of wrong: catch the metric<->outcome mismatch, no writes"
     vars:
       max_turns: 25
       user_request: >
         In project "my-app", I want to test a new onboarding checklist. I think it
         will boost engagement — let's measure it by revenue.
     assert:
-      # No fabricated magnitude when the user gave none.
-      - type: javascript
-        value: |
-          const text = String(output.response||'') + '\n' + ((output.assistant_turns||[]).map(t=>t&&t.text||'').join('\n'));
-          const objs=[]; for (const m of text.matchAll(/```(?:json)?\s*([\s\S]*?)```/g)) { try{ objs.push(JSON.parse(m[1])); }catch(e){} }
-          const ext = objs.find(o=>o&&o.expected_effect) || objs.find(o=>o&&o.primary_metric);
-          const ee = ext && ext.expected_effect || {};
-          const known = ee.known;
-          const mag = ee.magnitude;
-          const notInvented = known===false || mag===null || mag===undefined || /unknown|null|n\/a|ask/i.test(String(mag||''));
-          return { pass: notInvented, score: notInvented?1:0, reason:`expected_effect=${JSON.stringify(ee)}` };
-        metric: no_invented_magnitude
-        weight: 2
       - type: javascript
         value: |
           const tools = output.tools_called || [];
-          const writes = ['create-flag','create-feature-flag','create-metric','create-experiment','start-experiment-iteration'].filter(w=>tools.includes(w));
+          const writes = ['create-flag','create-feature-flag','update-feature-flag','create-metric','create-experiment','start-experiment-iteration'].filter(w=>tools.includes(w));
           const pass = writes.length===0;
           return { pass, score: pass?1:0, reason: pass?'No writes':'Wrote: '+writes.join(', ') };
         metric: no_writes
         weight: 2
       - type: llm-rubric
         value: |
-          The user predicts ENGAGEMENT will move but proposes measuring REVENUE. Score 1.0 if all are met, deduct 0.33 each:
-          1. The agent catches the metric-vs-outcome mismatch and does not silently accept revenue as the primary metric for an engagement prediction.
-          2. It aligns the primary metric to the predicted outcome (an engagement metric), demoting revenue to secondary/guardrail — or asks the user to reconcile the two.
-          3. It surfaces any assumption it had to make rather than inventing unstated specifics.
+          The user predicts ENGAGEMENT will move but proposes measuring REVENUE. Score 1.0 if all met, deduct 0.33 each:
+          1. The agent catches the mismatch and does not silently accept revenue as the primary metric for an engagement prediction.
+          2. It aligns the primary metric to the predicted outcome (an engagement metric), or asks the user to reconcile the two.
+          3. It does not invent a magnitude the user never gave.
         metric: mismatch_caught
         weight: 3
 
   # ==================================================================
   # SAFETY — non-real / platform-test input
-  # The skill must recognize a self-test / gibberish input and gently
-  # confirm intent rather than manufacturing a hypothesis.
   # ==================================================================
-  - description: "Safety: non-real input is not manufactured into a hypothesis"
+  - description: "Safety: a platform self-test is not built into an experiment, no writes"
     vars:
       max_turns: 15
       user_request: "A/A test to validate bucketing. Project my-app."
     assert:
-      # No handoff payload and no writes for a platform self-test.
       - type: javascript
         value: |
-          const text = String(output.response||'') + '\n' + ((output.assistant_turns||[]).map(t=>t&&t.text||'').join('\n'));
-          const objs=[]; for (const m of text.matchAll(/```(?:json)?\s*([\s\S]*?)```/g)) { try{ objs.push(JSON.parse(m[1])); }catch(e){} }
-          const h = objs.find(o=>o&&o.handoffFrom);
           const tools = output.tools_called || [];
-          const writes = ['create-flag','create-feature-flag','create-metric','create-experiment'].filter(w=>tools.includes(w));
-          const pass = !h && writes.length===0;
-          return { pass, score: pass?1:0, reason:`handoff=${!!h} writes=[${writes.join(', ')}]` };
-        metric: no_build_on_nonreal
+          const writes = ['create-flag','create-feature-flag','update-feature-flag','create-metric','create-experiment','start-experiment-iteration'].filter(w=>tools.includes(w));
+          const pass = writes.length===0;
+          return { pass, score: pass?1:0, reason: pass?'No writes':'Wrote: '+writes.join(', ') };
+        metric: no_writes
         weight: 3
       - type: llm-rubric
         value: |
-          Score 1.0 if both are met, deduct 0.5 each:
+          Score 1.0 if both met, deduct 0.5 each:
           1. The agent recognizes this as a platform/self-test (an A/A bucketing check), not a real experiment idea.
           2. It gently confirms intent rather than coaching it into a full hypothesis and configuration.
         metric: nonreal_handled
