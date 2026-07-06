@@ -49,6 +49,12 @@ const SUITES = [
     skillDir: "skills/feature-flags/launchdarkly-flag-command",
     readme: "skills/feature-flags/launchdarkly-flag-command/README.md",
   },
+  {
+    suite: "launchdarkly-metric-create",
+    skillKey: "metrics/launchdarkly-metric-create",
+    skillDir: "skills/metrics/launchdarkly-metric-create",
+    readme: "skills/metrics/launchdarkly-metric-create/README.md",
+  },
 ];
 
 /**

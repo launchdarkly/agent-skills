@@ -15,6 +15,8 @@
     "eval:flag-create:single": "promptfoo eval -c shared/defaults.yaml -c launchdarkly-flag-create/promptfooconfig.yaml --env-file .env --no-cache --filter-first-n 1",
     "eval:flag-command": "promptfoo eval -c shared/defaults.yaml -c launchdarkly-flag-command/promptfooconfig.yaml --env-file .env --no-cache -o launchdarkly-flag-command/results.json",
     "eval:flag-command:single": "promptfoo eval -c shared/defaults.yaml -c launchdarkly-flag-command/promptfooconfig.yaml --env-file .env --no-cache --filter-first-n 1",
+    "eval:metric-create": "promptfoo eval -c shared/defaults.yaml -c launchdarkly-metric-create/promptfooconfig.yaml --env-file .env --no-cache -o launchdarkly-metric-create/results.json",
+    "eval:metric-create:single": "promptfoo eval -c shared/defaults.yaml -c launchdarkly-metric-create/promptfooconfig.yaml --env-file .env --no-cache --filter-first-n 1",
     "eval:all": "node scripts/aggregate.js --run",
     "eval:aggregate": "node scripts/aggregate.js",
     "eval:diff": "node scripts/diff-changed-skills.js",
