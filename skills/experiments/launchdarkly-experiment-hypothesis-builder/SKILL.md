@@ -13,13 +13,16 @@ metadata:
 
 > **Status: draft.** Early version, published for review. Behavior and the handoff contract may change.
 
-Your job is to turn a user's rough idea into a **strong, testable hypothesis** and a **structured extraction** that lets the rest of the experiment be created for them. The hypothesis is the best starting point: a well-formed one encodes both the intervention (→ flag + treatments) and the outcome (→ metric), so everything downstream can be scaffolded or selected with minimal further questions.
+Your job is to produce **two text artifacts** — a polished hypothesis and a structured handoff payload — and then **stop**. You are advisory: a well-formed hypothesis encodes both the intervention (→ flag + treatments) and the outcome (→ metric), so a *separate* setup step can scaffold everything later. This skill produces:
+1. A polished **hypothesis string**.
+2. A **structured JSON handoff payload** for `launchdarkly-experiment-setup` (which otherwise assumes the hypothesis is already known).
 
-This skill produces two artifacts:
-1. A polished **hypothesis string** for the experiment.
-2. A **structured JSON extraction** that hands off to `launchdarkly-experiment-setup` (which otherwise assumes the hypothesis is already known).
-
-> **This skill is advisory and NEVER writes to LaunchDarkly.** Do not call any `create-`, `update-`, `toggle-`, or `start-` tool — no creating flags, metrics, or experiments; no toggling flags; no starting iterations. Your final action is always to emit the handoff payload (Step 9) and then **STOP**. If `launchdarkly-experiment-setup` isn't available to receive the handoff, still output the payload and stop — never fall back to creating the flag/metric/experiment yourself.
+> ## ⛔ STOP — this skill NEVER writes to LaunchDarkly
+> You **must not call any `create-*`, `update-*`, `toggle-*`, or `start-*` tool** — no creating flags, metrics, or experiments; no toggling flags on/off; no starting iterations. Your entire output is **text**: a hypothesis and the Step 9 handoff payload. Do **not** say a flag was "created" or "is live," and do **not** build a full experiment yourself. After emitting the payload, **STOP**. If `launchdarkly-experiment-setup` is unavailable to receive it, still just output the payload — never create the flag/metric/experiment yourself as a fallback. Only read-only lookups (`get-flag`, `list-flags`, `list-metrics`, `get-metric`) are permitted; anything that mutates state is not.
+>
+> Two more hard stops before you build anything:
+> - **Non-real input** — platform self-tests, A/A bucketing checks, placeholders, gibberish → confirm intent first, build nothing (Step 0).
+> - **Metric ≠ predicted outcome** → reconcile with the user first, don't compose (Step 3.5).
 
 ## Anatomy of a strong hypothesis
 
@@ -55,8 +58,8 @@ Prioritize eliciting **metric → magnitude → rationale**, in that order. Most
 
 ## Workflow
 
-### Step 0 — Gate non-real input (do this FIRST)
-Before capturing or diagnosing anything, check whether the input is a *real* experiment idea. If it looks like a platform self-test, an A/A bucketing check, a placeholder, or gibberish (see [Detecting low-effort / non-real input](#detecting-low-effort--non-real-input) for signals — e.g. "A/A test to validate bucketing", "testing the LaunchDarkly platform", "dummy flag", "If X then Y", "asdf"), **stop and confirm intent with the user.** Do NOT capture, diagnose, compose a hypothesis, or build any configuration until they confirm it's a real experiment. Only a genuine A/B idea proceeds to Step 1.
+### Step 0 — Gate non-real input (do this FIRST — HARD STOP)
+Before capturing or diagnosing anything, check whether the input is a *real* experiment idea. If it looks like a platform self-test, an **A/A bucketing check**, a placeholder, or gibberish (see [Detecting low-effort / non-real input](#detecting-low-effort--non-real-input) for signals — e.g. "A/A test to validate bucketing", "testing the LaunchDarkly platform", "dummy flag", "If X then Y", "asdf"), **STOP immediately.** In that turn, output **only a short question confirming intent** — nothing else. Do NOT capture, diagnose, compose a hypothesis, emit a handoff payload, or build any configuration until the user confirms it's a real experiment. An A/A test is *never* coached into a hypothesis. Only a genuine A/B idea proceeds to Step 1.
 
 ### Step 1 — Capture the raw input
 Accept whatever the user starts with: a free-text idea, a goal, a flag they already have, or a metric they care about. Don't require structure yet.
@@ -82,8 +85,8 @@ Classify overall:
 ### Step 3 — Ask ONLY for the missing high-value elements
 Keep it to the fewest questions. Lead with the rarest gaps: **primary metric + direction**, then **magnitude**, then **rationale/guardrails**, then **audience** if unclear. Offer concrete options where you can (e.g. suggest plausible metrics based on the intervention). Don't interrogate — 1–3 targeted questions is the target.
 
-### Step 3.5 — Check metric–outcome alignment (flaw F7)
-Before composing, verify the primary metric actually measures the outcome the hypothesis predicts. If the hypothesis predicts one thing (e.g. engagement) but the proposed primary metric measures another (e.g. revenue), that's flaw F7 (see `references/diagnostic-tree.md`) — **flag the mismatch and reconcile it with the user** (either swap the metric to match the predicted outcome, or restate the outcome to match the metric) before moving on. Never compose a hypothesis whose prediction and primary metric disagree.
+### Step 3.5 — Check metric–outcome alignment (flaw F7 — HARD STOP)
+Before composing, verify the primary metric actually measures the outcome the hypothesis predicts. If the hypothesis predicts one thing (e.g. **engagement**) but the proposed primary metric measures another (e.g. **revenue**), that's flaw F7 (see `references/diagnostic-tree.md`) — **STOP and reconcile with the user** (either swap the metric to match the predicted outcome, or restate the outcome to match the metric). Do NOT compose a hypothesis or emit a handoff payload while the prediction and primary metric disagree — ask the user which to change and wait for their answer first.
 
 ### Step 4 — Compose the polished hypothesis
 Write one clear sentence using the canonical template. Keep the user's intent and voice; don't invent specifics they didn't confirm. Flag any assumption you had to make.
@@ -117,10 +120,10 @@ Return this JSON so downstream setup can proceed:
 ### Step 6 — Generate search terms for matching existing flags/metrics
 LaunchDarkly's `list-flags` / `list-metrics` `query` is **literal case-insensitive substring matching, not semantic** — e.g. `"completion"` does NOT match a metric named `"completed"`, and `"create"` does NOT match `"creation"`. So **do not** pass the hypothesis text verbatim to search. For each of `flag_candidate_terms` and `metric_candidate_terms`, emit several **stemmed / truncated / synonym** variants (e.g. `creation` → `creat`, `create`, `creation`; `completion` → `complet`, `completed`, `complete`), run multiple queries, union + dedupe, then rank candidates by name + description + tags and **confirm the pick with the user** (near-decoys often rank alongside the target).
 
-### Step 7 — Resolve flag & metric keys (select-or-create)
-Turn the candidate *terms* into concrete LD **keys**, because `launchdarkly-experiment-setup` needs a real `flagKey` (and its variation IDs), not a name. First establish `projectKey` and `environmentKey` (ask if not already known; default env `production`). Then:
-- **Flag:** run the expanded `flag_candidate_terms` through `list-flags`; if a confirmed match exists, record its key with `action: use_existing`. Otherwise plan a boolean flag (`control` = off/current, `treatment` = on/changed) with `action: create` and a proposed kebab-case key naming the *toggle* (not the outcome).
-- **Primary metric:** run `metric_candidate_terms` through `list-metrics`; on a confirmed match record its key + `action: use_existing`; else plan `action: create` with `measureType` (occurrence/count/value) and `successCriteria` derived from `direction`.
+### Step 7 — Match flag & metric keys (read-only lookup)
+Using only **read-only** lookups (`list-flags`, `list-metrics`, `get-flag`, `get-metric`), try to match the candidate *terms* to existing LD **keys** so the payload can carry a real key rather than a name. First establish `projectKey` and `environmentKey` (ask if not already known; default env `production`). You never create or toggle anything here — you only look up and record. Then:
+- **Flag:** run the expanded `flag_candidate_terms` through `list-flags`; if a confirmed match exists, record its key with `action: use_existing`. Otherwise record a *proposed* boolean flag in the payload (`control` = off/current, `treatment` = on/changed) with `action: create` and a proposed kebab-case key naming the *toggle* (not the outcome) — a proposal for the downstream step, which you do not execute.
+- **Primary metric:** run `metric_candidate_terms` through `list-metrics`; on a confirmed match record its key + `action: use_existing`; else record `action: create` in the payload with `measureType` (occurrence/count/value) and `successCriteria` derived from `direction` — again a proposal, not a creation you perform.
 - **Guardrail/secondary metrics:** resolve the same way (guardrails usually already exist — latency, error rate, refunds).
 - Confirm every pick with the human (near-decoys rank alongside targets). Record the resolved keys + actions in the handoff payload (Step 9). **Do not create anything here** — `launchdarkly-experiment-setup` owns all writes, flag-version ordering, and event-health checks.
 
@@ -140,8 +143,8 @@ Guardrail(s):    <metric(s) that must not regress>
 Sample/runtime:  <MDE> → ~<n per arm> / ~<days> at current volume
 ```
 
-### Step 9 — Hand off to `launchdarkly-experiment-setup`
-After the human approves the configuration summary, invoke `launchdarkly-experiment-setup` with this **handoff payload**. The payload is pre-resolved so that skill can skip discovery and go near-straight to its Step 3 `create-experiment` call.
+### Step 9 — Emit the handoff payload, then STOP
+Once the human approves the configuration summary, **output this handoff payload as your final message — as text — and then STOP.** Do not call any tool. Do not create a flag, metric, or experiment; do not toggle or start anything; do not report that anything was "created" or "is live." A separate `launchdarkly-experiment-setup` step consumes this payload later and performs any writes behind its own human confirmation — that is not your job.
 
 ```json
 {
@@ -175,11 +178,7 @@ After the human approves the configuration summary, invoke `launchdarkly-experim
 }
 ```
 
-**How `launchdarkly-experiment-setup` consumes it** (these create/toggle/start actions are performed by *that* skill, never by this one — this skill only emits the payload):
-- **Step 1 (Prepare Metrics):** metrics with `action: use_existing` are already resolved — just verify with `list-metric-events`; `action: create` → `create-metric` using the given `measureType`/`successCriteria`. `primarySingleMetricKey` is set.
-- **Step 2 (Targeting rule):** `flag.action: create` → `create-flag` (boolean: control=off, treatment=on), then read variation IDs; `use_existing` → `get-flag` to fill `controlVariationId`/`treatmentVariationId`. Toggle the flag on **before** the final `get-flag`, then use that env `version` as `flagConfigVersion` (version-ordering discipline).
-- **Step 3 (Create):** assemble `treatments[].parameters` from the flag key + resolved variation IDs; pass `hypothesis`, `metrics`, `primarySingleMetricKey`, `randomizationUnit`, `methodology`.
-- Treat everything as **pre-approved proposals**, not silent auto-writes: still confirm with the human and surface event health before creating. Anything the payload leaves null (e.g. variation IDs before creation), resolve in-flow.
+The `action: use_existing | create` fields describe what the *downstream* `launchdarkly-experiment-setup` step should do (look up vs. create the flag/metric, resolve variation IDs, toggle the flag on with proper version ordering, then create + start behind human confirmation). They are **not** instructions for you to execute — you only emit the payload and stop.
 
 ## Scoring examples
 
