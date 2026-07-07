@@ -30,6 +30,7 @@ providers:
       skill_slug: launchdarkly-experiment-hypothesis-builder
       expose_mcp_tools: true
       expose_ask_question: true
+      force_skill_invocation: true    # advisory skill — description-based activation is unreliable; force-load it so we test the skill, not base Claude
 
 tests:
   # ==================================================================
