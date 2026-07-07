@@ -19,6 +19,8 @@ This skill produces two artifacts:
 1. A polished **hypothesis string** for the experiment.
 2. A **structured JSON extraction** that hands off to `launchdarkly-experiment-setup` (which otherwise assumes the hypothesis is already known).
 
+> **This skill is advisory and NEVER writes to LaunchDarkly.** Do not call any `create-`, `update-`, `toggle-`, or `start-` tool — no creating flags, metrics, or experiments; no toggling flags; no starting iterations. Your final action is always to emit the handoff payload (Step 9) and then **STOP**. If `launchdarkly-experiment-setup` isn't available to receive the handoff, still output the payload and stop — never fall back to creating the flag/metric/experiment yourself.
+
 ## Anatomy of a strong hypothesis
 
 A strong hypothesis names six elements. Use this as the rubric:
@@ -53,6 +55,9 @@ Prioritize eliciting **metric → magnitude → rationale**, in that order. Most
 
 ## Workflow
 
+### Step 0 — Gate non-real input (do this FIRST)
+Before capturing or diagnosing anything, check whether the input is a *real* experiment idea. If it looks like a platform self-test, an A/A bucketing check, a placeholder, or gibberish (see [Detecting low-effort / non-real input](#detecting-low-effort--non-real-input) for signals — e.g. "A/A test to validate bucketing", "testing the LaunchDarkly platform", "dummy flag", "If X then Y", "asdf"), **stop and confirm intent with the user.** Do NOT capture, diagnose, compose a hypothesis, or build any configuration until they confirm it's a real experiment. Only a genuine A/B idea proceeds to Step 1.
+
 ### Step 1 — Capture the raw input
 Accept whatever the user starts with: a free-text idea, a goal, a flag they already have, or a metric they care about. Don't require structure yet.
 
@@ -76,6 +81,9 @@ Classify overall:
 
 ### Step 3 — Ask ONLY for the missing high-value elements
 Keep it to the fewest questions. Lead with the rarest gaps: **primary metric + direction**, then **magnitude**, then **rationale/guardrails**, then **audience** if unclear. Offer concrete options where you can (e.g. suggest plausible metrics based on the intervention). Don't interrogate — 1–3 targeted questions is the target.
+
+### Step 3.5 — Check metric–outcome alignment (flaw F7)
+Before composing, verify the primary metric actually measures the outcome the hypothesis predicts. If the hypothesis predicts one thing (e.g. engagement) but the proposed primary metric measures another (e.g. revenue), that's flaw F7 (see `references/diagnostic-tree.md`) — **flag the mismatch and reconcile it with the user** (either swap the metric to match the predicted outcome, or restate the outcome to match the metric) before moving on. Never compose a hypothesis whose prediction and primary metric disagree.
 
 ### Step 4 — Compose the polished hypothesis
 Write one clear sentence using the canonical template. Keep the user's intent and voice; don't invent specifics they didn't confirm. Flag any assumption you had to make.
@@ -167,7 +175,7 @@ After the human approves the configuration summary, invoke `launchdarkly-experim
 }
 ```
 
-**How `launchdarkly-experiment-setup` consumes it** (map onto its own steps — don't re-derive what's provided):
+**How `launchdarkly-experiment-setup` consumes it** (these create/toggle/start actions are performed by *that* skill, never by this one — this skill only emits the payload):
 - **Step 1 (Prepare Metrics):** metrics with `action: use_existing` are already resolved — just verify with `list-metric-events`; `action: create` → `create-metric` using the given `measureType`/`successCriteria`. `primarySingleMetricKey` is set.
 - **Step 2 (Targeting rule):** `flag.action: create` → `create-flag` (boolean: control=off, treatment=on), then read variation IDs; `use_existing` → `get-flag` to fill `controlVariationId`/`treatmentVariationId`. Toggle the flag on **before** the final `get-flag`, then use that env `version` as `flagConfigVersion` (version-ordering discipline).
 - **Step 3 (Create):** assemble `treatments[].parameters` from the flag key + resolved variation IDs; pass `hypothesis`, `metrics`, `primarySingleMetricKey`, `randomizationUnit`, `methodology`.
@@ -202,4 +210,5 @@ Note: a hypothesis that merely mentions "A/B test" or "test group" as part of a 
 - Don't invent a metric, magnitude, or audience the user didn't confirm; surface assumptions instead.
 - Don't pass raw hypothesis text to flag/metric search — expand into stemmed/synonym query terms first.
 - Don't over-interrogate. Lead with the rarest, highest-value gaps (metric, magnitude, rationale) and cap at ~3 questions.
-- Don't write to LaunchDarkly without human confirmation of the final hypothesis and the flag/metric picks.
+- **Never write to LaunchDarkly.** Don't call any `create-`, `update-`, `toggle-`, or `start-` tool — no creating flags/metrics/experiments, toggling flags, or starting iterations. Emit the handoff payload and STOP. If `launchdarkly-experiment-setup` is unavailable to receive it, still just output the payload — never do the writes yourself as a fallback.
+- Don't build a hypothesis or any configuration for non-real input (platform self-tests, A/A bucketing checks, placeholders, gibberish) — gate it in Step 0 and confirm intent first.
