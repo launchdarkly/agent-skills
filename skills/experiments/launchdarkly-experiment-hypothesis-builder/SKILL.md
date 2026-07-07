@@ -124,7 +124,7 @@ LaunchDarkly's `list-flags` / `list-metrics` `query` is **literal case-insensiti
 
 ### Step 7 — Match flag & metric keys (read-only lookup)
 Using only **read-only** lookups (`list-flags`, `list-metrics`, `get-flag`, `get-metric`), try to match the candidate *terms* to existing LD **keys** so the payload can carry a real key rather than a name. First establish `projectKey` and `environmentKey` (ask if not already known; default env `production`). You never create or toggle anything here — you only look up and record. Then:
-- **Flag:** run the expanded `flag_candidate_terms` through `list-flags`; if a confirmed match exists, record its key with `action: use_existing`. Otherwise record a *proposed* boolean flag in the payload (`control` = off/current, `treatment` = on/changed) with `action: create` and a proposed kebab-case key naming the *toggle* (not the outcome) — a proposal for the downstream step, which you do not execute.
+- **Flag:** run the expanded `flag_candidate_terms` through `list-flags`; if a confirmed match exists, record its key with `action: use_existing`. Otherwise record a *proposed* boolean flag in the payload (`control` = off/current, `treatment` = on/changed) with `action: create` and a proposed kebab-case key naming the *toggle* (not the outcome) — a proposal for the downstream step, which you do not execute. **Never call `create-flag`/`create-feature-flag` to make this flag or to get its variation IDs; leave the IDs null.**
 - **Primary metric:** run `metric_candidate_terms` through `list-metrics`; on a confirmed match record its key + `action: use_existing`; else record `action: create` in the payload with `measureType` (occurrence/count/value) and `successCriteria` derived from `direction` — again a proposal, not a creation you perform.
 - **Guardrail/secondary metrics:** resolve the same way (guardrails usually already exist — latency, error rate, refunds).
 - Confirm every pick with the human (near-decoys rank alongside targets). Record the resolved keys + actions in the handoff payload (Step 9). **Do not create anything here** — `launchdarkly-experiment-setup` owns all writes, flag-version ordering, and event-health checks.
@@ -181,6 +181,8 @@ Once the human approves the configuration summary, **output this handoff payload
 ```
 
 The `action: use_existing | create` fields describe what the *downstream* `launchdarkly-experiment-setup` step should do (look up vs. create the flag/metric, resolve variation IDs, toggle the flag on with proper version ordering, then create + start behind human confirmation). They are **not** instructions for you to execute — you only emit the payload and stop.
+
+**Do not create a flag to obtain variation IDs.** For an `action: create` flag the flag does not exist yet, so set `controlVariationId` and `treatmentVariationId` to `null` — the downstream step creates the flag and fills them in. Needing an ID (or any "resolved" value) is *never* a reason to call `create-flag` / `create-feature-flag` or any other write tool. Emit the payload with nulls and stop.
 
 ## Scoring examples
 
