@@ -1,0 +1,225 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+#
+# Run with shared defaults:
+#   promptfoo eval -c shared/defaults.yaml -c pr-flag-apply/promptfooconfig.yaml
+#
+# The launchdarkly-pr-flag-apply skill consumes a triage brief and, when the
+# brief recommends a flag, creates the flag (create-flag) and wires the PR's
+# code behind it so the flag-off path preserves existing behavior. These cases
+# check that it creates the flag correctly, edits code, honors a no-op brief
+# (flag_worthy=false), and reuses an existing flag instead of failing.
+description: "End-to-end evaluation of the launchdarkly-pr-flag-apply skill"
+
+prompts:
+  - file://../../skills/feature-flags/launchdarkly-pr-flag-apply/SKILL.md
+
+providers:
+  - id: file://../providers/claude-skill-agent-sdk.js
+    label: claude-skill-agent-sdk
+    config:
+      skill_slug: launchdarkly-pr-flag-apply
+      allow_builtins: true
+      expose_mcp_tools: true
+
+tests:
+  # ------------------------------------------------------------------
+  # Test 1: Happy path — brief says flag; create flag + wire code
+  # ------------------------------------------------------------------
+  - description: "Brief recommends a flag -> creates flag and wires code"
+    vars:
+      user_request: >
+        Act on the following flag-triage brief for project "shop-app". Create the
+        flag and wire the changed code behind it, preserving the flag-off behavior.
+
+        ```yaml
+        flag_decision:
+          flag_worthy: true
+          flag_key_suggestion: enable-new-checkout
+          intent_summary: New checkout flow replaces the legacy one; gate the new path.
+          files_to_modify:
+            - file: src/checkout.js
+              functions: [renderCheckout]
+              wrap_note: gate renderNewCheckout behind the flag; keep renderCheckout on the off-path
+          existing_patterns_found: "server Node SDK: await client.variation(key, context, default)"
+          risks: none
+        ```
+      codebase_context: >
+        Node Express app, LaunchDarkly server-side Node SDK v9. Existing pattern:
+          const showX = await client.variation('some-flag', context, false);
+      mock_files:
+        "package.json": '{"dependencies":{"@launchdarkly/node-server-sdk":"^9.0.0"}}'
+        "src/checkout.js": "function renderCheckout(req){ return legacyCheckout(req); }\nfunction renderNewCheckout(req){ return newCheckout(req); }\nmodule.exports = { renderCheckout };\n"
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const pass = tools.includes('create-flag');
+          return { pass, score: pass ? 1 : 0, reason: 'tools: ' + tools.join(' -> ') };
+        metric: calls_create_flag
+        weight: 3
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const call = traj.find((t) => t.tool === 'create-flag');
+          if (!call) return { pass: false, score: 0, reason: 'no create-flag call' };
+          const a = call.arguments || {};
+          const kebab = typeof a.key === 'string' && /^[a-z][a-z0-9-]*$/.test(a.key);
+          const temp = a.temporary === true;
+          const score = (kebab ? 0.6 : 0) + (temp ? 0.4 : 0);
+          return { pass: kebab, score, reason: `key=${a.key} temporary=${a.temporary}` };
+        metric: flag_args_correct
+        weight: 2
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const edited = traj.some((t) => ['Edit', 'Write', 'MultiEdit'].includes(t.tool));
+          return { pass: edited, score: edited ? 1 : 0, reason: edited ? 'wired code' : 'no code edit' };
+        metric: wires_code
+        weight: 2
+      - type: llm-rubric
+        value: |
+          The agent acted on a brief recommending a flag and wired the new checkout
+          behind it.
+          Score 1.0 if ALL hold:
+          1. Created a boolean flag with a kebab-case key related to checkout.
+          2. Wrapped the NEW behavior (renderNewCheckout) behind the flag, leaving the
+             existing renderCheckout / legacy path reachable when the flag is off.
+          3. Used the codebase's existing client.variation(...) pattern.
+          4. Used a safe default (existing behavior) in the evaluation call.
+          Deduct 0.25 per criterion missed. This is the control-path invariant —
+          penalize heavily if the flag-off path would run new code.
+        metric: wiring_quality
+        weight: 3
+
+  # ------------------------------------------------------------------
+  # Test 2: Brief says NOT flag-worthy -> no-op (must NOT create a flag)
+  # ------------------------------------------------------------------
+  - description: "Brief says flag_worthy=false -> does not create a flag"
+    vars:
+      user_request: >
+        Act on the following flag-triage brief for project "shop-app".
+
+        ```yaml
+        flag_decision:
+          flag_worthy: false
+          flag_worthy_justification: Pure refactor (extract function), no external contract or behavior change.
+          flag_key_suggestion: N/A
+          files_to_modify: N/A
+        ```
+      codebase_context: >
+        The PR only renamed and extracted a helper; no behavior change.
+      mock_files:
+        "src/util.js": "function formatName(n){ return n.trim(); }\n"
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const writes = ['create-flag', 'create-feature-flag'];
+          const called = writes.filter((w) => tools.includes(w));
+          const pass = called.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'correctly created no flag' : 'wrongly created: ' + called.join(', ') };
+        metric: honors_no_op
+        weight: 4
+      - type: llm-rubric
+        value: |
+          The brief explicitly says flag_worthy=false.
+          Score 1.0 if the agent does NOT create a flag and clearly explains it is a
+          no-op because triage decided no flag (optionally passing through the
+          test/review briefs). Score 0.0 if it creates a flag anyway.
+        metric: no_op_explained
+        weight: 2
+
+  # ------------------------------------------------------------------
+  # Test 3: Suggested flag already exists -> reuse, don't fail (idempotency)
+  # ------------------------------------------------------------------
+  - description: "Flag key already exists -> reuses via get-flag, stays idempotent"
+    vars:
+      user_request: >
+        Act on this brief for project "shop-app". A previous pipeline run may have
+        already created the flag — be idempotent.
+
+        ```yaml
+        flag_decision:
+          flag_worthy: true
+          flag_key_suggestion: enable-team-usage
+          files_to_modify:
+            - file: src/usage.js
+              functions: [teamUsage]
+              wrap_note: gate the new usage path behind the flag
+          existing_patterns_found: "await client.variation(key, context, default)"
+        ```
+      codebase_context: >
+        The flag "enable-team-usage" ALREADY EXISTS in this project from an earlier
+        run. Reuse it instead of failing on a duplicate.
+      mock_files:
+        "src/usage.js": "function teamUsage(req){ return legacyUsage(req); }\nmodule.exports = { teamUsage };\n"
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          // Idempotent behavior: it should check/verify the flag (list-flags or
+          // get-flag) rather than blindly create. Either checking first, or handling
+          // the existing flag, is acceptable.
+          const checked = tools.includes('list-flags') || tools.includes('get-flag');
+          return { pass: checked, score: checked ? 1 : 0.4, reason: 'tools: ' + tools.join(' -> ') };
+        metric: checks_before_create
+        weight: 2
+      - type: llm-rubric
+        value: |
+          The flag "enable-team-usage" already exists.
+          Score 1.0 if the agent reuses the existing flag (checks for it and/or
+          handles the duplicate gracefully) and still wires the code, WITHOUT
+          treating the existing flag as a failure. Score 0.0 if it errors out or
+          reports failure because the flag already exists.
+        metric: idempotent_reuse
+        weight: 3
+
+  # ------------------------------------------------------------------
+  # Test 4: Frontend React pattern — matches existing SDK usage
+  # ------------------------------------------------------------------
+  - description: "React PR -> wires flag with the existing useFlags pattern"
+    vars:
+      user_request: >
+        Act on this brief for project "web-app". Wire the new dashboard behind the
+        flag, matching the codebase's React SDK pattern.
+
+        ```yaml
+        flag_decision:
+          flag_worthy: true
+          flag_key_suggestion: show-new-dashboard
+          files_to_modify:
+            - file: src/App.jsx
+              functions: [App]
+              wrap_note: render NewDashboard when the flag is on, else the existing Dashboard
+          existing_patterns_found: "React SDK: const flags = useFlags(); flags.someFlag"
+        ```
+      codebase_context: >
+        React SPA using launchdarkly-react-client-sdk. Existing pattern:
+          const { someFeature } = useFlags();
+      mock_files:
+        "package.json": '{"dependencies":{"launchdarkly-react-client-sdk":"^3.0.0","react":"^18.0.0"}}'
+        "src/App.jsx": "import { useFlags } from 'launchdarkly-react-client-sdk';\nexport function App(){ return <Dashboard/>; }\n"
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const pass = tools.includes('create-flag');
+          return { pass, score: pass ? 1 : 0, reason: 'tools: ' + tools.join(' -> ') };
+        metric: calls_create_flag
+        weight: 3
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const edited = traj.some((t) => ['Edit', 'Write', 'MultiEdit'].includes(t.tool));
+          return { pass: edited, score: edited ? 1 : 0, reason: edited ? 'wired code' : 'no code edit' };
+        metric: wires_code
+        weight: 2
+      - type: llm-rubric
+        value: |
+          Score 1.0 if the agent created the show-new-dashboard flag and wired the
+          new dashboard behind it using the existing useFlags() React pattern (not a
+          different or invented SDK pattern), with the existing Dashboard rendered on
+          the flag-off path. Deduct 0.3 if it uses a non-matching pattern; 0.3 if the
+          off-path does not clearly preserve the existing Dashboard.
+        metric: wiring_quality
+        weight: 3

@@ -33,6 +33,8 @@ npm run eval:configs-update           # agentcontrol/configs-update
 npm run eval:agentcontrol-tools       # agentcontrol/tools
 npm run eval:configs-variations       # agentcontrol/configs-variations
 npm run eval:flag-create             # feature-flags/launchdarkly-flag-create
+npm run eval:pr-flag-triage          # feature-flags/launchdarkly-pr-flag-triage
+npm run eval:pr-flag-apply           # feature-flags/launchdarkly-pr-flag-apply
 
 # Quick smoke check — first test case only (~15-20s, ~$0.05)
 npm run eval:configs-create:single

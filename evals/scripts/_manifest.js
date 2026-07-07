@@ -49,6 +49,18 @@ const SUITES = [
     skillDir: "skills/feature-flags/launchdarkly-flag-command",
     readme: "skills/feature-flags/launchdarkly-flag-command/README.md",
   },
+  {
+    suite: "pr-flag-triage",
+    skillKey: "feature-flags/launchdarkly-pr-flag-triage",
+    skillDir: "skills/feature-flags/launchdarkly-pr-flag-triage",
+    readme: "skills/feature-flags/launchdarkly-pr-flag-triage/README.md",
+  },
+  {
+    suite: "pr-flag-apply",
+    skillKey: "feature-flags/launchdarkly-pr-flag-apply",
+    skillDir: "skills/feature-flags/launchdarkly-pr-flag-apply",
+    readme: "skills/feature-flags/launchdarkly-pr-flag-apply/README.md",
+  },
 ];
 
 /**

@@ -1,0 +1,221 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+#
+# Run with shared defaults:
+#   promptfoo eval -c shared/defaults.yaml -c pr-flag-triage/promptfooconfig.yaml
+#
+# The launchdarkly-pr-flag-triage skill is READ-ONLY: given a PR diff and its
+# codebase, it classifies the change, applies a flag-worthiness rubric plus
+# ancestor-flag analysis (via list-flags / get-flag), and emits a decision
+# (flag / no-flag) with a justification. These synthetic cases check the
+# decision, that the skill stays read-only (never creates/mutates flags), and
+# that it inspects ancestor flags when the code is already gated.
+description: "End-to-end evaluation of the launchdarkly-pr-flag-triage skill"
+
+prompts:
+  - file://../../skills/feature-flags/launchdarkly-pr-flag-triage/SKILL.md
+
+providers:
+  - id: file://../providers/claude-skill-agent-sdk.js
+    label: claude-skill-agent-sdk
+    config:
+      skill_slug: launchdarkly-pr-flag-triage
+      allow_builtins: true
+      expose_mcp_tools: true
+
+# Applies to every test in this suite (concatenated onto shared/defaults.yaml's
+# defaultTest.assert): triage is read-only and must never create or mutate a flag.
+defaultTest:
+  assert:
+    - type: javascript
+      value: |
+        const tools = output.tools_called || [];
+        const writes = ['create-flag', 'create-feature-flag', 'update-flag-settings',
+          'update-feature-flag', 'toggle-flag', 'delete-flag', 'archive-flag'];
+        const called = writes.filter((w) => tools.includes(w));
+        const pass = called.length === 0;
+        return { pass, score: pass ? 1 : 0, reason: pass ? 'read-only respected' : 'mutated flags: ' + called.join(', ') };
+      metric: stays_read_only
+      weight: 3
+
+tests:
+  # ------------------------------------------------------------------
+  # Test 1: Feature with new user-facing surface -> should flag
+  # ------------------------------------------------------------------
+  - description: "Feature PR (new endpoint + UI) -> recommends a flag"
+    vars:
+      user_request: >
+        Triage this pull request and decide whether the change should ship behind
+        a LaunchDarkly feature flag. Project key is "web-app". PR diff:
+
+        ```diff
+        + // src/routes/teamUsage.ts
+        + router.get('/api/teams/:id/usage', async (req, res) => {
+        +   const usage = await computeTeamUsage(req.params.id);
+        +   res.json(usage);
+        + });
+        + // src/components/TeamUsagePanel.tsx
+        + export function TeamUsagePanel({ teamId }) { /* new panel */ }
+        ```
+      codebase_context: >
+        Node + React app using the LaunchDarkly server and React SDKs. Existing
+        flags are kebab-case and evaluated with client.variation(...) / useFlags().
+        The new endpoint and panel are NOT currently behind any flag.
+      mock_files:
+        "src/routes/teamUsage.ts": "router.get('/api/teams/:id/usage', async (req, res) => { res.json(await computeTeamUsage(req.params.id)); });\n"
+        "src/components/TeamUsagePanel.tsx": "export function TeamUsagePanel({ teamId }) { return null; }\n"
+    assert:
+      - type: llm-rubric
+        value: |
+          The agent triaged a PR that adds a NEW API endpoint and a NEW UI panel,
+          neither currently behind a flag.
+          Score 1.0 if ALL hold:
+          1. The recommendation is to FLAG the change (flag_worthy / should-flag = true).
+          2. It classifies the PR as a feature (or clearly a new user-facing surface).
+          3. It suggests a kebab-case flag key related to the team-usage feature.
+          4. It gives an explicit justification naming the rubric reason (new user-facing
+             surface / new endpoint).
+          Deduct 0.25 per criterion missed.
+        metric: correct_flag_decision
+        weight: 3
+      - type: javascript
+        value: |
+          const r = (output.response || '').toLowerCase();
+          const mentionsDecision = /flag/.test(r) && /(worthy|recommend|should|true|yes)/.test(r);
+          return { pass: mentionsDecision, score: mentionsDecision ? 1 : 0, reason: 'states a decision' };
+        metric: emits_decision
+        weight: 1
+
+  # ------------------------------------------------------------------
+  # Test 2: Docs / copy typo -> should NOT flag
+  # ------------------------------------------------------------------
+  - description: "Docs-only typo fix -> recommends no flag"
+    vars:
+      user_request: >
+        Triage this pull request and decide whether it should ship behind a flag.
+        Project key is "web-app". PR diff:
+
+        ```diff
+        - Welcome to your dashbord
+        + Welcome to your dashboard
+        ```
+      codebase_context: >
+        The change is a one-word spelling fix in a static heading. No logic, no
+        API, no default changes.
+      mock_files:
+        "src/components/Header.tsx": "export const Header = () => <h1>Welcome to your dashbord</h1>;\n"
+    assert:
+      - type: llm-rubric
+        value: |
+          The agent triaged a one-word typo fix with no behavior change.
+          Score 1.0 if BOTH hold:
+          1. The recommendation is NOT to flag (flag_worthy / should-flag = false).
+          2. It gives a justification (e.g. sub-sentence copy fix / no semantic change)
+             rather than a bare "no".
+          Score 0.0 if it recommends flagging. Deduct 0.3 if the decision is right
+          but the justification is missing.
+        metric: correct_flag_decision
+        weight: 3
+
+  # ------------------------------------------------------------------
+  # Test 3: Change inside an ancestor flag -> inspects it via get-flag
+  # ------------------------------------------------------------------
+  - description: "Change inside a parent flag -> performs ancestor-flag analysis"
+    vars:
+      user_request: >
+        Triage this pull request. Project key is "web-app". The modified function
+        runs inside a code path already gated by an existing feature flag named
+        "enable-new-billing-page". PR diff:
+
+        ```diff
+          function NewBillingPage() {
+        +   const total = computeTotalsV2(lineItems); // was computeTotals(lineItems)
+            return <BillingSummary total={total} />;
+          }
+        ```
+      codebase_context: >
+        NewBillingPage only renders when the flag "enable-new-billing-page" is on.
+        That flag is currently at 0% rollout (off for everyone) in production.
+        Use LaunchDarkly to check the parent flag's state before deciding.
+      mock_files:
+        "src/pages/NewBillingPage.tsx": "// rendered only when enable-new-billing-page is on\nfunction NewBillingPage() { const total = computeTotalsV2(lineItems); return <BillingSummary total={total} />; }\n"
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const inspected = tools.includes('get-flag') || tools.includes('list-flags');
+          return { pass: inspected, score: inspected ? 1 : 0, reason: 'ancestor-flag lookup: ' + tools.join(' -> ') };
+        metric: inspects_ancestor_flag
+        weight: 3
+      - type: llm-rubric
+        value: |
+          The change is inside a code path gated by the parent flag
+          "enable-new-billing-page", which is at 0% rollout.
+          Score 1.0 if the agent:
+          1. Identifies "enable-new-billing-page" as the ancestor flag.
+          2. Reasons about its current state (off / 0%) as the protection it provides.
+          3. Concludes a nested flag is likely unnecessary because the parent flag is
+             the kill switch (no-flag), and says so explicitly rather than silently.
+          Deduct 0.3 per criterion missed.
+        metric: ancestor_reasoning_quality
+        weight: 2
+
+  # ------------------------------------------------------------------
+  # Test 4: Medium-risk bug fix in a cross-cutting path -> should flag
+  # ------------------------------------------------------------------
+  - description: "Medium-risk bugfix on a hot path -> recommends a flag"
+    vars:
+      user_request: >
+        Triage this pull request. Project key is "web-app". PR diff:
+
+        ```diff
+          func getTotalCount(ctx context.Context) (int, error) {
+        -   return legacyCount(ctx)
+        +   return fastCount(ctx) // rewritten aggregation on a hot read path
+          }
+        ```
+      codebase_context: >
+        getTotalCount is called from several dashboards and an exported API. The
+        rewrite changes the aggregation strategy; the two implementations should
+        return identical counts but exercise different query paths. No existing
+        flag gates this path.
+      mock_files:
+        "internal/counts/counts.go": "func getTotalCount(ctx context.Context) (int, error) { return fastCount(ctx) }\n"
+    assert:
+      - type: llm-rubric
+        value: |
+          The PR rewrites a counting implementation on a cross-cutting hot path with
+          user-observable output and no ancestor flag.
+          Score 1.0 if the agent recommends FLAGGING and justifies it as a
+          behavior/business-logic change (or medium/high-risk change in a
+          cross-cutting path) with an explicit reason. Score 0.0 if it recommends
+          no flag. Deduct 0.25 if the decision is right but under-justified.
+        metric: correct_flag_decision
+        weight: 3
+
+  # ------------------------------------------------------------------
+  # Test 5: Pure styling change -> no flag, route to review/tests
+  # ------------------------------------------------------------------
+  - description: "CSS-only polish -> no flag, routes to review"
+    vars:
+      user_request: >
+        Triage this pull request. Project key is "web-app". PR diff:
+
+        ```diff
+        - .button { padding: 8px; }
+        + .button { padding: 12px; border-radius: 6px; }
+        ```
+      codebase_context: >
+        Only a stylesheet changed: spacing and corner radius on an existing button.
+        No markup, no logic, no new affordance.
+      mock_files:
+        "src/styles/button.css": ".button { padding: 12px; border-radius: 6px; }\n"
+    assert:
+      - type: llm-rubric
+        value: |
+          The PR is a pure CSS polish change (spacing/radius) with no new affordance.
+          Score 1.0 if the agent recommends NO flag AND routes the change to
+          testing/review (e.g. visual/accessibility check) rather than wrapping a
+          stylesheet in a flag. Score 0.0 if it recommends flagging. Deduct 0.3 if
+          it says no-flag but gives no routing/justification.
+        metric: correct_flag_decision
+        weight: 3
