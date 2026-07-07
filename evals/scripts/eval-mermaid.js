@@ -23,7 +23,7 @@ const cls = (t) => /ask-question/.test(t) ? "ask" : WRITE.test(t) ? "write" : "r
 const clean = (s, n = 64) => String(s ?? "").replace(/\s+/g, " ").replace(/["\[\](){}|]/g, "").trim().slice(0, n);
 
 // Dark slate + violet + emerald palette (matches alohaninja's PR diagrams)
-const INIT = "%%{init: {'theme':'base','themeVariables':{'background':'#0f172a','primaryColor':'#1e293b','primaryBorderColor':'#8b5cf6','primaryTextColor':'#e2e8f0','lineColor':'#64748b','fontFamily':'Segoe UI, system-ui, -apple-system, sans-serif','fontSize':'13px'}}}%%";
+const INIT = "%%{init: {'theme':'base','themeVariables':{'background':'#0f172a','primaryColor':'#1e293b','primaryBorderColor':'#8b5cf6','primaryTextColor':'#e2e8f0','lineColor':'#64748b','fontFamily':'Segoe UI, system-ui, -apple-system, sans-serif','fontSize':'13px'},'flowchart':{'htmlLabels':true,'wrappingWidth':320}}}%%";
 const CLASSDEFS = [
   "classDef start fill:#1e293b,stroke:#8b5cf6,color:#c4b5fd;",   // violet — the input
   "classDef read fill:#1e293b,stroke:#475569,color:#94a3b8;",   // muted slate — read/inspect
@@ -47,14 +47,19 @@ const comps = (t) => (t.gradingResult?.componentResults || [])
 
 function mermaid(t) {
   const traj = t.response?.output?.trajectory || [];
-  const scenario = clean(t.testCase?.vars?.user_request || "(no input)", 68);
+  // Who kicks off the path: `initiator: user | llm` per test (default user).
+  const initiator = String(t.testCase?.vars?.initiator || "user").toLowerCase();
+  const startLabel = initiator === "llm" || initiator === "agent" ? "🤖 AGENT REQUEST" : "🧑 USER REQUEST";
+  // Full text — no truncation; wrapping is handled by the mermaid init config.
+  const scenario = clean(t.testCase?.vars?.user_request || "(no input)", 400);
   const failed = comps(t).filter((c) => !c.pass);
-  const nodes = [`s(["🧑 ${scenario}"]):::start`];
-  traj.forEach((step, i) => nodes.push(`n${i}["${clean(step.tool + (step.arguments?.query ? " · " + step.arguments.query : ""), 38)}"]:::${cls(step.tool)}`));
+  const nodes = [`s(["${startLabel}<br/>${scenario}"]):::start`];
+  traj.forEach((step, i) => nodes.push(`n${i}["${clean(step.tool + (step.arguments?.query ? " · " + step.arguments.query : ""), 200)}"]:::${cls(step.tool)}`));
   const endTxt = t.success ? "✅ passed" : `❌ failed · ${failed.length} check${failed.length === 1 ? "" : "s"}`;
   nodes.push(`e(["${endTxt}"]):::${t.success ? "passEnd" : "failEnd"}`);
   const ids = ["s", ...traj.map((_, i) => "n" + i), "e"];
-  return `${INIT}\nflowchart LR\n  ${nodes.join("\n  ")}\n  ${ids.join(" --> ")}\n  ${CLASSDEFS.join("\n  ")}`;
+  // Top-to-bottom so long paths read vertically (less horizontal zooming).
+  return `${INIT}\nflowchart TB\n  ${nodes.join("\n  ")}\n  ${ids.join(" --> ")}\n  ${CLASSDEFS.join("\n  ")}`;
 }
 
 // ---- assemble PR comment markdown ----
