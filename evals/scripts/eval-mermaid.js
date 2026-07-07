@@ -21,9 +21,27 @@ const suiteName = raw.config?.description || suite;
 const WRITE = /^(create|update|toggle|delete|start|stop|archive)/;
 const cls = (t) => /ask-question/.test(t) ? "ask" : WRITE.test(t) ? "write" : "read";
 const clean = (s, n = 64) => String(s ?? "").replace(/\s+/g, " ").replace(/["\[\](){}|]/g, "").trim().slice(0, n);
+// Prose (the request, the pass/fail label) renders sans-serif; tool nodes stay
+// in the diagram's global monospace font. GitHub may drop the inline span (its
+// mermaid sanitizes HTML), in which case prose falls back to monospace — tools,
+// the thing that MUST be monospace, are correct either way.
+const SANS = "Segoe UI, system-ui, -apple-system, sans-serif";
+const sans = (s) => `<span style='font-family: ${SANS}'>${s}</span>`;
+// Break long text into lines at word boundaries so nothing is clipped (GitHub
+// mermaid honors <br/>), instead of relying on auto-wrap.
+const wrapText = (s, width = 46) => {
+  const out = [];
+  let line = "";
+  for (const w of String(s).split(" ")) {
+    if ((line + " " + w).trim().length > width) { if (line) out.push(line); line = w; }
+    else line = line ? line + " " + w : w;
+  }
+  if (line) out.push(line);
+  return out.join("<br/>");
+};
 
 // Dark slate + violet + emerald palette (matches alohaninja's PR diagrams)
-const INIT = "%%{init: {'theme':'base','themeVariables':{'background':'#0f172a','primaryColor':'#1e293b','primaryBorderColor':'#8b5cf6','primaryTextColor':'#e2e8f0','lineColor':'#64748b','fontFamily':'Segoe UI, system-ui, -apple-system, sans-serif','fontSize':'13px'},'flowchart':{'htmlLabels':true,'wrappingWidth':320}}}%%";
+const INIT = "%%{init: {'theme':'base','themeVariables':{'background':'#0f172a','primaryColor':'#1e293b','primaryBorderColor':'#8b5cf6','primaryTextColor':'#e2e8f0','lineColor':'#64748b','fontFamily':'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace','fontSize':'13px'},'flowchart':{'htmlLabels':true}}}%%";
 const CLASSDEFS = [
   "classDef start fill:#1e293b,stroke:#8b5cf6,color:#c4b5fd;",   // violet — the input
   "classDef read fill:#1e293b,stroke:#475569,color:#94a3b8;",   // muted slate — read/inspect
@@ -51,15 +69,16 @@ function mermaid(t) {
   const initiator = String(t.testCase?.vars?.initiator || "user").toLowerCase();
   const startLabel = initiator === "llm" || initiator === "agent" ? "🤖 AGENT REQUEST" : "🧑 USER REQUEST";
   // Full text — no truncation; wrapping is handled by the mermaid init config.
-  const scenario = clean(t.testCase?.vars?.user_request || "(no input)", 400);
+  const scenario = wrapText(clean(t.testCase?.vars?.user_request || "(no input)", 400));
   const failed = comps(t).filter((c) => !c.pass);
-  const nodes = [`s(["${startLabel}<br/>${scenario}"]):::start`];
+  // start + end are prose → sans-serif; tool nodes stay in the global monospace.
+  const nodes = [`s(["${sans(startLabel + "<br/>" + scenario)}"]):::start`];
   traj.forEach((step, i) => nodes.push(`n${i}["${clean(step.tool + (step.arguments?.query ? " · " + step.arguments.query : ""), 200)}"]:::${cls(step.tool)}`));
   const endTxt = t.success ? "✅ passed" : `❌ failed · ${failed.length} check${failed.length === 1 ? "" : "s"}`;
-  nodes.push(`e(["${endTxt}"]):::${t.success ? "passEnd" : "failEnd"}`);
+  nodes.push(`e(["${sans(endTxt)}"]):::${t.success ? "passEnd" : "failEnd"}`);
   const ids = ["s", ...traj.map((_, i) => "n" + i), "e"];
-  // Top-to-bottom so long paths read vertically (less horizontal zooming).
-  return `${INIT}\nflowchart TB\n  ${nodes.join("\n  ")}\n  ${ids.join(" --> ")}\n  ${CLASSDEFS.join("\n  ")}`;
+  // Left-to-right (keeps the PR from scrolling vertically on long paths).
+  return `${INIT}\nflowchart LR\n  ${nodes.join("\n  ")}\n  ${ids.join(" --> ")}\n  ${CLASSDEFS.join("\n  ")}`;
 }
 
 // ---- assemble PR comment markdown ----
@@ -106,6 +125,6 @@ const html = `<!doctype html><meta charset="utf-8"><title>Eval golden paths — 
 <style>body{font:14px Segoe UI,system-ui,-apple-system,sans-serif;max-width:1000px;margin:32px auto;padding:0 20px;color:#e2e8f0;background:#0f172a}h1{font-size:22px}h3{margin-top:28px;color:#c4b5fd}</style>
 <h1>🧪 Eval golden paths — ${suite}</h1><p>${passed}/${rows.length} paths passing · this is exactly what the Mermaid renders in the PR.</p>
 ${previewBlocks}
-<script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";mermaid.initialize({startOnLoad:true});</script>`;
+<script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";mermaid.initialize({startOnLoad:true,securityLevel:"loose"});</script>`;
 fs.writeFileSync(outBase + ".preview.html", html);
 console.log("wrote", outBase + ".md", "and", outBase + ".preview.html", "(" + rows.length + " cases," , allFailing.length, "failing checks)");
