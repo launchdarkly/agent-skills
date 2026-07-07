@@ -297,6 +297,44 @@
       "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
     },
     {
+      "name": "launchdarkly-pr-flag-apply",
+      "description": "Act on a flag-triage decision: create the LaunchDarkly feature flag and wire the pull request's code behind it, autonomously and safely. Use as the second half of an automated flagging pipeline, after launchdarkly-pr-flag-triage recommends a flag. Creates the flag, wraps the changed behavior so the flag-off path preserves existing behavior exactly, validates, and commits. Designed to run unattended in CI.",
+      "path": "skills/feature-flags/launchdarkly-pr-flag-apply",
+      "version": "0.1.0-experimental",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server and write access to the pull request branch",
+      "tags": [
+        "launchdarkly",
+        "feature-flags",
+        "feature-management",
+        "flag-creation",
+        "pull-request",
+        "automation",
+        "ci",
+        "devops",
+        "mcp"
+      ]
+    },
+    {
+      "name": "launchdarkly-pr-flag-triage",
+      "description": "Analyze a pull request and decide whether the change should ship behind a LaunchDarkly feature flag. Use when building an automated pipeline that classifies incoming PRs, assesses release risk, and produces a flag/no-flag recommendation. Explores the diff and codebase, classifies the change, applies a flag-worthiness rubric, checks for existing ancestor flags, and emits a structured brief plus a human-readable PR comment. Pairs with launchdarkly-pr-flag-apply, which acts on the brief.",
+      "path": "skills/feature-flags/launchdarkly-pr-flag-triage",
+      "version": "0.1.0-experimental",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server and read access to the pull request diff",
+      "tags": [
+        "launchdarkly",
+        "feature-flags",
+        "feature-management",
+        "pull-request",
+        "code-review",
+        "release-risk",
+        "automation",
+        "devops",
+        "mcp"
+      ]
+    },
+    {
       "name": "mcp-configure",
       "description": "Configure the LaunchDarkly hosted MCP server during onboarding. Use when the parent LaunchDarkly onboarding skill reaches Step 4 (MCP). Supports Cursor, Claude Code, Windsurf, GitHub Copilot, and other MCP-compatible agents. OAuth authentication; no API keys for the hosted server.",
       "path": "skills/onboarding/mcp-configure",

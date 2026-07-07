@@ -1,0 +1,22 @@
+{
+  "name": "launchdarkly-pr-flag-triage",
+  "description": "Analyze a pull request and decide whether the change should ship behind a LaunchDarkly feature flag",
+  "version": "0.1.0-experimental",
+  "author": "LaunchDarkly",
+  "repository": "https://github.com/launchdarkly/ai-tooling",
+  "skills": ["./"],
+  "tags": [
+    "launchdarkly",
+    "feature-flags",
+    "feature-management",
+    "pull-request",
+    "code-review",
+    "release-risk",
+    "automation",
+    "devops",
+    "mcp"
+  ],
+  "requirements": {
+    "mcp-servers": ["@launchdarkly/mcp-server"]
+  }
+}

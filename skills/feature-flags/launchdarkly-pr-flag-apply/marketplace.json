@@ -1,0 +1,22 @@
+{
+  "name": "launchdarkly-pr-flag-apply",
+  "description": "Create the LaunchDarkly feature flag and wire a pull request's code behind it, autonomously and safely",
+  "version": "0.1.0-experimental",
+  "author": "LaunchDarkly",
+  "repository": "https://github.com/launchdarkly/ai-tooling",
+  "skills": ["./"],
+  "tags": [
+    "launchdarkly",
+    "feature-flags",
+    "feature-management",
+    "flag-creation",
+    "pull-request",
+    "automation",
+    "ci",
+    "devops",
+    "mcp"
+  ],
+  "requirements": {
+    "mcp-servers": ["@launchdarkly/mcp-server"]
+  }
+}

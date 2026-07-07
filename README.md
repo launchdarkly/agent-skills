@@ -18,6 +18,8 @@ Agent Skills are modular, text-based playbooks that teach an agent how to perfor
 | `feature-flags/launchdarkly-flag-targeting` | Control targeting, rollouts, rules, and cross-environment config |
 | `feature-flags/launchdarkly-flag-cleanup` | Safely remove flags from code using LaunchDarkly as the source of truth |
 | `feature-flags/launchdarkly-guarded-rollout` | Configure guarded rollouts with progressive traffic, metric monitoring, and rollback |
+| `feature-flags/launchdarkly-pr-flag-triage` | Analyze a PR and decide whether it should ship behind a flag (classification + flag-worthiness rubric + ancestor-flag analysis) |
+| `feature-flags/launchdarkly-pr-flag-apply` | Act on a triage decision: create the flag and wire the PR's code behind it, autonomously and safely |
 
 ### AgentControl
 
