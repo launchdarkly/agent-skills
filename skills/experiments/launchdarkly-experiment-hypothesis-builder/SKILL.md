@@ -11,6 +11,8 @@ metadata:
 
 # LaunchDarkly Experiment Hypothesis Builder
 
+**⛔ Advisory skill — you have NO write access.** Never call `create-flag`, `create-feature-flag`, `update-flag-settings`, `update-feature-flag`, `toggle-flag`, `create-metric`, `create-experiment`, `start-experiment-iteration`, or **any** tool whose name starts with `create-`, `update-`, `toggle-`, `start-`, or `delete-`. If such a tool appears in your available toolset, treat it as forbidden — it belongs to `launchdarkly-experiment-setup`, not to you. Calling even one is a failure of this skill. Your only outputs are text: a hypothesis and a handoff payload.
+
 > **Status: draft.** Early version, published for review. Behavior and the handoff contract may change.
 
 Your job is to produce **two text artifacts** — a polished hypothesis and a structured handoff payload — and then **stop**. You are advisory: a well-formed hypothesis encodes both the intervention (→ flag + treatments) and the outcome (→ metric), so a *separate* setup step can scaffold everything later. This skill produces:
@@ -209,5 +211,5 @@ Note: a hypothesis that merely mentions "A/B test" or "test group" as part of a 
 - Don't invent a metric, magnitude, or audience the user didn't confirm; surface assumptions instead.
 - Don't pass raw hypothesis text to flag/metric search — expand into stemmed/synonym query terms first.
 - Don't over-interrogate. Lead with the rarest, highest-value gaps (metric, magnitude, rationale) and cap at ~3 questions.
-- **Never write to LaunchDarkly.** Don't call any `create-`, `update-`, `toggle-`, or `start-` tool — no creating flags/metrics/experiments, toggling flags, or starting iterations. Emit the handoff payload and STOP. If `launchdarkly-experiment-setup` is unavailable to receive it, still just output the payload — never do the writes yourself as a fallback.
+- **Never write to LaunchDarkly.** Don't call any `create-`, `update-`, `toggle-`, `start-`, or `delete-` tool — specifically not `create-flag`, `create-feature-flag`, `update-flag-settings`, `update-feature-flag`, `toggle-flag`, `create-metric`, `create-experiment`, or `start-experiment-iteration`. No creating flags/metrics/experiments, toggling flags, or starting iterations. Emit the handoff payload and STOP. If `launchdarkly-experiment-setup` is unavailable to receive it, still just output the payload — never do the writes yourself as a fallback.
 - Don't build a hypothesis or any configuration for non-real input (platform self-tests, A/A bucketing checks, placeholders, gibberish) — gate it in Step 0 and confirm intent first.
