@@ -31,6 +31,17 @@ providers:
       expose_mcp_tools: true
       expose_ask_question: true
       force_skill_invocation: true    # advisory skill — description-based activation is unreliable; force-load it so we test the skill, not base Claude
+      # This skill is advisory / handoff-only and must never write. Expose ONLY
+      # read tools so it physically cannot create/update — the fair way to test
+      # "hands off, doesn't write" (and how it'd be scoped in production).
+      mcp_tool_allowlist:
+        - list-flags
+        - get-flag
+        - list-feature-flags
+        - list-metrics
+        - get-metric
+        - list-metric-events
+        - get-project
 
 tests:
   # ==================================================================
