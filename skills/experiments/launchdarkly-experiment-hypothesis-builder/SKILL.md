@@ -61,7 +61,9 @@ Prioritize eliciting **metric → magnitude → rationale**, in that order. Most
 ## Workflow
 
 ### Step 0 — Gate non-real input (do this FIRST — HARD STOP)
-Before capturing or diagnosing anything, check whether the input is a *real* experiment idea. If it looks like a platform self-test, an **A/A bucketing check**, a placeholder, or gibberish (see [Detecting low-effort / non-real input](#detecting-low-effort--non-real-input) for signals — e.g. "A/A test to validate bucketing", "testing the LaunchDarkly platform", "dummy flag", "If X then Y", "asdf"), **STOP immediately.** In that turn, output **only a short question confirming intent** — nothing else. Do NOT capture, diagnose, compose a hypothesis, emit a handoff payload, or build any configuration until the user confirms it's a real experiment. An A/A test is *never* coached into a hypothesis. Only a genuine A/B idea proceeds to Step 1.
+Before anything else, classify the input. If it is a platform self-test, an **A/A test** (identical variants — e.g. "A/A test to validate bucketing", SRM/bucketing checks), a placeholder, or gibberish (see [Detecting low-effort / non-real input](#detecting-low-effort--non-real-input) — also "testing the LaunchDarkly platform", "dummy flag", "If X then Y", "asdf"), **STOP.** Your **entire reply** must be a single short question that (a) names it as a platform/self-test, not a real experiment, and (b) asks the user to give a real A/B idea (a specific change with a measurable outcome) or confirm intent.
+
+Do **not** produce a hypothesis, a "setup summary", a handoff payload, or an "A/A … hypothesis / bucketing-validation brief" — an A/A test has identical variants and therefore *no* hypothesis, so drafting one is precisely the failure to avoid. Say it's not an experiment and ask; nothing else. Only a genuine A/B idea proceeds to Step 1.
 
 ### Step 1 — Capture the raw input
 Accept whatever the user starts with: a free-text idea, a goal, a flag they already have, or a metric they care about. Don't require structure yet.
@@ -88,7 +90,9 @@ Classify overall:
 Keep it to the fewest questions. Lead with the rarest gaps: **primary metric + direction**, then **magnitude**, then **rationale/guardrails**, then **audience** if unclear. Offer concrete options where you can (e.g. suggest plausible metrics based on the intervention). Don't interrogate — 1–3 targeted questions is the target.
 
 ### Step 3.5 — Check metric–outcome alignment (flaw F7 — HARD STOP)
-Before composing, verify the primary metric actually measures the outcome the hypothesis predicts. If the hypothesis predicts one thing (e.g. **engagement**) but the proposed primary metric measures another (e.g. **revenue**), that's flaw F7 (see `references/diagnostic-tree.md`) — **STOP and reconcile with the user** (either swap the metric to match the predicted outcome, or restate the outcome to match the metric). Do NOT compose a hypothesis or emit a handoff payload while the prediction and primary metric disagree — ask the user which to change and wait for their answer first.
+Before composing, explicitly name **the outcome the user predicts** and **the metric they proposed**, and check they measure the same thing. If they diverge — e.g. the user predicts **engagement** will move but says to **measure it by revenue** — that's flaw F7 (see `references/diagnostic-tree.md`) and you **STOP**.
+
+Do **not** silently pick some other metric to paper over the conflict, and do **not** just accept the mismatched metric. Say plainly that the predicted outcome (engagement) and the proposed metric (revenue) measure different things, and ask the user which to change — align the metric to the predicted outcome, or restate the outcome to match the metric. Wait for their answer before composing a hypothesis or emitting a payload.
 
 ### Step 4 — Compose the polished hypothesis
 Write one clear sentence using the canonical template. Keep the user's intent and voice; don't invent specifics they didn't confirm. Flag any assumption you had to make.
