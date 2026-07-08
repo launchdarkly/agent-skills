@@ -93,6 +93,14 @@
       "license": "Apache-2.0"
     },
     {
+      "name": "alert-investigation",
+      "description": "Investigates a triggered observability alert and returns a structured diagnosis with likely cause, scope, and next steps.",
+      "path": "skills/observability/alert-investigation",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
+    },
+    {
       "name": "apply",
       "description": "Apply LaunchDarkly SDK onboarding: install dependency (or dual-SDK pair), configure env and secrets with consent, add init at entrypoint(s), verify compile. Nested under sdk-install; next is run.",
       "path": "skills/onboarding/sdk-install/apply",
@@ -140,6 +148,22 @@
       "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
     },
     {
+      "name": "create-fix-pr",
+      "description": "Investigates a root cause and files a minimal fix PR for a reported bug or observability finding.",
+      "path": "skills/observability/create-fix-pr",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires git and the GitHub CLI (gh); pairs with the investigate skill"
+    },
+    {
+      "name": "create-graph",
+      "description": "Creates observability dashboards and graphs from logs, traces, errors, sessions, metrics, and events data by previewing charts inline and saving them to a dashboard.",
+      "path": "skills/observability/create-graph",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
+    },
+    {
       "name": "custom-metrics",
       "description": "Create, track, retrieve, update, and delete custom business metrics for configs. Covers full lifecycle: define metric kinds via API, emit events via SDK, and query results.",
       "path": "skills/agentcontrol/custom-metrics",
@@ -162,6 +186,14 @@
       "version": "0.1.0",
       "license": "Apache-2.0",
       "compatibility": "Requires SDK installed (parent Step 5) and LaunchDarkly project access"
+    },
+    {
+      "name": "investigate",
+      "description": "Analyzes observability data \u2014 logs, traces, errors, sessions, and metrics \u2014 to find root cause and actionable evidence. Use when the user reports a bug, an unexpected behavior, or asks about patterns across application data.",
+      "path": "skills/observability/investigate",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
     },
     {
       "name": "launchdarkly-experiment-setup",
