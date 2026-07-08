@@ -156,6 +156,20 @@
       "compatibility": "Requires access to the project repository"
     },
     {
+      "name": "dotenv",
+      "description": "Load environment variables from a .env file into process.env for Node.js applications. Use when configuring apps with secrets, setting up local development environments, managing API keys and database uRLs, parsing .env file contents, or populating environment variables programmatically. Always use this skill when the user mentions .env, even for simple tasks like \"set up dotenv\" \u2014 the skill contains critical gotchas (encrypted keys, variable expansion, command substitution) that prevent common production issues.",
+      "path": "evals/node_modules/dotenv/skills/dotenv",
+      "version": "1.0.0",
+      "license": "BSD-2-Clause"
+    },
+    {
+      "name": "dotenvx",
+      "description": "Use dotenvx to run commands with environment variables, manage multiple .env files, expand variables, and encrypt env files for safe commits and CI/CD.",
+      "path": "evals/node_modules/dotenv/skills/dotenvx",
+      "version": "1.0.0",
+      "license": "BSD-3-Clause"
+    },
+    {
       "name": "first-flag",
       "description": "Create a boolean first flag, add evaluation, toggle on/off for end-to-end proof. Parent onboarding Step 6; uses MCP, API, or ldcli; optional flag-create skill.",
       "path": "skills/onboarding/first-flag",
@@ -346,6 +360,16 @@
       "compatibility": "Requires completed or equivalent detect context (see sibling detect skill)"
     },
     {
+      "name": "playwright-cli",
+      "description": "Automate browser interactions, test web pages and work with Playwright tests.",
+      "path": "evals/node_modules/playwright-core/lib/tools/cli-client/skill"
+    },
+    {
+      "name": "playwright-trace",
+      "description": "Inspect Playwright trace files from the command line \u2014 list actions, view requests, console, errors, snapshots and screenshots.",
+      "path": "evals/node_modules/playwright-core/lib/tools/trace"
+    },
+    {
       "name": "projects",
       "description": "Guide for setting up LaunchDarkly projects in your codebase. Helps you assess your stack, choose the right approach, and integrate project management that makes sense for your architecture.",
       "path": "skills/agentcontrol/projects",
@@ -359,6 +383,24 @@
       "version": "0.2.0",
       "license": "Apache-2.0",
       "compatibility": "Requires a supported language/framework in the project. SDK credentials are required by [Apply](apply/SKILL.md), not for [Detect](detect/SKILL.md) / [Plan](plan/SKILL.md) alone (see parent onboarding **Prerequisites**)."
+    },
+    {
+      "name": "should-flag-change",
+      "description": "Decide whether a given code change should be placed behind a LaunchDarkly feature flag. Use when a developer asks whether a change should be behind a flag, when reviewing a diff or pull request, or when running in CI on a PR. Reads the diff and surrounding code, then emits a structured advisory recommendation. Read-only: it never creates or modifies flags.",
+      "path": "skills/feature-flags/should-flag-change",
+      "version": "0.1.0-experimental",
+      "license": "Apache-2.0",
+      "compatibility": "Advisory and read-only. Works on all platforms. Does NOT require the LaunchDarkly MCP server. Reads code with standard file tools (Read/Grep/Glob) and returns a structured verdict via the `recommend-flag` tool.",
+      "tags": [
+        "launchdarkly",
+        "feature-flags",
+        "feature-management",
+        "code-review",
+        "pull-request",
+        "ci",
+        "advisory",
+        "risk-assessment"
+      ]
     },
     {
       "name": "snippets",

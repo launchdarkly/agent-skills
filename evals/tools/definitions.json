@@ -509,5 +509,22 @@
       },
       "required": ["projectKey"]
     }
+  },
+  {
+    "name": "recommend-flag",
+    "description": "Record an ADVISORY recommendation on whether a code change should be placed behind a LaunchDarkly feature flag. This tool is READ-ONLY: it does not create, modify, toggle, or delete any flag. Call it exactly once, as the final step, after you have understood the change and explored the surrounding code. The recommendation is what CI parses to post a pull-request check.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "recommend": { "type": "boolean", "description": "true if the change should be released behind a feature flag, false if it should not" },
+        "confidence": { "type": "string", "enum": ["low", "medium", "high"], "description": "Confidence in the recommendation, calibrated to how clear the signal is and how much surrounding code you verified" },
+        "reasons": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Concise, evidence-based justifications. Each should cite the specific file, symbol, or behavior that drove the verdict."
+        }
+      },
+      "required": ["recommend", "confidence", "reasons"]
+    }
   }
 ]

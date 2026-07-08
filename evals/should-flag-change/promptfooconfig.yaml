@@ -1,0 +1,505 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+#
+# Run with shared defaults:
+#   promptfoo eval -c shared/defaults.yaml -c should-flag-change/promptfooconfig.yaml
+#
+# The should-flag-change skill is an ADVISORY, READ-ONLY skill. Given a code
+# change (a <git_diff> block, optionally plus surrounding source), it decides
+# whether the change should ship behind a LaunchDarkly feature flag and ends by
+# calling the `recommend-flag` tool with { recommend, confidence, reasons }.
+# It must NEVER create, toggle, or modify a flag.
+#
+# Two-tier evaluation, expressed as two labeled providers. Each fixture targets
+# exactly one tier via `providers: [<label>]`:
+#
+#   judgment  - allow_builtins: false. The agent gets the diff inline plus
+#               snippets in <codebase_context> and must reach a verdict from
+#               reasoning alone (no file exploration). Tests the call itself.
+#   agentic   - allow_builtins: true. The agent gets the diff plus a scaffolded
+#               repo (mock_files) and real Read/Grep/Glob, and must retrieve the
+#               surrounding code before deciding. Tests explore-then-decide.
+#
+# Both tiers keep the LaunchDarkly MCP mocks exposed (default), so the flag-
+# mutating tools are available and the "stayed advisory" assertion is real.
+description: "End-to-end evaluation of the should-flag-change skill"
+
+prompts:
+  - file://../../skills/feature-flags/should-flag-change/SKILL.md
+
+providers:
+  - id: file://../providers/claude-skill-agent-sdk.js
+    label: judgment
+    config:
+      skill_slug: should-flag-change
+      allow_builtins: false
+  - id: file://../providers/claude-skill-agent-sdk.js
+    label: agentic
+    config:
+      skill_slug: should-flag-change
+      allow_builtins: true
+
+tests:
+  # ==================================================================
+  # POSITIVE 1 (agentic) — new user-facing path
+  # A new public export endpoint is added with no flag gate, while a
+  # sibling route already gates its feature behind LaunchDarkly. The
+  # agent should explore, notice the convention + the ungated new path,
+  # and recommend a flag.
+  # ==================================================================
+  - description: "Positive/new user-facing path: recommends a flag for a new ungated public endpoint"
+    providers: ["agentic"]
+    vars:
+      user_request: >
+        This PR is up for review. Should the change be behind a LaunchDarkly
+        feature flag? Read the diff and the surrounding code, then give your
+        recommendation.
+      git_diff: |
+        diff --git a/src/app.js b/src/app.js
+        index 3a1f00c..b2c9d41 100644
+        --- a/src/app.js
+        +++ b/src/app.js
+        @@ -6,6 +6,7 @@ const app = express();
+         app.use('/reports', require('./routes/reports'));
+        +app.use('/export', require('./routes/export'));
+         module.exports = app;
+        diff --git a/src/routes/export.js b/src/routes/export.js
+        new file mode 100644
+        index 0000000..7de4a11
+        --- /dev/null
+        +++ b/src/routes/export.js
+        @@ -0,0 +1,14 @@
+        +const express = require('express');
+        +const router = express.Router();
+        +const { buildExport } = require('../services/exporter');
+        +
+        +// POST /export — new public endpoint: export the account's data as CSV.
+        +router.post('/', async (req, res) => {
+        +  const file = await buildExport(req.user, req.body.format || 'csv');
+        +  res.setHeader('Content-Type', 'text/csv');
+        +  res.send(file);
+        +});
+        +
+        +module.exports = router;
+      mock_files:
+        "package.json": |
+          {
+            "name": "acme-api",
+            "dependencies": {
+              "express": "^4.18.0",
+              "@launchdarkly/node-server-sdk": "^9.4.0"
+            }
+          }
+        "src/app.js": |
+          const express = require('express');
+          const app = express();
+          app.use(express.json());
+          app.use('/reports', require('./routes/reports'));
+          app.use('/export', require('./routes/export'));
+          module.exports = app;
+        "src/ld.js": |
+          const ld = require('@launchdarkly/node-server-sdk');
+          const client = ld.init(process.env.LD_SDK_KEY);
+          // Convention: gate new features behind a boolean flag before exposing them.
+          async function isEnabled(key, user, fallback = false) {
+            return client.boolVariation(key, { kind: 'user', key: user }, fallback);
+          }
+          module.exports = { client, isEnabled };
+        "src/routes/reports.js": |
+          const express = require('express');
+          const router = express.Router();
+          const { isEnabled } = require('../ld');
+          const { buildReport } = require('../services/reporter');
+
+          // Existing feature — released gradually behind the 'reports-v2' flag.
+          router.get('/', async (req, res) => {
+            if (!(await isEnabled('reports-v2', req.user))) {
+              return res.status(404).end();
+            }
+            res.json(await buildReport(req.user));
+          });
+
+          module.exports = router;
+        "src/routes/export.js": |
+          const express = require('express');
+          const router = express.Router();
+          const { buildExport } = require('../services/exporter');
+
+          // POST /export — new public endpoint: export the account's data as CSV.
+          router.post('/', async (req, res) => {
+            const file = await buildExport(req.user, req.body.format || 'csv');
+            res.setHeader('Content-Type', 'text/csv');
+            res.send(file);
+          });
+
+          module.exports = router;
+    assert:
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const call = traj.find(t => t.tool === 'recommend-flag');
+          if (!call) return { pass: false, score: 0, reason: 'No recommend-flag verdict emitted' };
+          const a = call.arguments || {};
+          const pass = a.recommend === true;
+          return { pass, score: pass ? 1 : 0, reason: `recommend=${a.recommend} confidence=${a.confidence}` };
+        metric: verdict_match
+        weight: 4
+
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const vIdx = traj.findIndex(t => t.tool === 'recommend-flag');
+          const scope = traj.slice(0, vIdx < 0 ? traj.length : vIdx);
+          const reads = scope.filter(t => ['Read','Grep','Glob'].includes(t.tool));
+          const pass = reads.length > 0;
+          return { pass, score: pass ? 1 : 0, reason: `explore calls before verdict: ${reads.length}` };
+        metric: explored_before_deciding
+        weight: 2
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const forbidden = ['create-flag','create-feature-flag','update-flag-settings','update-feature-flag','toggle-flag','delete-flag'];
+          const called = forbidden.filter(f => tools.includes(f));
+          const pass = called.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'stayed advisory' : 'called mutating tools: ' + called.join(', ') };
+        metric: stayed_advisory
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The change adds a brand-new public POST /export endpoint. A sibling route
+          (reports) already gates its feature behind a LaunchDarkly boolean flag, so
+          the codebase convention is to flag new user-facing features.
+          Evaluate the agent's recommendation:
+          1. Did it recommend putting the change behind a flag (recommend: true)?
+          2. Do its reasons cite specific evidence — the new /export endpoint and/or
+             the existing flag convention it found in the code?
+          3. Did it avoid creating or modifying any flag (advisory only)?
+          Score 1.0 if all three. Deduct 0.34 per criterion missed.
+        metric: rationale_quality
+        weight: 2
+
+  # ==================================================================
+  # POSITIVE 2 (judgment) — risky behavior change on a live path
+  # Auth middleware, applied to every route, is loosened to accept
+  # tokens up to 24h after expiry. High blast radius, security-relevant.
+  # Judged from the diff + context alone (no exploration).
+  # ==================================================================
+  - description: "Positive/risky behavior change: recommends a flag for a security-relevant auth change"
+    providers: ["judgment"]
+    vars:
+      user_request: >
+        Should this change be behind a feature flag?
+      codebase_context: >
+        Node.js Express API. src/middleware/auth.js exports requireAuth, which is
+        applied globally in src/app.js via app.use(requireAuth) — every route
+        depends on it. verifyJwt validates the token signature and returns claims.
+      git_diff: |
+        diff --git a/src/middleware/auth.js b/src/middleware/auth.js
+        index 1a2b3c4..5d6e7f8 100644
+        --- a/src/middleware/auth.js
+        +++ b/src/middleware/auth.js
+        @@ -12,9 +12,13 @@ function requireAuth(req, res, next) {
+           const token = parseBearer(req.headers.authorization);
+           if (!token) return res.status(401).json({ error: 'missing token' });
+
+        -  const claims = verifyJwt(token);
+        -  if (!claims || claims.exp < now()) {
+        -    return res.status(401).json({ error: 'invalid or expired token' });
+        -  }
+        +  const claims = verifyJwt(token);
+        +  if (!claims) {
+        +    return res.status(401).json({ error: 'invalid token' });
+        +  }
+        +  // Reduce logout churn: allow a 24h grace period after token expiry.
+        +  if (claims.exp < now() - 24 * 3600) {
+        +    return res.status(401).json({ error: 'expired token' });
+        +  }
+           req.user = claims.sub;
+           next();
+         }
+    assert:
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const call = traj.find(t => t.tool === 'recommend-flag');
+          if (!call) return { pass: false, score: 0, reason: 'No recommend-flag verdict emitted' };
+          const a = call.arguments || {};
+          const pass = a.recommend === true;
+          return { pass, score: pass ? 1 : 0, reason: `recommend=${a.recommend} confidence=${a.confidence}` };
+        metric: verdict_match
+        weight: 4
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const forbidden = ['create-flag','create-feature-flag','update-flag-settings','update-feature-flag','toggle-flag','delete-flag'];
+          const called = forbidden.filter(f => tools.includes(f));
+          const pass = called.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'stayed advisory' : 'called mutating tools: ' + called.join(', ') };
+        metric: stayed_advisory
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The change loosens JWT auth in middleware applied to every route: expired
+          tokens are now accepted for 24h after expiry. This is a security-relevant
+          behavior change on a live, high-blast-radius path.
+          Evaluate the agent's recommendation:
+          1. Did it recommend putting the change behind a flag (recommend: true)?
+          2. Do its reasons cite the specific risk — the auth/token change and its
+             blast radius (applies to every route)?
+          3. Did it avoid creating or modifying any flag (advisory only)?
+          Score 1.0 if all three. Deduct 0.34 per criterion missed.
+        metric: rationale_quality
+        weight: 2
+
+  # ==================================================================
+  # NEGATIVE 1 (agentic) — pure refactor, no behavior change
+  # Inline currency formatting is extracted into a helper. The agent
+  # should read the helper + caller, confirm behavior is preserved,
+  # and recommend against a flag.
+  # ==================================================================
+  - description: "Negative/pure refactor: recommends against a flag for a behavior-preserving extraction"
+    providers: ["agentic"]
+    vars:
+      user_request: >
+        Should this change go behind a feature flag? Read the diff and the code
+        it touches before you decide.
+      git_diff: |
+        diff --git a/src/format.js b/src/format.js
+        new file mode 100644
+        index 0000000..a1b2c3d
+        --- /dev/null
+        +++ b/src/format.js
+        @@ -0,0 +1,4 @@
+        +// Extracted from pricing.js with no change in behavior.
+        +function formatCurrency(cents) {
+        +  return '$' + (cents / 100).toFixed(2);
+        +}
+        +module.exports = { formatCurrency };
+        diff --git a/src/pricing.js b/src/pricing.js
+        index 9f8e7d6..1c2b3a4 100644
+        --- a/src/pricing.js
+        +++ b/src/pricing.js
+        @@ -1,8 +1,7 @@
+        -function lineItem(name, cents) {
+        -  return name + ': $' + (cents / 100).toFixed(2);
+        -}
+        +const { formatCurrency } = require('./format');
+        +function lineItem(name, cents) {
+        +  return name + ': ' + formatCurrency(cents);
+        +}
+         module.exports = { lineItem };
+      mock_files:
+        "package.json": |
+          { "name": "acme-billing", "dependencies": {} }
+        "src/format.js": |
+          // Extracted from pricing.js with no change in behavior.
+          function formatCurrency(cents) {
+            return '$' + (cents / 100).toFixed(2);
+          }
+          module.exports = { formatCurrency };
+        "src/pricing.js": |
+          const { formatCurrency } = require('./format');
+          function lineItem(name, cents) {
+            return name + ': ' + formatCurrency(cents);
+          }
+          module.exports = { lineItem };
+    assert:
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const call = traj.find(t => t.tool === 'recommend-flag');
+          if (!call) return { pass: false, score: 0, reason: 'No recommend-flag verdict emitted' };
+          const a = call.arguments || {};
+          const pass = a.recommend === false;
+          return { pass, score: pass ? 1 : 0, reason: `recommend=${a.recommend} confidence=${a.confidence}` };
+        metric: verdict_match
+        weight: 3
+
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const vIdx = traj.findIndex(t => t.tool === 'recommend-flag');
+          const scope = traj.slice(0, vIdx < 0 ? traj.length : vIdx);
+          const reads = scope.filter(t => ['Read','Grep','Glob'].includes(t.tool));
+          const pass = reads.length > 0;
+          return { pass, score: pass ? 1 : 0, reason: `explore calls before verdict: ${reads.length}` };
+        metric: explored_before_deciding
+        weight: 2
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const forbidden = ['create-flag','create-feature-flag','update-flag-settings','update-feature-flag','toggle-flag','delete-flag'];
+          const called = forbidden.filter(f => tools.includes(f));
+          const pass = called.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'stayed advisory' : 'called mutating tools: ' + called.join(', ') };
+        metric: stayed_advisory
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The change extracts inline currency formatting into a formatCurrency helper
+          and calls it from lineItem. The output is identical — a pure, behavior-
+          preserving refactor.
+          Evaluate the agent's recommendation:
+          1. Did it recommend AGAINST a flag (recommend: false)?
+          2. Do its reasons show it recognized the change preserves behavior (no
+             runtime behavior change / pure refactor)?
+          3. Did it avoid creating or modifying any flag (advisory only)?
+          Score 1.0 if all three. Deduct 0.34 per criterion missed.
+        metric: rationale_quality
+        weight: 2
+
+  # ==================================================================
+  # NEGATIVE 2 (judgment) — docs + tests only
+  # A README update plus a new unit test. No shipped runtime behavior.
+  # ==================================================================
+  - description: "Negative/docs+tests: recommends against a flag for a docs and test-only change"
+    providers: ["judgment"]
+    vars:
+      user_request: >
+        Should this be behind a feature flag?
+      codebase_context: >
+        Small TypeScript library. README.md is user documentation; src/slug.ts is
+        an existing pure function; tests live under test/.
+      git_diff: |
+        diff --git a/README.md b/README.md
+        index 2b1a0c9..7f6e5d4 100644
+        --- a/README.md
+        +++ b/README.md
+        @@ -10,6 +10,10 @@ npm install @acme/slug
+         ## Usage
+
+         ```ts
+         import { slugify } from '@acme/slug';
+        +slugify('Hello World'); // 'hello-world'
+         ```
+        +
+        +## Contributing
+        +Run `npm test` before opening a PR.
+        diff --git a/test/slug.test.ts b/test/slug.test.ts
+        index 3c2b1a0..9d8e7f6 100644
+        --- a/test/slug.test.ts
+        +++ b/test/slug.test.ts
+        @@ -5,3 +5,7 @@ test('lowercases and hyphenates', () => {
+           expect(slugify('Hello World')).toBe('hello-world');
+         });
+        +
+        +test('collapses repeated separators', () => {
+        +  expect(slugify('a  --  b')).toBe('a-b');
+        +});
+    assert:
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const call = traj.find(t => t.tool === 'recommend-flag');
+          if (!call) return { pass: false, score: 0, reason: 'No recommend-flag verdict emitted' };
+          const a = call.arguments || {};
+          const pass = a.recommend === false;
+          return { pass, score: pass ? 1 : 0, reason: `recommend=${a.recommend} confidence=${a.confidence}` };
+        metric: verdict_match
+        weight: 3
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const forbidden = ['create-flag','create-feature-flag','update-flag-settings','update-feature-flag','toggle-flag','delete-flag'];
+          const called = forbidden.filter(f => tools.includes(f));
+          const pass = called.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'stayed advisory' : 'called mutating tools: ' + called.join(', ') };
+        metric: stayed_advisory
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The change touches only README.md (documentation) and a test file. No
+          shipped runtime behavior changes.
+          Evaluate the agent's recommendation:
+          1. Did it recommend AGAINST a flag (recommend: false)?
+          2. Do its reasons show it recognized the change is docs/test-only with no
+             runtime behavior impact?
+          3. Did it avoid creating or modifying any flag (advisory only)?
+          Score 1.0 if all three. Deduct 0.34 per criterion missed.
+        metric: rationale_quality
+        weight: 2
+
+  # ==================================================================
+  # AMBIGUOUS (judgment) — low-stakes internal behavior tweak
+  # A background email worker's retry limit is bumped 3 -> 5. It IS a
+  # runtime behavior change (so not dismissible as a refactor), but it's
+  # internal, off the request path, low-risk, and trivially reversible —
+  # no user-facing, money, or security signal in either direction. This
+  # is the genuinely-balanced case: we do NOT assert a verdict direction,
+  # we score the RATIONALE, and here low/medium confidence is the honest
+  # answer, so the "not high" criterion is fair.
+  # ==================================================================
+  - description: "Ambiguous/low-stakes tweak: scored on rationale quality, not verdict direction"
+    providers: ["judgment"]
+    vars:
+      user_request: >
+        Should this change be behind a feature flag?
+      codebase_context: >
+        Internal background worker. src/workers/emailWorker.js retries failed
+        notification-email sends off the request path on a queue; failures are
+        logged and picked up again next cycle. MAX_RETRIES bounds attempts per
+        message. Not user-facing; no money, auth, or personal data involved.
+      git_diff: |
+        diff --git a/src/workers/emailWorker.js b/src/workers/emailWorker.js
+        index 7a1b2c3..9d4e5f6 100644
+        --- a/src/workers/emailWorker.js
+        +++ b/src/workers/emailWorker.js
+        @@ -2,7 +2,7 @@ const { sendEmail } = require('../lib/mailer');
+         const { logger } = require('../lib/log');
+
+        -// Give up after 3 attempts per message.
+        -const MAX_RETRIES = 3;
+        +// Give up after 5 attempts per message.
+        +const MAX_RETRIES = 5;
+
+         async function processMessage(msg) {
+           for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    assert:
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const call = traj.find(t => t.tool === 'recommend-flag');
+          if (!call) return { pass: false, score: 0, reason: 'No recommend-flag verdict emitted' };
+          const a = call.arguments || {};
+          const hasReasons = Array.isArray(a.reasons) && a.reasons.length > 0;
+          const validConf = ['low','medium','high'].includes(a.confidence);
+          const pass = typeof a.recommend === 'boolean' && hasReasons && validConf;
+          return { pass, score: pass ? 1 : 0, reason: `recommend=${a.recommend} confidence=${a.confidence} reasons=${(a.reasons||[]).length}` };
+        metric: emitted_structured_verdict
+        weight: 2
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const forbidden = ['create-flag','create-feature-flag','update-flag-settings','update-feature-flag','toggle-flag','delete-flag'];
+          const called = forbidden.filter(f => tools.includes(f));
+          const pass = called.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'stayed advisory' : 'called mutating tools: ' + called.join(', ') };
+        metric: stayed_advisory
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The change bumps a background email worker's retry limit from 3 to 5. It IS
+          a runtime behavior change, but it is internal (off the request path), low-
+          risk, trivially reversible, and involves no user-facing surface, money, or
+          security. This is a genuinely borderline case with no dominant signal in
+          either direction; judge the REASONING, not the verdict direction.
+          Score 1.0 if ALL of the following hold:
+          1. The rationale weighs both sides — it acknowledges the change alters
+             runtime behavior AND that the blast radius is low/internal/reversible.
+          2. Confidence is NOT "high" — a genuinely borderline change with no dominant
+             signal is honestly low or medium.
+          3. The reasons are specific to this change (background retry limit / internal
+             worker), not generic boilerplate.
+          4. It stays advisory — no flag was created or modified.
+          Deduct 0.25 for each criterion missed.
+        metric: rationale_quality
+        weight: 3

@@ -500,5 +500,10 @@
         }
       }
     }
+  },
+  "recommend-flag": {
+    "recorded": true,
+    "advisory": true,
+    "note": "Advisory recommendation recorded. This tool does not create, modify, toggle, or delete any feature flag."
   }
 }

@@ -34,6 +34,8 @@
  * Test-level vars:
  *   user_request                - the user turn the agent sees
  *   codebase_context            - optional snippets appended in a <codebase_context> tag
+ *   git_diff                    - optional unified diff appended in a <git_diff> tag,
+ *                                 e.g. the diff of a PR the agent is asked to assess
  *   max_turns                   - per-test override, clamped to 1..30 (default 15)
  *   mock_ask_question_answers   - optional array of `selected` arrays returned by
  *                                 successive `ask-question` calls
@@ -185,6 +187,7 @@ class ClaudeSkillAgentSdk {
     const userRequest =
       context?.vars?.user_request || "Help me with LaunchDarkly";
     const codebaseContext = context?.vars?.codebase_context || "";
+    const gitDiff = context?.vars?.git_diff || "";
     const maxTurns = clampMaxTurns(context?.vars?.max_turns);
     const askQuestionAnswers = Array.isArray(
       context?.vars?.mock_ask_question_answers,
@@ -196,6 +199,9 @@ class ClaudeSkillAgentSdk {
     let userMessage = userRequest;
     if (codebaseContext) {
       userMessage += `\n\n<codebase_context>\n${codebaseContext}\n</codebase_context>`;
+    }
+    if (gitDiff) {
+      userMessage += `\n\n<git_diff>\n${gitDiff}\n</git_diff>`;
     }
 
     const { cwd, isolatedConfig } = createInvocationCwd(

@@ -49,6 +49,12 @@ const SUITES = [
     skillDir: "skills/feature-flags/launchdarkly-flag-command",
     readme: "skills/feature-flags/launchdarkly-flag-command/README.md",
   },
+  {
+    suite: "should-flag-change",
+    skillKey: "feature-flags/should-flag-change",
+    skillDir: "skills/feature-flags/should-flag-change",
+    readme: "skills/feature-flags/should-flag-change/README.md",
+  },
 ];
 
 /**
