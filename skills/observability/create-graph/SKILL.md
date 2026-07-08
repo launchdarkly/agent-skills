@@ -56,14 +56,12 @@ When asked to duplicate or copy a graph, call `get-dashboard` to retrieve the fu
 - **Be concise — don't narrate intermediate tool calls.** Skip prefaces like "First, let me discover the keys" or "Now I'll build the chart." One short sentence at the start of the reply is enough if needed (e.g. "Building a chart of recent logs by level."); after that, just call the tools.
 - **Prefer multiple focused graphs over one complex graph.** A dashboard with 3 clean graphs beats one graph with 5 overlapping expressions.
 - **Always call `get-keys` before building a query.** Prevents silent empty results from wrong field names.
-- **For heatmaps, load `heatmap.md`.** Heatmaps require session-specific parameters not used by other chart types.
 
 ## Chart-type picks
 
 - **`Line chart`** — time-series trends. Error rates over time, latency percentiles, request volume.
 - **`Bar chart`** (or histogram) — comparisons across a dimension. Errors by service, requests by endpoint.
 - **`Table`** — detailed breakdowns with multiple dimensions where a chart wouldn't convey the detail.
-- **`Heatmap`** — session-scoped overlay on a web page. See `heatmap.md`.
 
 ## Aggregators
 

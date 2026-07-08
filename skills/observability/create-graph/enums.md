@@ -57,7 +57,6 @@ Omitting `column` crashes the call with an argument-validation error.
 - `Line chart`
 - `Bar chart`
 - `Table`
-- `Heatmap` — see `heatmap.md`; requires additional parameters
 
 ## `bucketBy`
 
