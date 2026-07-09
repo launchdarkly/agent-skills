@@ -503,3 +503,257 @@ tests:
           Deduct 0.25 for each criterion missed.
         metric: rationale_quality
         weight: 3
+
+  # ==================================================================
+  # ALREADY GATED (judgment) — the change ships behind a flag already
+  # A new export endpoint is added, but the diff itself wraps it in a
+  # LaunchDarkly flag check. Asking "should this be behind a flag?" here
+  # should yield recommend: false — it already is. This mirrors the
+  # real-world observation that a flag-introducing PR contains its own
+  # gate, so the honest answer is "already handled" (note the key).
+  # ==================================================================
+  - description: "Already gated: recommends against re-flagging a change that already sits behind a flag"
+    providers: ["judgment"]
+    vars:
+      user_request: >
+        Should this change be behind a feature flag?
+      codebase_context: >
+        Node.js Express API using the LaunchDarkly Node server SDK. The standard
+        flag check is `client.variation(key, ldContext(user), default)`; routes
+        live in src/routes/.
+      git_diff: |
+        diff --git a/src/routes/reports.js b/src/routes/reports.js
+        index 2c1d3e4..7a8b9c0 100644
+        --- a/src/routes/reports.js
+        +++ b/src/routes/reports.js
+        @@ -18,6 +18,14 @@ router.get('/reports', async (req, res) => {
+           res.json(await listReports(req.user));
+         });
+
+        +// New: CSV export of the user's reports.
+        +router.get('/reports/export', async (req, res) => {
+        +  const enabled = await client.variation('reports-csv-export', ldContext(req.user), false);
+        +  if (!enabled) {
+        +    return res.status(404).end();
+        +  }
+        +  res.type('text/csv').send(await buildReportCsv(req.user));
+        +});
+        +
+         module.exports = router;
+    assert:
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const call = traj.find(t => t.tool === 'recommend-flag');
+          if (!call) return { pass: false, score: 0, reason: 'No recommend-flag verdict emitted' };
+          const a = call.arguments || {};
+          const pass = a.recommend === false;
+          return { pass, score: pass ? 1 : 0, reason: `recommend=${a.recommend} confidence=${a.confidence}` };
+        metric: verdict_match
+        weight: 3
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const forbidden = ['create-flag','create-feature-flag','update-flag-settings','update-feature-flag','toggle-flag','delete-flag'];
+          const called = forbidden.filter(f => tools.includes(f));
+          const pass = called.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'stayed advisory' : 'called mutating tools: ' + called.join(', ') };
+        metric: stayed_advisory
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The diff adds a new /reports/export endpoint, but it is ALREADY gated
+          behind the LaunchDarkly flag 'reports-csv-export' (the change checks
+          client.variation('reports-csv-export', ...) and 404s when off).
+          Evaluate the agent's recommendation:
+          1. Did it recommend AGAINST adding a flag (recommend: false), recognizing
+             the change is already behind one?
+          2. Do its reasons cite the existing flag key ('reports-csv-export') as the
+             reason it's already handled?
+          3. Did it avoid creating or modifying any flag (advisory only)?
+          Score 1.0 if all three. Deduct 0.34 per criterion missed.
+        metric: rationale_quality
+        weight: 2
+
+  # ==================================================================
+  # UNGATED MIRROR (judgment) — the SAME endpoint, without the flag
+  # The identical new export endpoint, but shipped with no flag gate.
+  # This is the mirror of the "already gated" case: the same change now
+  # SHOULD be recommended for a flag (new user-facing path). Together the
+  # pair encodes the core finding — the verdict flips on whether the diff
+  # already contains its own gate.
+  # ==================================================================
+  - description: "Ungated mirror: recommends a flag for the same new endpoint when it ships without one"
+    providers: ["judgment"]
+    vars:
+      user_request: >
+        Should this change be behind a feature flag?
+      codebase_context: >
+        Node.js Express API using the LaunchDarkly Node server SDK. The standard
+        flag check is `client.variation(key, ldContext(user), default)`; routes
+        live in src/routes/.
+      git_diff: |
+        diff --git a/src/routes/reports.js b/src/routes/reports.js
+        index 2c1d3e4..7a8b9c0 100644
+        --- a/src/routes/reports.js
+        +++ b/src/routes/reports.js
+        @@ -18,6 +18,11 @@ router.get('/reports', async (req, res) => {
+           res.json(await listReports(req.user));
+         });
+
+        +// New: CSV export of the user's reports.
+        +router.get('/reports/export', async (req, res) => {
+        +  res.type('text/csv').send(await buildReportCsv(req.user));
+        +});
+        +
+         module.exports = router;
+    assert:
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const call = traj.find(t => t.tool === 'recommend-flag');
+          if (!call) return { pass: false, score: 0, reason: 'No recommend-flag verdict emitted' };
+          const a = call.arguments || {};
+          const pass = a.recommend === true;
+          return { pass, score: pass ? 1 : 0, reason: `recommend=${a.recommend} confidence=${a.confidence}` };
+        metric: verdict_match
+        weight: 4
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const forbidden = ['create-flag','create-feature-flag','update-flag-settings','update-feature-flag','toggle-flag','delete-flag'];
+          const called = forbidden.filter(f => tools.includes(f));
+          const pass = called.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'stayed advisory' : 'called mutating tools: ' + called.join(', ') };
+        metric: stayed_advisory
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The diff adds a new public /reports/export endpoint with NO feature flag
+          gate — the same change as the "already gated" fixture, minus the flag.
+          Evaluate the agent's recommendation:
+          1. Did it recommend putting the change behind a flag (recommend: true)?
+          2. Do its reasons cite the new user-facing export path shipping ungated?
+          3. Did it avoid creating or modifying any flag (advisory only)?
+          Score 1.0 if all three. Deduct 0.34 per criterion missed.
+        metric: rationale_quality
+        weight: 2
+
+  # ==================================================================
+  # ALREADY GATED (agentic) — explore to confirm the gate is real
+  # A React feature added behind a useFlags() check. The agent should
+  # read the surrounding code, confirm the panel is gated by the
+  # 'insights-panel' flag, and recommend against re-flagging it.
+  # ==================================================================
+  - description: "Already gated (frontend): explores, confirms the useFlags gate, recommends against re-flagging"
+    providers: ["agentic"]
+    vars:
+      user_request: >
+        Should this change be behind a feature flag? Read the diff and the
+        surrounding code before you decide.
+      git_diff: |
+        diff --git a/src/Dashboard.jsx b/src/Dashboard.jsx
+        index 5b4c3d2..1e2f3a4 100644
+        --- a/src/Dashboard.jsx
+        +++ b/src/Dashboard.jsx
+        @@ -1,6 +1,7 @@
+         import React from 'react';
+         import { useFlags } from 'launchdarkly-react-client-sdk';
+        +import { InsightsPanel } from './InsightsPanel';
+         import { Summary } from './Summary';
+        @@ -9,6 +10,7 @@ export function Dashboard({ metrics }) {
+        -  const { } = useFlags();
+        +  const { insightsPanel } = useFlags();
+           return (
+             <main>
+               <Summary metrics={metrics} />
+        +      {insightsPanel && <InsightsPanel metrics={metrics} />}
+             </main>
+           );
+         }
+      mock_files:
+        "package.json": |
+          {
+            "name": "acme-dashboard",
+            "dependencies": {
+              "react": "^18.2.0",
+              "launchdarkly-react-client-sdk": "^3.1.0"
+            }
+          }
+        "src/Dashboard.jsx": |
+          import React from 'react';
+          import { useFlags } from 'launchdarkly-react-client-sdk';
+          import { InsightsPanel } from './InsightsPanel';
+          import { Summary } from './Summary';
+
+          export function Dashboard({ metrics }) {
+            const { insightsPanel } = useFlags();
+            return (
+              <main>
+                <Summary metrics={metrics} />
+                {insightsPanel && <InsightsPanel metrics={metrics} />}
+              </main>
+            );
+          }
+        "src/InsightsPanel.jsx": |
+          import React from 'react';
+
+          // New feature: an analytics insights panel on the dashboard.
+          export function InsightsPanel({ metrics }) {
+            return (
+              <section className="insights">
+                <h2>Insights</h2>
+                <ul>{metrics.map((m) => <li key={m.id}>{m.label}: {m.value}</li>)}</ul>
+              </section>
+            );
+          }
+    assert:
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const call = traj.find(t => t.tool === 'recommend-flag');
+          if (!call) return { pass: false, score: 0, reason: 'No recommend-flag verdict emitted' };
+          const a = call.arguments || {};
+          const pass = a.recommend === false;
+          return { pass, score: pass ? 1 : 0, reason: `recommend=${a.recommend} confidence=${a.confidence}` };
+        metric: verdict_match
+        weight: 3
+
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const vIdx = traj.findIndex(t => t.tool === 'recommend-flag');
+          const scope = traj.slice(0, vIdx < 0 ? traj.length : vIdx);
+          const reads = scope.filter(t => ['Read','Grep','Glob'].includes(t.tool));
+          const pass = reads.length > 0;
+          return { pass, score: pass ? 1 : 0, reason: `explore calls before verdict: ${reads.length}` };
+        metric: explored_before_deciding
+        weight: 2
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const forbidden = ['create-flag','create-feature-flag','update-flag-settings','update-feature-flag','toggle-flag','delete-flag'];
+          const called = forbidden.filter(f => tools.includes(f));
+          const pass = called.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'stayed advisory' : 'called mutating tools: ' + called.join(', ') };
+        metric: stayed_advisory
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The diff adds an InsightsPanel to a React dashboard, but it is ALREADY
+          gated behind the 'insightsPanel' flag via useFlags() — the panel only
+          renders when the flag is on.
+          Evaluate the agent's recommendation:
+          1. Did it recommend AGAINST adding a flag (recommend: false), recognizing
+             the feature is already gated by useFlags()?
+          2. Do its reasons cite the existing 'insightsPanel' flag / useFlags gate?
+          3. Did it avoid creating or modifying any flag (advisory only)?
+          Score 1.0 if all three. Deduct 0.34 per criterion missed.
+        metric: rationale_quality
+        weight: 2

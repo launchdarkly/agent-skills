@@ -14,13 +14,31 @@
  *   --out <path>          Write the fixture YAML here (default: stdout).
  *   --max-files <n>       Max files to scaffold into mock_files (default: 25).
  *   --max-bytes <n>       Skip files whose head content exceeds this (default: 20000).
+ *   --flag-pattern <re>   Extra regex (repeatable) matched against added diff lines
+ *                         that flips the bootstrapped label to recommend: true. Use
+ *                         to teach the tool a codebase's own flag conventions
+ *                         without hardcoding them here.
+ *   --flag-token <str>    Extra flag identifier (repeatable) to strip in counterfactual
+ *                         mode — any added line containing it is removed. Use for flag
+ *                         keys/names the auto-extractor misses (test/comment leaks).
+ *   --flag-file-pattern <re>
+ *                         Path regex (repeatable) for flag *definition/registry* files
+ *                         to drop entirely in counterfactual mode (e.g. a central flags
+ *                         manifest) — it defines the flag but isn't the behavior change.
+ *   --counterfactual      Build a positive-RECALL fixture: strip the flag-gate lines
+ *                         from a flag-introducing PR so the change appears ungated,
+ *                         and expect recommend: true. Forces judgment tier. The strip
+ *                         is heuristic — review the emitted diff for coherence.
  *
  * Why these git mechanics (see the design notes in the suite README):
  *   - The DIFF comes from `gh pr diff <N>`, which is merge-strategy independent
  *     and matches the PR's "Files changed" tab. Diffing against post-merge main
  *     would come back empty for squash/merge-commit strategies.
- *   - The FILE TREE comes from `refs/pull/<N>/head` at the PR's head OID, which
- *     is immutable and survives branch deletion, so old merged PRs still work.
+ *   - The FILE TREE is read at the PR's head OID, which is immutable and
+ *     survives branch deletion, so old merged PRs still work. For the local repo
+ *     we fetch refs/pull/<N>/head and `git show` it; for an external --repo we
+ *     read only the changed files via the GitHub contents API (never clone — a
+ *     refs/pull fetch from a big monorepo would drag down its whole object graph).
  *
  * The emitted fixture carries a BOOTSTRAPPED label, not ground truth: we detect
  * whether the PR added LaunchDarkly SDK calls and guess the verdict from that.
@@ -60,7 +78,7 @@ function fail(msg) {
 }
 
 function parseArgs(argv) {
-  const opts = { tier: "agentic", maxFiles: 25, maxBytes: 20000, repo: null, out: null };
+  const opts = { tier: "agentic", maxFiles: 25, maxBytes: 20000, repo: null, out: null, flagPatterns: [], flagTokens: [], flagFilePatterns: [], counterfactual: false };
   const positional = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -69,9 +87,25 @@ function parseArgs(argv) {
     else if (a === "--out") opts.out = argv[++i];
     else if (a === "--max-files") opts.maxFiles = Number(argv[++i]);
     else if (a === "--max-bytes") opts.maxBytes = Number(argv[++i]);
+    else if (a === "--flag-pattern") opts.flagPatterns.push(argv[++i]);
+    else if (a === "--flag-token") opts.flagTokens.push(argv[++i]);
+    else if (a === "--flag-file-pattern") opts.flagFilePatterns.push(argv[++i]);
+    else if (a === "--counterfactual") opts.counterfactual = true;
     else if (a.startsWith("--")) fail(`unknown option: ${a}`);
     else positional.push(a);
   }
+  // Repo-specific flag conventions supplied at call time (kept out of this
+  // generic tool). Each becomes an additional call-site pattern that flips the
+  // bootstrapped label to recommend: true. E.g. for a codebase that gates flags
+  // via a `flagEnabled('my-flag')` helper and a `gateBehindFlag(...)` wrapper:
+  //   --flag-pattern 'flagEnabled\(' --flag-pattern 'gateBehindFlag\('
+  opts.extraCallPatterns = opts.flagPatterns.map((p) => {
+    try {
+      return { re: new RegExp(p, "i"), label: `custom:/${p}/` };
+    } catch (err) {
+      fail(`invalid --flag-pattern regex ${JSON.stringify(p)}: ${err.message}`);
+    }
+  });
   opts.pr = positional[0];
   if (!opts.pr || !/^\d+$/.test(opts.pr)) {
     fail("first argument must be a PR number, e.g. `node scripts/build-pr-fixture.js 123`");
@@ -102,10 +136,113 @@ function addedLines(diff) {
     .map((l) => l.slice(1));
 }
 
-function detectLdUsage(diff) {
+function detectLdUsage(diff, extraCallPatterns = []) {
   const added = addedLines(diff).join("\n");
   const match = (patterns) => patterns.filter(({ re }) => re.test(added)).map((p) => p.label);
-  return { calls: match(LD_CALL_PATTERNS), refs: match(LD_REF_PATTERNS) };
+  return {
+    calls: match([...LD_CALL_PATTERNS, ...extraCallPatterns]),
+    refs: match(LD_REF_PATTERNS),
+  };
+}
+
+// Flag-definition signatures (as opposed to call sites), stripped in
+// counterfactual mode. There is no universal flag-definition idiom, so this is
+// intentionally empty: supply a codebase's flag-definition/registry conventions
+// at call time via --flag-pattern (line-level) and --flag-file-pattern (whole
+// registry files). Keeping them out of this tool keeps it repo-agnostic.
+const LD_DEFINITION_PATTERNS = [];
+
+/** Split a unified diff into per-file sections keyed by `diff --git` headers. */
+function splitDiffByFile(diff) {
+  const sections = [];
+  let current = null;
+  for (const line of diff.split("\n")) {
+    if (line.startsWith("diff --git ")) {
+      if (current) sections.push(current);
+      const m = line.match(/ b\/(\S+)\s*$/);
+      current = { path: m ? m[1] : "", lines: [line] };
+    } else if (current) {
+      current.lines.push(line);
+    } else {
+      // Preamble before the first file header (rare); keep as a pathless section.
+      current = { path: "", lines: [line] };
+    }
+  }
+  if (current) sections.push(current);
+  return sections;
+}
+
+/**
+ * Drop whole per-file sections whose path matches any of `filePatterns`. Used in
+ * counterfactual mode to remove the flag *definition/registry* file (e.g. a
+ * central flags manifest) entirely — it defines the flag but isn't the behavior
+ * change, and its neighbouring entries are noise. Returns { diff, dropped }.
+ */
+function dropFilesFromDiff(diff, filePatterns) {
+  if (!filePatterns.length) return { diff, dropped: [] };
+  const res = filePatterns.map((p) => new RegExp(p, "i"));
+  const dropped = [];
+  const kept = splitDiffByFile(diff).filter((s) => {
+    if (s.path && res.some((re) => re.test(s.path))) {
+      dropped.push(s.path);
+      return false;
+    }
+    return true;
+  });
+  return { diff: kept.map((s) => s.lines.join("\n")).join("\n"), dropped };
+}
+
+/**
+ * Derive flag identifiers from the added lines that match a flag pattern. These
+ * tokens catch *secondary* references the pattern set misses — test assertions,
+ * comments, mock setups — that name the flag without its call syntax, which is
+ * what causes counterfactual leaks. Extraction is deliberately generic (quoted
+ * kebab-case flag keys); supply anything else (predicate/function names,
+ * camelCase accessors) via --flag-token.
+ */
+function extractFlagTokens(diff, gate) {
+  const tokens = new Set();
+  const add = (t) => {
+    if (t && t.length >= 4) tokens.add(t.toLowerCase());
+  };
+  for (const line of addedLines(diff)) {
+    if (!gate.some(({ re }) => re.test(line))) continue;
+    // quoted kebab-case flag keys, e.g. 'reports-csv-export'
+    for (const m of line.matchAll(/['"`]([a-z0-9]+(?:-[a-z0-9]+)+)['"`]/g)) add(m[1]);
+  }
+  return tokens;
+}
+
+/**
+ * Counterfactual transform: remove the flag scaffolding from a diff so the
+ * change appears as it would have shipped WITHOUT a flag. Drops added lines that
+ * (a) match a flag pattern, or (b) reference a derived/supplied flag token
+ * (catching test/comment leaks). Leaves the rest. Returns { diff, removed, tokens }.
+ *
+ * This is a heuristic line filter, not a semantic rewrite: guard conditionals
+ * whose body it can't safely promote may remain, and hunk line counts are not
+ * recomputed. The output is a review aid, not a faithful patch — hence the
+ * NEEDS REVIEW banner and the removed-line listing.
+ */
+function stripFlagGate(diff, extraCallPatterns, manualTokens = []) {
+  const gate = [...LD_CALL_PATTERNS, ...extraCallPatterns, ...LD_DEFINITION_PATTERNS];
+  const tokens = extractFlagTokens(diff, gate);
+  for (const t of manualTokens) if (t) tokens.add(t.toLowerCase());
+  const tokenList = [...tokens];
+  const removed = [];
+  const kept = diff.split("\n").filter((line) => {
+    const isAdded = line.startsWith("+") && !line.startsWith("+++");
+    if (!isAdded) return true;
+    const body = line.slice(1);
+    const lower = body.toLowerCase();
+    const hit = gate.some(({ re }) => re.test(body)) || tokenList.some((t) => lower.includes(t));
+    if (hit) {
+      removed.push(body.trim());
+      return false;
+    }
+    return true;
+  });
+  return { diff: kept.join("\n"), removed, tokens: tokenList };
 }
 
 function looksBinary(buf) {
@@ -135,15 +272,34 @@ function main() {
     .map((s) => s.trim())
     .filter(Boolean);
 
-  // 3. Fetch the immutable PR head so `git show <oid>:path` can read files.
-  const fetchSource = opts.repo ? `https://github.com/${opts.repo}.git` : "origin";
-  try {
-    git(["fetch", "--quiet", fetchSource, `refs/pull/${opts.pr}/head`]);
-  } catch (err) {
-    fail(`git fetch ${fetchSource} refs/pull/${opts.pr}/head failed: ${err.stderr || err.message}`);
+  // 3. Prepare to read file contents at the immutable PR head.
+  //    - Same repo (no --repo): the head objects are cheap locally, so fetch
+  //      refs/pull/N/head once and read with `git show <oid>:path`.
+  //    - External repo (--repo): DO NOT clone. Fetching refs/pull/N/head from a
+  //      large monorepo pulls its entire object graph — potentially GBs.
+  //      Read ONLY the changed files over the GitHub contents API instead.
+  const useApi = Boolean(opts.repo);
+  if (!useApi) {
+    try {
+      git(["fetch", "--quiet", "origin", `refs/pull/${opts.pr}/head`]);
+    } catch (err) {
+      fail(`git fetch origin refs/pull/${opts.pr}/head failed: ${err.stderr || err.message}`);
+    }
   }
 
-  // 4. Read post-change file contents from the head tree -> mock_files.
+  const readFileAtHead = (file) => {
+    if (useApi) {
+      const apiPath = file.split("/").map(encodeURIComponent).join("/");
+      return execFileSync(
+        "gh",
+        ["api", "-H", "Accept: application/vnd.github.raw", `repos/${opts.repo}/contents/${apiPath}?ref=${headOid}`],
+        { maxBuffer: 128 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"] },
+      );
+    }
+    return git(["show", `${headOid}:${file}`], { encoding: "buffer" });
+  };
+
+  // 4. Read post-change file contents at the head -> mock_files.
   const mockFiles = {};
   const skipped = [];
   let included = 0;
@@ -154,9 +310,9 @@ function main() {
     }
     let buf;
     try {
-      buf = git(["show", `${headOid}:${file}`], { encoding: "buffer" });
+      buf = readFileAtHead(file);
     } catch {
-      skipped.push(`${file} (not present at head — deleted/renamed)`);
+      skipped.push(`${file} (not present at head — deleted/renamed, or unreadable)`);
       continue;
     }
     if (buf.length > opts.maxBytes) {
@@ -171,18 +327,39 @@ function main() {
     included++;
   }
 
-  // 5. Bootstrap the label from LD SDK usage in the diff. Only call sites flip
-  //    the label to true; bare imports are noted for review but don't alone.
-  const { calls: ldCalls, refs: ldRefs } = detectLdUsage(diff);
-  const introducedFlag = ldCalls.length > 0;
-  const recommend = introducedFlag;
-  const confidence = introducedFlag ? "medium" : "low";
-  const refNote = ldRefs.length ? ` (also saw SDK references: ${ldRefs.join(", ")} — verify these are code, not docs)` : "";
-  const bootstrapReason = introducedFlag
-    ? `PR diff adds LaunchDarkly SDK call sites (${ldCalls.join(", ")}) — the authors gated this change behind a flag, so the bootstrapped verdict is recommend: true.${refNote}`
-    : ldRefs.length
-      ? `No LaunchDarkly SDK call sites in added lines, but SDK references are present (${ldRefs.join(", ")}). Bootstrapped verdict is recommend: false — VERIFY: these may be docs/config rather than a flag being evaluated.`
-      : `No LaunchDarkly SDK calls detected in added lines — bootstrapped verdict is recommend: false. VERIFY this isn't a user-facing/risky change that shipped unflagged.`;
+  // 5. Determine the diff to emit and the bootstrapped label.
+  const { calls: ldCalls, refs: ldRefs } = detectLdUsage(diff, opts.extraCallPatterns);
+  let effectiveDiff = diff;
+  let recommend;
+  let confidence;
+  let bootstrapReason;
+
+  if (opts.counterfactual) {
+    // Positive-recall fixture: strip the flag scaffolding so the change appears
+    // ungated, and expect the skill to say it SHOULD be flagged.
+    const filtered = dropFilesFromDiff(diff, opts.flagFilePatterns);
+    const stripped = stripFlagGate(filtered.diff, opts.extraCallPatterns, opts.flagTokens);
+    effectiveDiff = stripped.diff;
+    recommend = true;
+    confidence = "medium";
+    const droppedNote = filtered.dropped.length ? ` Dropped flag-definition file(s): ${filtered.dropped.join(", ")}.` : "";
+    if (!stripped.removed.length && !filtered.dropped.length) {
+      bootstrapReason = `COUNTERFACTUAL requested but no flag-gate lines were found to strip — the diff is unchanged. Provide --flag-pattern / --flag-token for this codebase's flag convention, or this PR may not gate via a matched pattern.`;
+    } else {
+      bootstrapReason = `COUNTERFACTUAL: removed ${stripped.removed.length} flag-gate line(s) so the change appears ungated; expected verdict is recommend: true (this change shipped behind a flag, so ungated it should be flagged).${droppedNote} Tokens stripped: ${stripped.tokens.slice(0, 8).join(", ") || "(none)"}. Diff is a heuristic strip — hunk counts not recomputed; review for coherence.`;
+    }
+  } else {
+    // Only call sites flip the label to true; bare imports are noted but don't.
+    const introducedFlag = ldCalls.length > 0;
+    recommend = introducedFlag;
+    confidence = introducedFlag ? "medium" : "low";
+    const refNote = ldRefs.length ? ` (also saw SDK references: ${ldRefs.join(", ")} — verify these are code, not docs)` : "";
+    bootstrapReason = introducedFlag
+      ? `PR diff adds LaunchDarkly SDK call sites (${ldCalls.join(", ")}) — the authors gated this change behind a flag. NOTE: the gate is already in this diff, so asking "should this be behind a flag?" here often yields recommend: false ("already gated"). For a positive-recall fixture, regenerate with --counterfactual.${refNote}`
+      : ldRefs.length
+        ? `No LaunchDarkly SDK call sites in added lines, but SDK references are present (${ldRefs.join(", ")}). Bootstrapped verdict is recommend: false — VERIFY: these may be docs/config rather than a flag being evaluated.`
+        : `No LaunchDarkly SDK calls detected in added lines — bootstrapped verdict is recommend: false. VERIFY this isn't a user-facing/risky change that shipped unflagged.`;
+  }
 
   // 6. Assemble the fixture. Assertion bodies mirror the hand-written suite.
   const advisoryAssert = [
@@ -222,10 +399,17 @@ function main() {
     "Score 1.0 if all three hold. Deduct 0.34 per criterion missed.",
   ].join("\n");
 
+  // Counterfactual fixtures use judgment framing: the scaffolded files still
+  // contain the flag gate, which would contradict the gate-stripped diff.
+  const emitTier = opts.counterfactual ? "judgment" : opts.tier;
+  if (opts.counterfactual && opts.tier === "agentic") {
+    console.error("build-pr-fixture: --counterfactual forces judgment tier (mock_files would still show the gate)");
+  }
+
   const assert = [
     { type: "javascript", value: verdictAssert, metric: "verdict_match", weight: recommend ? 4 : 3 },
   ];
-  if (opts.tier === "agentic") {
+  if (emitTier === "agentic") {
     assert.push({ type: "javascript", value: exploredAssert, metric: "explored_before_deciding", weight: 2 });
   }
   assert.push({ type: "javascript", value: advisoryAssert, metric: "stayed_advisory", weight: 2 });
@@ -234,13 +418,18 @@ function main() {
   const vars = {
     user_request:
       "This PR is up for review. Should the change be behind a LaunchDarkly feature flag? Read the diff and the surrounding code, then give your recommendation.",
-    git_diff: diff,
+    // Wrap in a Nunjucks raw block so diffs containing `{{ ... }}` (JSX props,
+    // Go templates, etc.) pass through promptfoo's var rendering literally
+    // instead of crashing it. The provider strips this wrapper before the agent
+    // sees the diff.
+    git_diff: `{% raw %}\n${effectiveDiff}\n{% endraw %}`,
   };
-  if (opts.tier === "agentic") vars.mock_files = mockFiles;
+  if (emitTier === "agentic") vars.mock_files = mockFiles;
 
+  const cfMark = opts.counterfactual ? "COUNTERFACTUAL " : "";
   const fixture = {
-    description: `PR #${meta.number} (${opts.tier}) [BOOTSTRAPPED label recommend=${recommend} — NEEDS REVIEW]: ${meta.title}`,
-    providers: [opts.tier],
+    description: `PR #${meta.number} (${emitTier}) [${cfMark}BOOTSTRAPPED label recommend=${recommend} — NEEDS REVIEW]: ${meta.title}`,
+    providers: [emitTier],
     vars,
     assert,
   };
@@ -275,4 +464,16 @@ function main() {
   }
 }
 
-main();
+// Run as a CLI when invoked directly; export pure helpers for unit tests.
+if (require.main === module) main();
+
+module.exports = {
+  addedLines,
+  detectLdUsage,
+  splitDiffByFile,
+  dropFilesFromDiff,
+  extractFlagTokens,
+  stripFlagGate,
+  LD_CALL_PATTERNS,
+  LD_DEFINITION_PATTERNS,
+};
