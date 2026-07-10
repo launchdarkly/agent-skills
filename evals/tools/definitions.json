@@ -509,5 +509,76 @@
       },
       "required": ["projectKey"]
     }
+  },
+  {
+    "name": "list-metrics",
+    "description": "Search and browse metrics in a project. Matching is LITERAL case-insensitive substring, not semantic. Use to check for duplicate metrics and understand naming conventions.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "query": { "type": "string", "description": "Search by metric name or key (literal case-insensitive substring)" },
+        "limit": { "type": "number", "description": "Max number of results (default 20)" }
+      },
+      "required": ["projectKey"]
+    }
+  },
+  {
+    "name": "list-metric-events",
+    "description": "List recent event keys with activity in a project, to check whether a custom event is already flowing before creating a metric for it.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "environmentKey": { "type": "string", "description": "Environment key (defaults to production)" }
+      },
+      "required": ["projectKey"]
+    }
+  },
+  {
+    "name": "create-metric",
+    "description": "Create a metric. kind is 'custom' (needs eventKey and a track() call in code), 'pageview' (needs urls, fires automatically, no code), or 'click' (needs urls and a selector, no code). Prefer pageview/click when they would work.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "key": { "type": "string", "description": "Metric key (kebab-case)" },
+        "name": { "type": "string", "description": "Human-readable name" },
+        "kind": { "type": "string", "enum": ["custom", "pageview", "click"], "description": "Metric kind" },
+        "eventKey": { "type": "string", "description": "Event key (custom metrics only)" },
+        "urls": { "type": "array", "items": { "type": "object", "properties": { "kind": { "type": "string", "enum": ["substring", "exact", "canonical", "regex"] }, "url": { "type": "string" }, "pattern": { "type": "string" } } }, "description": "URL match rules (pageview and click)" },
+        "selector": { "type": "string", "description": "CSS selector (click only)" },
+        "measureType": { "type": "string", "enum": ["count", "occurrence", "value"], "description": "How events aggregate" },
+        "successCriteria": { "type": "string", "enum": ["HigherThanBaseline", "LowerThanBaseline"], "description": "Which direction is good" },
+        "unit": { "type": "string", "description": "Unit for value metrics (e.g. ms, USD)" },
+        "description": { "type": "string", "description": "Metric description" },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags" }
+      },
+      "required": ["projectKey", "key", "name", "kind"]
+    }
+  },
+  {
+    "name": "get-metric",
+    "description": "Get a metric by key to verify it after creation.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "metricKey": { "type": "string", "description": "The metric key" }
+      },
+      "required": ["projectKey", "metricKey"]
+    }
+  },
+  {
+    "name": "get-environment",
+    "description": "Get an environment, including its client-side SDK id (clientSideId), used when instrumenting a custom event.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "environmentKey": { "type": "string", "description": "The environment key" }
+      },
+      "required": ["projectKey", "environmentKey"]
+    }
   }
 ]

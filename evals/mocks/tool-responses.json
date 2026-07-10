@@ -1,4 +1,40 @@
 {
+  "list-metrics": {
+    "metrics": [
+      { "key": "checkout-completed", "name": "Checkout completed", "kind": "custom", "eventKey": "checkout-completed", "measureType": "occurrence", "successCriteria": "HigherThanBaseline", "tags": ["growth"] },
+      { "key": "page-load-time", "name": "Page load time", "kind": "custom", "measureType": "value", "unit": "ms", "successCriteria": "LowerThanBaseline", "tags": ["performance"] },
+      { "key": "error-rate", "name": "Error rate", "kind": "custom", "measureType": "occurrence", "successCriteria": "LowerThanBaseline", "tags": ["guardrail"] }
+    ],
+    "totalCount": 3,
+    "pageInfo": { "limit": 20, "offset": 0 }
+  },
+  "list-metric-events": {
+    "events": [
+      { "eventKey": "checkout-completed", "count": 1820, "lastSeen": "2026-07-05T00:00:00Z" },
+      { "eventKey": "add-to-cart-clicked", "count": 940, "lastSeen": "2026-07-05T00:00:00Z" },
+      { "eventKey": "page-viewed", "count": 5100, "lastSeen": "2026-07-05T00:00:00Z" }
+    ],
+    "totalCount": 3
+  },
+  "create-metric": {
+    "key": "{{key}}",
+    "name": "{{name}}",
+    "kind": "{{kind}}",
+    "_id": "metric-0001",
+    "_creationDate": 1751760000000
+  },
+  "get-metric": {
+    "key": "{{metricKey}}",
+    "name": "Metric",
+    "kind": "custom",
+    "_id": "metric-0001"
+  },
+  "get-environment": {
+    "key": "{{environmentKey}}",
+    "name": "{{environmentKey}}",
+    "clientSideId": "651a0c0f9e1a2b0012ab34cd",
+    "_links": { "self": { "href": "https://app.launchdarkly.com/api/v2/projects/my-app/environments/{{environmentKey}}" } }
+  },
   "list-flags": {
     "flags": [
       {
