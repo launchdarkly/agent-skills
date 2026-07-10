@@ -1,0 +1,181 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+#
+# Evaluates launchdarkly-experiment-hypothesis-builder — an advisory skill that
+# coaches a hypothesis and hands off, never writing. Assertions read the tool-call
+# trajectory plus llm-rubrics; it runs read-only via mcp_tool_allowlist.
+# Run: promptfoo eval -c shared/defaults.yaml -c launchdarkly-experiment-hypothesis-builder/promptfooconfig.yaml
+description: "End-to-end evaluation of the launchdarkly-experiment-hypothesis-builder skill"
+
+prompts:
+  - file://../../skills/experiments/launchdarkly-experiment-hypothesis-builder/SKILL.md
+
+providers:
+  - id: file://../providers/claude-skill-agent-sdk.js
+    label: claude-skill-agent-sdk
+    config:
+      skill_slug: launchdarkly-experiment-hypothesis-builder
+      expose_mcp_tools: true
+      expose_ask_question: true
+      force_skill_invocation: true    # force-load the skill so the eval tests it, not base Claude
+      # Advisory / handoff-only: expose read tools only so it cannot write.
+      mcp_tool_allowlist:
+        - list-flags
+        - get-flag
+        - list-feature-flags
+        - list-metrics
+        - get-metric
+        - list-metric-events
+        - get-project
+
+tests:
+  # Golden path: coach a strong draft to a good hypothesis, no writes.
+  - description: "Golden path: coach a strong draft to a good hypothesis, no writes"
+    vars:
+      max_turns: 25
+      mock_ask_question_answers:
+        - ["~5%"]
+      user_request: >
+        In project "my-app", I want to test moving our primary navigation to the
+        left rail. I expect it to increase signup conversion, because it reduces
+        cognitive load, while login success rate stays flat.
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const writes = ['create-flag','create-feature-flag','update-feature-flag','create-metric','create-experiment','start-experiment-iteration'].filter(w=>tools.includes(w));
+          const pass = writes.length===0;
+          return { pass, score: pass?1:0, reason: pass?'No writes (handoff/advisory only)':'Wrote: '+writes.join(', ') };
+        metric: no_writes
+        weight: 3
+      - type: javascript
+        value: |
+          const asks = (output.trajectory||[]).filter(t=>t.tool==='ask-question').length;
+          const pass = asks <= 2;
+          return { pass, score: pass?1:(asks<=3?0.5:0), reason:`ask-question calls: ${asks}` };
+        metric: does_not_over_interrogate
+        weight: 1
+      - type: llm-rubric
+        value: |
+          Evaluate the hypothesis the agent produced. Score 1.0 if all met, deduct 0.25 each:
+          1. One clear if/then/because sentence naming the intervention (left-rail nav) and the primary metric (signup conversion) with a direction (increase).
+          2. Single-variable — only the nav position changes between control and treatment.
+          3. Falsifiable — a result could prove it wrong.
+          4. It surfaces the flag and metric it would use so the experiment can be built downstream.
+        metric: hypothesis_quality
+        weight: 2
+
+  # Weak input: rebuild a vague goal via questions, no writes.
+  - description: "Fork (weak): a vague goal is rebuilt via questions, no writes"
+    vars:
+      max_turns: 20
+      user_request: "I want to increase revenue. Project is my-app."
+    assert:
+      - type: javascript
+        value: |
+          const asks = (output.trajectory||[]).filter(t=>t.tool==='ask-question');
+          const text = (asks.map(a=>a.arguments&&a.arguments.prompt||'').join(' ') + ' ' + String(output.response||'')).toLowerCase();
+          const asked = asks.length>0 || /\?/.test(String(output.response||''));
+          const onTopic = /(metric|measur|what.*change|specific change|which|area)/.test(text);
+          const score = (asked?0.5:0)+(onTopic?0.5:0);
+          return { pass: asked && onTopic, score, reason:`asks=${asks.length} onTopic=${onTopic}` };
+        metric: coaches_missing_element
+        weight: 3
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const writes = ['create-flag','create-feature-flag','update-feature-flag','create-metric','create-experiment','start-experiment-iteration'].filter(w=>tools.includes(w));
+          const pass = writes.length===0;
+          return { pass, score: pass?1:0, reason: pass?'No writes':'Wrote: '+writes.join(', ') };
+        metric: no_writes
+        weight: 3
+      - type: llm-rubric
+        value: |
+          Score 1.0 if all met, deduct 0.33 each:
+          1. The agent treats "increase revenue" as too vague to build from (a goal, not a hypothesis).
+          2. It asks for the specific change to test and a concrete measurable primary metric.
+          3. It does not fabricate an intervention, metric, or magnitude the user never provided.
+        metric: weak_input_handled
+        weight: 2
+
+  # Cost of being wrong: resolve an existing metric without a verbatim search
+  # (LD search is literal substring, so a raw phrase misses "Signup completed").
+  - description: "Cost of wrong: resolve the existing metric without a verbatim search, no writes"
+    vars:
+      max_turns: 25
+      user_request: >
+        In project "my-app", test a one-click signup button. I expect it to raise
+        signup completion.
+    assert:
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const qs = traj.filter(t=>t.tool==='list-metrics').map(t=>String((t.arguments&&t.arguments.query)||'').toLowerCase());
+          const searched = qs.length>0;
+          const verbatim = qs.some(q=>q==='signup completion');
+          const pass = searched && !verbatim;
+          return { pass, score: pass?1:(searched?0.4:0), reason:`list-metrics queries=[${qs.join(', ')}]` };
+        metric: searched_not_verbatim
+        weight: 2
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const writes = ['create-flag','create-feature-flag','update-feature-flag','create-metric','create-experiment','start-experiment-iteration'].filter(w=>tools.includes(w));
+          const pass = writes.length===0;
+          return { pass, score: pass?1:0, reason: pass?'No writes':'Wrote: '+writes.join(', ') };
+        metric: no_writes
+        weight: 3
+      - type: llm-rubric
+        value: |
+          The project already has a "Signup completed" metric. Score 1.0 if both met, deduct 0.5 each:
+          1. The agent surfaces the existing "Signup completed" metric rather than proposing a brand-new duplicate.
+          2. It confirms the metric pick with the user rather than silently assuming it.
+        metric: resolution_quality
+        weight: 2
+
+  # Cost of being wrong: catch a metric/outcome mismatch (predicts engagement,
+  # proposes measuring revenue).
+  - description: "Cost of wrong: catch the metric<->outcome mismatch, no writes"
+    vars:
+      max_turns: 25
+      user_request: >
+        In project "my-app", I want to test a new onboarding checklist. I think it
+        will boost engagement — let's measure it by revenue.
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const writes = ['create-flag','create-feature-flag','update-feature-flag','create-metric','create-experiment','start-experiment-iteration'].filter(w=>tools.includes(w));
+          const pass = writes.length===0;
+          return { pass, score: pass?1:0, reason: pass?'No writes':'Wrote: '+writes.join(', ') };
+        metric: no_writes
+        weight: 2
+      - type: llm-rubric
+        value: |
+          The user predicts ENGAGEMENT will move but proposes measuring REVENUE. Score 1.0 if all met, deduct 0.33 each:
+          1. The agent catches the mismatch and does not silently accept revenue as the primary metric for an engagement prediction.
+          2. It aligns the primary metric to the predicted outcome (an engagement metric), or asks the user to reconcile the two.
+          3. It does not invent a magnitude the user never gave.
+        metric: mismatch_caught
+        weight: 3
+
+  # Safety: a platform self-test (A/A) is not built into an experiment.
+  - description: "Safety: a platform self-test is not built into an experiment, no writes"
+    vars:
+      max_turns: 15
+      user_request: "A/A test to validate bucketing. Project my-app."
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const writes = ['create-flag','create-feature-flag','update-feature-flag','create-metric','create-experiment','start-experiment-iteration'].filter(w=>tools.includes(w));
+          const pass = writes.length===0;
+          return { pass, score: pass?1:0, reason: pass?'No writes':'Wrote: '+writes.join(', ') };
+        metric: no_writes
+        weight: 3
+      - type: llm-rubric
+        value: |
+          Score 1.0 if both met, deduct 0.5 each:
+          1. The agent recognizes this as a platform/self-test (an A/A bucketing check), not a real experiment idea.
+          2. It gently confirms intent rather than coaching it into a full hypothesis and configuration.
+        metric: nonreal_handled
+        weight: 2
