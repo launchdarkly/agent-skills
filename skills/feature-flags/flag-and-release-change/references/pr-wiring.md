@@ -30,8 +30,11 @@ Stay in this same clone for both phases. In the implement phase you commit and p
 Follow flag-create's Step 4 and its SDK patterns to wrap the new behavior behind the flag.
 The one principle worth repeating because it's a release-safety invariant: **the in-code
 default must be the safe, pre-change behavior**, so an unreachable LaunchDarkly leaves users on
-the old path. Prefer a single branch point around the new path over scattered flag checks, and
-don't delete the old path — the kill-switch needs something to fall back to.
+the old path. Concretely, **the flag-off path must not invoke any of the new code** — no new
+function calls on the control branch — so a flag that never turns on leaves users exactly where
+they were. Wrap at the smallest scope that isolates the change (the handler/component logic, not
+route registration). Prefer a single branch point around the new path over scattered flag checks,
+and don't delete the old path — the kill-switch needs something to fall back to.
 
 ## Commit and push to the PR branch
 

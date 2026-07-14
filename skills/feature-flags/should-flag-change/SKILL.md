@@ -56,8 +56,10 @@ Before deciding, use `Read`, `Grep`, and `Glob` to answer the questions the diff
 
 1. **Call sites and blast radius.** Grep for the changed function/endpoint. How many callers? Is it on a hot or critical path?
 2. **Existing flag conventions.** Does this codebase already gate similar changes behind flags? Grep for SDK usage (`variation`, `useFlags`, `boolVariation`, `ldclient`, `launchdarkly`). A change that mirrors an already-flagged pattern is a strong signal.
-3. **Migration state.** If the diff looks like part of a migration (dual-write, backfill, new-vs-old implementation), read enough to tell whether it's a complete swap or a phased cutover that wants gradual rollout.
-4. **Safety of the change.** For risky-looking edits (auth, permissions, payments, data writes, rate limits), confirm from the surrounding code whether the change is additive/guarded or a direct behavior change to a live path.
+3. **Ancestor gate — is it already behind a flag?** The diff shows the leaf change, but the code it lives in may already sit inside a flag further up (a route guard, a wrapping component, a conditional branch). Walk up from the changed lines to the nearest enclosing flag check. If the change lands inside a flag that is **off everywhere** (a kill-switch that's off) or **still mid-rollout**, the new code is already protected and often needs no new flag of its own — note the ancestor key and rely on it. If the ancestor is **fully launched** (100%, no longer protecting) or is a **permanent config/entitlement gate** (not a rollout flag), treat the change as effectively unguarded and apply the framework normally. If you can't resolve the ancestor's rollout state from what's in front of you, say so and lower confidence.
+4. **Migration state.** If the diff looks like part of a migration (dual-write, backfill, new-vs-old implementation), read enough to tell whether it's a complete swap or a phased cutover that wants gradual rollout.
+5. **Safety of the change.** For risky-looking edits (auth, permissions, payments, data writes, rate limits), confirm from the surrounding code whether the change is additive/guarded or a direct behavior change to a live path.
+6. **Dependencies on other features.** Check whether the new path calls into a capability that itself looks flag-gated or not yet released. If this change must not go live before that parent capability, note the dependency in your reasons — it's a reason to flag (so the two releases can be coupled via a prerequisite).
 
 Skip exploration only when the change is unambiguous on its face (e.g. a docs-only or test-only diff) — and say so in your reasons.
 
@@ -72,6 +74,7 @@ Skip exploration only when the change is unambiguous on its face (e.g. a docs-on
 | Is an **incomplete or phased migration** (dual-write, backfill, cutover between old/new implementations) | Rollout control lets you shift traffic and roll back per-cohort |
 | Is **performance-sensitive** or touches a hot path where regressions are likely | Fast rollback without a redeploy |
 | Alters a **critical / high-blast-radius** subsystem many callers depend on | Contain the blast radius during rollout |
+| **Depends on another not-yet-live feature or flag** (must not go live before a parent capability) | A flag lets you couple this release to the parent's — via a prerequisite — instead of shipping it live prematurely |
 
 **Do not recommend a flag (`recommend: false`) when the change is:**
 
@@ -86,6 +89,7 @@ Skip exploration only when the change is unambiguous on its face (e.g. a docs-on
 
 **Ambiguous — judge on the merits and explain the tradeoff:**
 
+- **Refactor that also changes business logic or an API contract** — not a pure refactor. If the "cleanup" quietly alters what a call returns or how a path behaves, treat it as a behavior change and lean toward a flag.
 - **Bug fixes to an existing path** — flagging lets you compare old vs. fixed behavior, but a clear correctness fix is often just shipped. Decide based on blast radius and reversibility.
 - **Dependency bumps that do change runtime behavior** (major version, changed defaults) — lean toward a flag if the behavior delta reaches a live path.
 - **Small behavior tweaks** to an existing feature — weigh reversibility and who's affected.
@@ -100,6 +104,7 @@ End by calling the **`recommend-flag`** tool exactly once, with your structured 
 recommend-flag({
   recommend: boolean,            // true = should be behind a flag
   confidence: "low" | "medium" | "high",
+  risk: "low" | "medium" | "high",  // optional: blast radius / severity of the change itself
   reasons: [                     // concise, evidence-based; each cites a file/behavior
     "New public endpoint POST /export added in src/routes/export.ts — user-facing path with no existing gate",
     "No LaunchDarkly usage found near the new route (grepped src/routes) — this would ship unguarded"
@@ -111,8 +116,9 @@ Rules for the verdict:
 
 - **Call the tool exactly once, as the final step.** Do not call it before you've explored.
 - **`reasons` must be specific and evidence-based.** Reference the files, symbols, or behaviors you actually observed. Avoid generic statements like "this is risky."
-- **Calibrate `confidence` — do not default to `high`.** Reserve `high` for genuinely clear-cut changes you fully understand (a docs-only diff, an obvious pure refactor, a plainly new user-facing endpoint). Use `medium` when the verdict is sound but you couldn't verify every call site, and `low` when the change is ambiguous, borderline, or touches money/security/data on a live path where reasonable reviewers could disagree. **If you weighed both directions in Step 3 — i.e. the change is in the Ambiguous table — `confidence` MUST be `low` or `medium`, never `high`, even when you land firmly on a verdict.** Confidence is about how clear-cut the *call* is, not how strongly you hold your conclusion.
-- **Then summarize in prose** for the human: restate the verdict, the key reasons, and — if you recommended a flag — a one-line suggestion of what kind (e.g. "a boolean release flag defaulting to the old behavior"). Point them at the flag create skill to actually create it.
+- **Calibrate `confidence` — do not default to `high`.** Reserve `high` for genuinely clear-cut changes you fully understand (a docs-only diff, an obvious pure refactor, a plainly new user-facing endpoint). Use `medium` when the verdict is sound but you couldn't verify every call site, and `low` when the change is ambiguous, borderline, or touches money/security/data on a live path where reasonable reviewers could disagree. **If you weighed both directions in Step 3 — i.e. the change is in the Ambiguous table — `confidence` MUST be `low` or `medium`, never `high`, even when you land firmly on a verdict.** Confidence is about how clear-cut the *call* is, not how strongly you hold your conclusion. **Any reason you could not verify against the actual code caps `confidence` at `medium`, and you must name it as unverified.**
+- **Set `risk` (optional but recommended) to the change's blast radius — separate from `confidence`.** Confidence is how clear-cut the call is; risk is how much damage the change could do. They're orthogonal: a plainly-new-endpoint is a clear call (`high` confidence) that might be low blast radius, while an auth-fallthrough tweak can be both `high` confidence and `high` risk. Anchor it: `low` = small, additive, isolated change; `medium` = modified business logic / moderate blast radius; `high` = cross-cutting, API-contract, data-migration, or auth/payments/data-integrity change. A downstream check can use `risk` to prioritize.
+- **Then summarize in prose** for the human: restate the verdict, the key reasons, and — if you recommended a flag — a one-line suggestion of what kind (e.g. "a boolean release flag defaulting to the old behavior"). Note whether the change is a **net-new path** (the flag-off control renders nothing, so a guarded rollout must lean on existing global/service metrics — feature-specific before/after comparisons are one-armed) or an **incremental change to a live path** (both variations exercise comparable code, so feature-specific metrics compare cleanly); this tells the release step what its rollout can actually measure. Point them at the flag create skill to actually create it.
 
 If the `recommend-flag` tool is not available in your environment, emit the exact same object as a fenced ` ```json ` block labeled `recommend-flag` so it can still be parsed, then give the prose summary.
 
@@ -122,7 +128,7 @@ If the `recommend-flag` tool is not available in your environment, emit the exac
 |-----------|--------|
 | Diff is empty or only whitespace | `recommend: false`, `confidence: high`, reason noting no behavioral change |
 | Diff mixes a refactor with a real behavior change | Judge on the behavior change; recommend a flag if that part warrants it, and say which part drove the verdict |
-| Change is already behind a flag in the diff | `recommend: false` (already gated); note the existing flag key in reasons |
+| Change is already behind a flag — in the diff, or an ancestor gate that's off/mid-rollout | `recommend: false` (already gated); name the flag key and, for an ancestor, its rollout state. If the ancestor is fully launched or a permanent config gate, it isn't protecting this change — judge normally. |
 | You can't read the surrounding code (no repo access, ad hoc snippet) | Decide from the diff alone; lower `confidence` and say exploration was unavailable |
 | The change is a hotfix / revert | Usually `recommend: false` unless it re-introduces a risky path; explain |
 

@@ -33,15 +33,25 @@ It returns the `winningPolicy`, the `winningReleaseMethod` (immediate / progress
 
 **If nothing matches**, `policy` falls back to project defaults (often an immediate release). Tell the user — they may want to pick `simple` instead, or set up a release policy first.
 
+**A guarded release is only as good as its metrics.** If a `policy` env resolves to a **guarded** method, check that `autoAttachedMetricKeys` is non-empty and actually relevant to this change — a guarded rollout with no meaningful metric guards nothing. Watch for the **net-new path** case (from `should-flag-change`'s output, if present): when the flag-off control renders nothing, feature-specific before/after comparisons are "one-armed" and can't detect a regression, so a guarded release must lean on existing global/service metrics. If the attached metrics can't compare treatment vs. control for this change, say so and recommend `simple` for that env (or point the user at metric setup) rather than presenting a guarded rollout that can't actually guard.
+
 ## Precedence
 
 When a `policy` environment resolves what to do on merge, precedence is:
 
-**explicit overrides → matched release policy → project/demo defaults**
+**human release intent → explicit overrides → matched release policy → project/demo defaults**
 
-So an operator override wins over the policy, and the policy wins over the fallback default.
-You generally don't set overrides from this skill; you rely on the policy, which is why
-previewing it matters.
+A human's stated intent (Plan-phase Step 5 — release / hold / `notBefore` / segment / prerequisite)
+sits *above* the policy: if the user said "hold until August," you don't register a plan that
+releases that env on merge, no matter what the policy would do. Below intent, an operator override
+wins over the policy, and the policy wins over the fallback default. You generally don't set
+overrides from this skill; you rely on the policy, which is why previewing it matters.
+
+**Fail closed.** Intent is honored or explicitly held — never silently dropped. If you can't
+express a piece of intent through the available tools (e.g. a `notBefore` date the rollout config
+can't encode), leave the flag OFF for that env and report it as held with the reason, rather than
+registering a release that ignores the constraint. An unclear intent should *prevent* a release,
+never cause one.
 
 ## Registering the config
 
@@ -63,6 +73,17 @@ Call `create-automated-rollout-config` in the implement phase:
 The guarding flag must already exist. Provide the PR reference (`repoFullName` + `prNumber`,
 or `prUrl`) so the rollout is bound to the right merge. The call returns `created`,
 `config_id`, and the normalized per-environment plan — record `config_id` in your report.
+
+## Coupling to a parent flag (prerequisites)
+
+When the change depends on another feature that isn't live yet, don't leave the ordering as a
+human note — make it structural with a LaunchDarkly **prerequisite**. The dependent flag lists
+the parent as a prerequisite (parent must serve its "on" variation) so the dependent can be
+turned on safely: while the parent is off, the dependent stays effectively off; when the parent
+releases, the dependent goes live in lockstep. This is native LaunchDarkly behavior, so it's the
+right way to express "this must not go live before X." Set it via the MCP surface if it exposes
+prerequisite editing; if it doesn't, report the required prerequisite as a manual step and do not
+register a rollout that could release this flag ahead of its parent.
 
 ## Relationship to guarded rollouts
 
