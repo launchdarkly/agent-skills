@@ -178,6 +178,26 @@
       "compatibility": "Requires SDK installed (parent Step 5) and LaunchDarkly project access"
     },
     {
+      "name": "flag-and-release-change",
+      "description": "Gate a pull request's change behind a LaunchDarkly feature flag and set up its automated release. Use once a change has been judged flag-worthy (e.g. by should-flag-change) to create the flag, wire the new code path behind it on the PR branch, and register an automated rollout so the change releases safely when the PR merges. Keywords: flag a PR, wrap change in a flag, dark launch, kill switch, auto-release, automated rollout, release policy, staged rollout.",
+      "path": "skills/feature-flags/flag-and-release-change",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server and a git CLI with access to the PR's repository",
+      "tags": [
+        "launchdarkly",
+        "feature-flags",
+        "feature-management",
+        "flag-creation",
+        "pull-request",
+        "auto-release",
+        "automated-rollout",
+        "release-policy",
+        "dark-launch",
+        "mcp"
+      ]
+    },
+    {
       "name": "launchdarkly-experiment-setup",
       "description": "Set up and run experiments in LaunchDarkly. Create experiments with metrics, treatments, and flag config, start iterations to collect data, swap design between iterations, and stop with a winner.",
       "path": "skills/experiments/launchdarkly-experiment-setup",

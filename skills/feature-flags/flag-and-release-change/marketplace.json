@@ -1,0 +1,23 @@
+{
+  "name": "flag-and-release-change",
+  "description": "Gate a PR's change behind a LaunchDarkly feature flag and set up its automated release",
+  "version": "0.1.0",
+  "author": "LaunchDarkly",
+  "repository": "https://github.com/launchdarkly/ai-tooling",
+  "skills": ["./"],
+  "tags": [
+    "launchdarkly",
+    "feature-flags",
+    "feature-management",
+    "flag-creation",
+    "pull-request",
+    "auto-release",
+    "automated-rollout",
+    "release-policy",
+    "dark-launch",
+    "mcp"
+  ],
+  "requirements": {
+    "mcp-servers": ["@launchdarkly/mcp-server"]
+  }
+}
