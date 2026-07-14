@@ -41,9 +41,9 @@ When a `policy` environment resolves what to do on merge, precedence is:
 
 **human release intent → explicit overrides → matched release policy → project/demo defaults**
 
-A human's stated intent (Plan-phase Step 5 — release / hold / `notBefore` / segment / prerequisite)
-sits *above* the policy: if the user said "hold until August," you don't register a plan that
-releases that env on merge, no matter what the policy would do. Below intent, an operator override
+A human's stated intent — captured before recording (release now / hold / `notBefore` / segment /
+prerequisite) — sits *above* the policy: if the user said "hold until August," you don't register a
+plan that releases that env on merge, no matter what the policy would do. Below intent, an operator override
 wins over the policy, and the policy wins over the fallback default. You generally don't set
 overrides from this skill; you rely on the policy, which is why previewing it matters.
 

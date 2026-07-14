@@ -49,6 +49,7 @@ force-push, or touch the base branch.
 
 ## After wiring
 
-Register the auto-release (`create-automated-rollout-config`) so the merge triggers the
-rollout — see [auto-release.md](auto-release.md). Then verify the code compiles/lints and
-`get-flag` shows the flag created and OFF before reporting.
+Once the flag exists and the wiring is pushed, hand off to
+[`flag-release`](../../flag-release/SKILL.md) to record the automated release so the merge
+triggers the rollout. Then verify the code compiles/lints and `get-flag` shows the flag
+created and OFF before reporting.
