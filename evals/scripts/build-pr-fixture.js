@@ -49,9 +49,8 @@
 
 const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
-const path = require("node:path");
 
-const yaml = require(path.join(__dirname, "..", "node_modules", "js-yaml"));
+const yaml = require("js-yaml");
 
 // SDK *call sites* — a flag actually being evaluated. These are the primary
 // signal that a PR introduces a flag, and alone flip the bootstrapped label to
