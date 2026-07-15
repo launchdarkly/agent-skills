@@ -527,5 +527,57 @@
       },
       "required": ["recommend", "confidence", "reasons"]
     }
+  },
+  {
+    "name": "match-release-policies",
+    "description": "Preview which release policy governs a flag in an environment and what a policy-based release would do. Before the flag exists pass flagTags for client-side matching; after it exists pass flagKey for the authoritative server-resolved policy. Returns winningPolicy, winningReleaseMethod (immediate|progressive|guarded|null), and any auto-attached metric/metric-group keys.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "environmentKey": { "type": "string", "description": "Environment to resolve the policy for" },
+        "flagKey": { "type": "string", "description": "The flag key (after the flag exists)" },
+        "flagTags": { "type": "array", "items": { "type": "string" }, "description": "Proposed flag tags (before the flag exists)" }
+      },
+      "required": ["projectKey", "environmentKey"]
+    }
+  },
+  {
+    "name": "list-release-policies",
+    "description": "List every release policy in a project: scope (environments, flag tags), rank, release method, and the guardrail metrics it auto-attaches. Use match-release-policies to resolve which one wins for a given flag + environment; use this only for a full inventory.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" }
+      },
+      "required": ["projectKey"]
+    }
+  },
+  {
+    "name": "create-automated-rollout-config",
+    "description": "Record an automated rollout config that ties a flag to a PR's merge and releases it per environment. Each environments entry is { environmentKey, releaseType } where releaseType is 'simple' (serve true immediately) or 'policy' (defer to the environment's release policy on merge). Provide the PR reference (repoFullName + prNumber, or prUrl). The guarding flag must already exist.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "projectKey": { "type": "string", "description": "The project key" },
+        "flagKey": { "type": "string", "description": "The guarding flag key (must already exist)" },
+        "environments": {
+          "type": "array",
+          "description": "Per-environment release plan",
+          "items": {
+            "type": "object",
+            "properties": {
+              "environmentKey": { "type": "string", "description": "Environment key" },
+              "releaseType": { "type": "string", "enum": ["simple", "policy"], "description": "simple = serve true now; policy = defer to the env's release policy on merge" }
+            },
+            "required": ["environmentKey"]
+          }
+        },
+        "repoFullName": { "type": "string", "description": "owner/repo" },
+        "prNumber": { "type": "number", "description": "PR number" },
+        "prUrl": { "type": "string", "description": "PR URL" }
+      },
+      "required": ["projectKey", "flagKey", "environments"]
+    }
   }
 ]

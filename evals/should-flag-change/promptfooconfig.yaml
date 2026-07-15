@@ -240,6 +240,16 @@ tests:
         metric: stayed_advisory
         weight: 2
 
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const call = traj.find(t => t.tool === 'recommend-flag');
+          const a = (call && call.arguments) || {};
+          const pass = a.risk === 'high';
+          return { pass, score: pass ? 1 : 0, reason: `risk=${a.risk} (expected high: auth change on every route)` };
+        metric: risk_calibrated
+        weight: 1
+
       - type: llm-rubric
         value: |
           The change loosens JWT auth in middleware applied to every route: expired
@@ -412,6 +422,16 @@ tests:
           return { pass, score: pass ? 1 : 0, reason: pass ? 'stayed advisory' : 'called mutating tools: ' + called.join(', ') };
         metric: stayed_advisory
         weight: 2
+
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const call = traj.find(t => t.tool === 'recommend-flag');
+          const a = (call && call.arguments) || {};
+          const pass = a.risk === undefined || a.risk === 'low';
+          return { pass, score: pass ? 1 : 0, reason: `risk=${a.risk} (expected low or absent: docs/test-only)` };
+        metric: risk_calibrated
+        weight: 1
 
       - type: llm-rubric
         value: |
@@ -757,3 +777,198 @@ tests:
           Score 1.0 if all three. Deduct 0.34 per criterion missed.
         metric: rationale_quality
         weight: 2
+
+  # ==================================================================
+  # ANCESTOR GATE (agentic) — the change lives inside an enclosing flag
+  # that is NOT in the diff. The panel is gated by `insightsPanel` in a
+  # different file (Dashboard.jsx), and that flag is off in every
+  # environment (unlaunched). The agent should explore up to the
+  # ancestor, see the change can't reach users, and recommend against a
+  # redundant new flag — citing the ancestor. Distinct from the "already
+  # gated" cases, where the gate is in the diff itself.
+  # ==================================================================
+  - description: "Ancestor gate: explores up to an enclosing flag not in the diff and recommends against a redundant flag"
+    providers: ["agentic"]
+    vars:
+      user_request: >
+        Should this change be behind a LaunchDarkly feature flag? Read the diff
+        and the surrounding code before you decide.
+      git_diff: |
+        diff --git a/src/InsightsPanel.jsx b/src/InsightsPanel.jsx
+        index 1a2b3c4..5d6e7f8 100644
+        --- a/src/InsightsPanel.jsx
+        +++ b/src/InsightsPanel.jsx
+        @@ -6,6 +6,9 @@ export function InsightsPanel({ metrics }) {
+             <section className="insights">
+               <h2>Insights</h2>
+        +      <p className="insights-total">
+        +        Total: {metrics.reduce((sum, m) => sum + m.value, 0)}
+        +      </p>
+               <ul>{metrics.map((m) => <li key={m.id}>{m.label}: {m.value}</li>)}</ul>
+             </section>
+           );
+         }
+      mock_files:
+        "package.json": |
+          {
+            "name": "acme-dashboard",
+            "dependencies": {
+              "react": "^18.2.0",
+              "launchdarkly-react-client-sdk": "^3.1.0"
+            }
+          }
+        "src/Dashboard.jsx": |
+          import React from 'react';
+          import { useFlags } from 'launchdarkly-react-client-sdk';
+          import { InsightsPanel } from './InsightsPanel';
+          import { Summary } from './Summary';
+
+          // The insights feature is gated by the `insightsPanel` flag, which is
+          // currently OFF in every environment — the feature has not launched yet.
+          export function Dashboard({ metrics }) {
+            const { insightsPanel } = useFlags();
+            return (
+              <main>
+                <Summary metrics={metrics} />
+                {insightsPanel && <InsightsPanel metrics={metrics} />}
+              </main>
+            );
+          }
+        "src/InsightsPanel.jsx": |
+          import React from 'react';
+
+          // Rendered only when the `insightsPanel` flag is on (see Dashboard.jsx).
+          export function InsightsPanel({ metrics }) {
+            return (
+              <section className="insights">
+                <h2>Insights</h2>
+                <p className="insights-total">
+                  Total: {metrics.reduce((sum, m) => sum + m.value, 0)}
+                </p>
+                <ul>{metrics.map((m) => <li key={m.id}>{m.label}: {m.value}</li>)}</ul>
+              </section>
+            );
+          }
+    assert:
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const call = traj.find(t => t.tool === 'recommend-flag');
+          if (!call) return { pass: false, score: 0, reason: 'No recommend-flag verdict emitted' };
+          const a = call.arguments || {};
+          const pass = a.recommend === false;
+          return { pass, score: pass ? 1 : 0, reason: `recommend=${a.recommend} confidence=${a.confidence}` };
+        metric: verdict_match
+        weight: 3
+
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const vIdx = traj.findIndex(t => t.tool === 'recommend-flag');
+          const scope = traj.slice(0, vIdx < 0 ? traj.length : vIdx);
+          const reads = scope.filter(t => ['Read','Grep','Glob'].includes(t.tool));
+          const pass = reads.length > 0;
+          return { pass, score: pass ? 1 : 0, reason: `explore calls before verdict: ${reads.length}` };
+        metric: explored_before_deciding
+        weight: 2
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const forbidden = ['create-flag','create-feature-flag','update-flag-settings','update-feature-flag','toggle-flag','delete-flag'];
+          const called = forbidden.filter(f => tools.includes(f));
+          const pass = called.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'stayed advisory' : 'called mutating tools: ' + called.join(', ') };
+        metric: stayed_advisory
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The diff adds a small display line to InsightsPanel. That panel is
+          rendered only behind the `insightsPanel` flag in Dashboard.jsx (an
+          ancestor gate NOT shown in the diff), and that flag is OFF in every
+          environment. So the change is already protected and needs no new flag.
+          Evaluate the agent's recommendation:
+          1. Did it explore beyond the diff and find the ancestor `insightsPanel`
+             gate in Dashboard.jsx?
+          2. Did it recommend AGAINST a new flag (recommend: false), citing that
+             ancestor gate (and that the feature is unlaunched) as the reason?
+          3. Did it avoid creating or modifying any flag (advisory only)?
+          Score 1.0 if all three. Deduct 0.34 per criterion missed.
+        metric: rationale_quality
+        weight: 3
+
+  # ==================================================================
+  # PREREQUISITE / DEPENDENCY (judgment) — a new user-facing feature that
+  # depends on a backend capability that is not yet live. The frontend
+  # must not ship ahead of the backend, so it wants a flag (ideally
+  # coupled to the parent as a prerequisite). Recommend true, citing the
+  # dependency.
+  # ==================================================================
+  - description: "Prerequisite dependency: recommends a flag for a feature that depends on a not-yet-live backend capability"
+    providers: ["judgment"]
+    vars:
+      user_request: >
+        Should this change be behind a feature flag?
+      codebase_context: >
+        React + TypeScript app. The new SummaryButton calls summarizeAccount() in
+        src/api/aiSummary.ts, which POSTs to the backend endpoint
+        /internal/ai-summary. That backend endpoint is itself gated behind the
+        `ai-summary-backend` flag and is currently OFF in production — the platform
+        team has not launched it yet, so calling it today returns 404.
+      git_diff: |
+        diff --git a/src/components/SummaryButton.tsx b/src/components/SummaryButton.tsx
+        new file mode 100644
+        index 0000000..abc1234
+        --- /dev/null
+        +++ b/src/components/SummaryButton.tsx
+        @@ -0,0 +1,14 @@
+        +import React, { useState } from 'react';
+        +import { summarizeAccount } from '../api/aiSummary';
+        +
+        +// New user-facing button: shows an AI-generated summary of the account.
+        +export function SummaryButton({ accountId }) {
+        +  const [text, setText] = useState('');
+        +  return (
+        +    <button onClick={async () => setText(await summarizeAccount(accountId))}>
+        +      {text || 'Summarize'}
+        +    </button>
+        +  );
+        +}
+    assert:
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const call = traj.find(t => t.tool === 'recommend-flag');
+          if (!call) return { pass: false, score: 0, reason: 'No recommend-flag verdict emitted' };
+          const a = call.arguments || {};
+          const pass = a.recommend === true;
+          return { pass, score: pass ? 1 : 0, reason: `recommend=${a.recommend} confidence=${a.confidence}` };
+        metric: verdict_match
+        weight: 4
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const forbidden = ['create-flag','create-feature-flag','update-flag-settings','update-feature-flag','toggle-flag','delete-flag'];
+          const called = forbidden.filter(f => tools.includes(f));
+          const pass = called.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'stayed advisory' : 'called mutating tools: ' + called.join(', ') };
+        metric: stayed_advisory
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The new SummaryButton is user-facing and depends on the /internal/ai-summary
+          backend, which is itself behind the `ai-summary-backend` flag and NOT yet
+          live in production. Shipping the button ungated would expose a feature whose
+          backend 404s.
+          Evaluate the agent's recommendation:
+          1. Did it recommend putting the change behind a flag (recommend: true)?
+          2. Do its reasons cite the dependency on the not-yet-live backend capability
+             (that the frontend must not ship ahead of it) — ideally suggesting the
+             flag be coupled to the parent (e.g. as a prerequisite)?
+          3. Did it avoid creating or modifying any flag (advisory only)?
+          Score 1.0 if all three. Deduct 0.34 per criterion missed.
+        metric: rationale_quality
+        weight: 3

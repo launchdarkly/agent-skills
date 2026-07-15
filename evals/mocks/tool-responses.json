@@ -505,5 +505,31 @@
     "recorded": true,
     "advisory": true,
     "note": "Advisory recommendation recorded. This tool does not create, modify, toggle, or delete any feature flag."
+  },
+  "match-release-policies": {
+    "environmentKey": "{{environmentKey}}",
+    "flagKey": "{{flagKey}}",
+    "winningPolicy": { "key": "guarded-default", "name": "Guarded rollout" },
+    "winningReleaseMethod": "guarded",
+    "autoAttachedMetricKeys": ["error-rate", "latency-p95"],
+    "autoAttachedMetricGroupKeys": []
+  },
+  "list-release-policies": {
+    "policies": [
+      {
+        "key": "guarded-default",
+        "name": "Guarded rollout",
+        "rank": 1,
+        "releaseMethod": "guarded",
+        "scope": { "environmentKeys": ["production"], "flagTagKeys": [] },
+        "guardrailMetricKeys": ["error-rate", "latency-p95"]
+      }
+    ],
+    "totalCount": 1
+  },
+  "create-automated-rollout-config": {
+    "created": true,
+    "config_id": "arc_mock_0001",
+    "environments": []
   }
 }

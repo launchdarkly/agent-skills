@@ -24,6 +24,8 @@ By the time this skill runs, the flag exists (OFF) and the guarding code is wire
 
 **The deploy is not the release.** The merge ships the control path (flag OFF); the *release* is the flag operation this rollout performs afterward, governed by the environment's policy.
 
+> **Honoring a hold is the one thing you must get right.** There is no "hold" release type, and **`policy` is NOT a manual gate.** On merge, `policy` *automatically* performs the environment's release (immediate, progressive, or guarded) with **no human promotion step** — a guarded rollout still *starts on its own* the moment the PR merges. So recording a held environment as `policy` does **not** hold it; it releases it on merge, before any `notBefore` date. The only way to hold an environment is to **omit it from the `environments` array entirely**, which leaves the flag OFF there. If the user wants an environment held (or not released until a date), exclude it from the call and report it as held. When in doubt, omit.
+
 ## Prerequisites
 
 - The remotely hosted LaunchDarkly MCP server.
@@ -46,13 +48,19 @@ Full release model — `simple` vs `policy`, precedence, previewing, prerequisit
 2. **Pick the target environments.** Use the environments named by the user or harness. Don't hardcode a set — a given change can't always release to every environment. If none are named, enumerate the project's real keys and confirm the set rather than assuming.
 3. **Preview each environment's policy.** Call `match-release-policies` (by `flagKey` + `environmentKey`) to resolve, deterministically, what a `policy` release will do per environment — `winningReleaseMethod` (immediate / progressive / guarded / none). Don't reason about policy scope by hand. For a **guarded** winner, check the auto-attached metrics can actually compare this change (see the metric-adequacy note in [references/auto-release.md](references/auto-release.md)).
 4. **Capture the human's release intent.** Ask (briefly, only if not already stated): release **on merge**, **hold** (recorded but not released yet), or wait until a **`notBefore`** date? A **cohort/segment** to target first? A **prerequisite** parent flag this must not precede? Intent sits above the policy in precedence and is **honored or explicitly held — never silently dropped**.
-5. **Present the per-environment plan and stop.** Summarize each environment's `releaseType` (`simple` / `policy`) and what its matched policy will do on merge, plus anything you'll **hold** rather than auto-execute. Wait for confirmation; revise on feedback.
+5. **Present the per-environment plan and stop.** For each environment, state either the `releaseType` it will be recorded with (`simple` / `policy`, and what that does on merge) **or** that it will be **held** — omitted from the recorded config so the flag stays OFF there — with the reason. Wait for confirmation; revise on feedback.
 
 ## Implement Phase
 
 Only after confirmation:
 
-1. **Record the rollout — honoring intent.** Call `create-automated-rollout-config` with `projectKey`, `flagKey`, the per-environment `environments` array (each with its `releaseType`), and the PR reference. **Only record a releasing plan for the environments the intent actually clears.** If intent is **hold** or a future **`notBefore`**, don't record a `policy`/`simple` plan that releases that env on merge — leave the flag OFF and report it as held with the reason. Fail closed: when intent is unclear, hold rather than release. If a **prerequisite** parent flag was agreed, wire it if the MCP surface supports it; otherwise report it as a manual step. Details: [references/auto-release.md](references/auto-release.md).
+1. **Record the rollout — honoring intent.** Call `create-automated-rollout-config` with `projectKey`, `flagKey`, the per-environment `environments` array (each with its `releaseType`), and the PR reference. Details: [references/auto-release.md](references/auto-release.md).
+
+   **A held environment MUST be OMITTED from the `environments` array — do not pass it at all.** There is no "hold" release type: both `simple` and `policy` release the environment on merge (`simple` immediately, `policy` per its policy). So the *only* way to hold an environment is to leave it out of the array entirely, which leaves the flag OFF there. If intent is **hold** or a future **`notBefore`** for an environment, exclude that environment from the call and report it as held with the reason. Example — "staging on merge, hold production": pass `environments: [{ environmentKey: "staging", releaseType: "simple" }]` (production absent), and tell the user production is held. Fail closed: when an environment's intent is unclear, omit it rather than release it.
+
+   **Before you call the tool, check the `environments` array you built: does it contain any environment the user asked to hold? If so, remove that entry.** A held environment name must not appear anywhere in the argument.
+
+   If a **prerequisite** parent flag was agreed, wire it if the MCP surface supports it; otherwise report it as a manual step.
 2. **Verify.** The call returns `created`, `config_id`, and the normalized per-environment plan — record `config_id`. Report only what you verified; flag anything you couldn't confirm rather than asserting it.
 3. **Report** the per-environment release plan + `config_id`; what was **held** (and why) versus what releases on merge; and what happens on merge (e.g. "production resolves policy X → guarded rollout on merge; staging serves true immediately; production held until 2026-08-01 per intent").
 

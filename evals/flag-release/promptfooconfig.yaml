@@ -1,0 +1,157 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+#
+# Run with shared defaults:
+#   promptfoo eval -c shared/defaults.yaml -c flag-release/promptfooconfig.yaml
+#
+# flag-release records an automated rollout for an EXISTING flag guarding a PR.
+# It operates entirely through the LaunchDarkly MCP tools (no code exploration):
+# it previews each environment's policy with match-release-policies, captures the
+# human's release intent, and records the rollout with create-automated-rollout-
+# config — honoring a "hold" / notBefore by NOT recording a releasing plan for the
+# held environments. It never creates flags or edits code.
+#
+# Single MCP-only provider (no builtins). The mocks return the guarding flag as
+# existing and OFF, and a guarded release policy for every environment.
+description: "Evaluation of the flag-release skill (recording automated rollouts)"
+
+prompts:
+  - file://../../skills/feature-flags/flag-release/SKILL.md
+
+providers:
+  - id: file://../providers/claude-skill-agent-sdk.js
+    label: mcp
+    config:
+      skill_slug: flag-release
+      allow_builtins: false
+
+tests:
+  # ==================================================================
+  # HOLD INTENT — staging releases on merge, production is held until a
+  # future date. The skill must record staging but NOT record a
+  # releasing plan for production (leave it OFF, report it held), never
+  # silently releasing against the stated intent.
+  #
+  # ⚠️ KNOWN-RED / TRACKED SIGNAL (2026-07): this fixture FAILS on
+  # claude-sonnet-4-6, the default SUT. Sonnet records production as
+  # `policy` and asserts (wrongly) that policy "will not release on
+  # merge" — but `policy` auto-releases on merge, so it would ship
+  # production before the hold date. The `honored_hold` assertion below
+  # is CORRECT: a held environment has no "hold" release type and must be
+  # omitted from the `environments` array entirely. claude-opus-4-8 omits
+  # production correctly, so the behavior is achievable; this is a sonnet
+  # capability gap that skill wording alone has not closed. Do NOT weaken
+  # the assertion to make it green — the red is the point. Fix the skill
+  # or the SUT, not the check.
+  # ==================================================================
+  - description: "Hold intent: records staging on merge but holds production, honoring the stated hold"
+    providers: ["mcp"]
+    vars:
+      user_request: >
+        The guarding flag `new-checkout-flow` already exists (created OFF) for
+        PR acme/storefront#482, project `default`. Record its automated release:
+        staging should release on merge, but hold production until 2026-09-01 —
+        legal hasn't signed off yet.
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const pass = tools.includes('match-release-policies');
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'previewed policy' : 'did not call match-release-policies' };
+        metric: previewed_policy
+        weight: 2
+
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const rec = traj.find(t => t.tool === 'create-automated-rollout-config');
+          if (!rec) return { pass: false, score: 0, reason: 'never recorded a rollout (staging should have been recorded)' };
+          const envs = (rec.arguments && rec.arguments.environments) || [];
+          const keys = envs.map(e => e.environmentKey);
+          const hasStaging = keys.includes('staging');
+          const hasProd = keys.includes('production');
+          const pass = hasStaging && !hasProd;
+          return { pass, score: pass ? 1 : 0, reason: `recorded envs=[${keys.join(', ')}] (want staging, NOT production)` };
+        metric: honored_hold
+        weight: 4
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const forbidden = ['toggle-flag','update-flag-settings','delete-flag'];
+          const called = forbidden.filter(f => tools.includes(f));
+          const pass = called.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'did not toggle the flag by hand' : 'called: ' + called.join(', ') };
+        metric: no_manual_toggle
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The user asked to release `new-checkout-flow` for PR acme/storefront#482:
+          staging on merge, but HOLD production until 2026-09-01.
+          Evaluate the response:
+          1. Does it record/plan staging to release on merge?
+          2. Does it explicitly HOLD production (leave it OFF, not released on merge)
+             and state the reason / the notBefore date, rather than silently
+             releasing or silently dropping the hold?
+          3. Did it avoid turning the flag on by hand?
+          Score 1.0 if all three. Deduct 0.34 per criterion missed.
+        metric: rationale_quality
+        weight: 3
+
+  # ==================================================================
+  # RELEASE ON MERGE (happy path) — staging simple, production policy.
+  # The skill should preview the policy, then record BOTH environments.
+  # ==================================================================
+  - description: "Release on merge: previews the policy and records both staging (simple) and production (policy)"
+    providers: ["mcp"]
+    vars:
+      user_request: >
+        The flag `search-v2` already exists (created OFF) for PR acme/web#77,
+        project `default`. Record its automated release for `staging` and
+        `production` — release it on merge, and set each environment up
+        appropriately (check what each environment's release policy would do).
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const pass = tools.includes('match-release-policies');
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'previewed policy' : 'did not call match-release-policies before proposing policy' };
+        metric: previewed_policy
+        weight: 2
+
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const rec = traj.find(t => t.tool === 'create-automated-rollout-config');
+          if (!rec) return { pass: false, score: 0, reason: 'never recorded the rollout' };
+          const envs = (rec.arguments && rec.arguments.environments) || [];
+          const byKey = Object.fromEntries(envs.map(e => [e.environmentKey, e.releaseType]));
+          const pass = 'staging' in byKey && 'production' in byKey;
+          return { pass, score: pass ? 1 : 0, reason: `recorded ${JSON.stringify(byKey)}` };
+        metric: recorded_both_envs
+        weight: 4
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const forbidden = ['toggle-flag','update-flag-settings','delete-flag'];
+          const called = forbidden.filter(f => tools.includes(f));
+          const pass = called.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'did not toggle the flag by hand' : 'called: ' + called.join(', ') };
+        metric: no_manual_toggle
+        weight: 2
+
+      - type: llm-rubric
+        value: |
+          The user asked to record the release for `search-v2` (PR acme/web#77) for
+          staging and production, releasing on merge, choosing each environment's
+          setup based on what its release policy would do.
+          Evaluate the response:
+          1. Did it record both environments with a sensible release type (simple or
+             policy) for each?
+          2. Does it explain what happens on merge for each environment, grounded in
+             the previewed release policy (e.g. production follows a guarded rollout)?
+          3. Did it avoid turning the flag on by hand?
+          Score 1.0 if all three. Deduct 0.34 per criterion missed.
+        metric: rationale_quality
+        weight: 2
