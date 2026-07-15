@@ -156,20 +156,6 @@
       "compatibility": "Requires access to the project repository"
     },
     {
-      "name": "dotenv",
-      "description": "Load environment variables from a .env file into process.env for Node.js applications. Use when configuring apps with secrets, setting up local development environments, managing API keys and database uRLs, parsing .env file contents, or populating environment variables programmatically. Always use this skill when the user mentions .env, even for simple tasks like \"set up dotenv\" \u2014 the skill contains critical gotchas (encrypted keys, variable expansion, command substitution) that prevent common production issues.",
-      "path": "evals/node_modules/dotenv/skills/dotenv",
-      "version": "1.0.0",
-      "license": "BSD-2-Clause"
-    },
-    {
-      "name": "dotenvx",
-      "description": "Use dotenvx to run commands with environment variables, manage multiple .env files, expand variables, and encrypt env files for safe commits and CI/CD.",
-      "path": "evals/node_modules/dotenv/skills/dotenvx",
-      "version": "1.0.0",
-      "license": "BSD-3-Clause"
-    },
-    {
       "name": "first-flag",
       "description": "Create a boolean first flag, add evaluation, toggle on/off for end-to-end proof. Parent onboarding Step 6; uses MCP, API, or ldcli; optional flag-create skill.",
       "path": "skills/onboarding/first-flag",
@@ -399,16 +385,6 @@
       "version": "0.2.0",
       "license": "Apache-2.0",
       "compatibility": "Requires completed or equivalent detect context (see sibling detect skill)"
-    },
-    {
-      "name": "playwright-cli",
-      "description": "Automate browser interactions, test web pages and work with Playwright tests.",
-      "path": "evals/node_modules/playwright-core/lib/tools/cli-client/skill"
-    },
-    {
-      "name": "playwright-trace",
-      "description": "Inspect Playwright trace files from the command line \u2014 list actions, view requests, console, errors, snapshots and screenshots.",
-      "path": "evals/node_modules/playwright-core/lib/tools/trace"
     },
     {
       "name": "projects",

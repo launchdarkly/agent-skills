@@ -38,6 +38,46 @@ providers:
       skill_slug: should-flag-change
       allow_builtins: true
 
+# Suite-wide contract checks applied to every fixture (concatenated with the
+# shared defaults). These enforce the skill's two hard invariants directly,
+# rather than leaving them to per-fixture verdict checks:
+#   verdict_contract - recommend-flag is called EXACTLY once and as the final
+#                      tool call (nothing after it). A run that calls it early,
+#                      twice, or keeps working afterward fails.
+#   read_only_guard  - the advisory skill must never modify state: no Edit/Write
+#                      and no mutating shell command (redirects, rm/mv/cp, git
+#                      commit/push, package installs, etc.). Meaningful in the
+#                      agentic tier where built-in tools are exposed.
+defaultTest:
+  assert:
+    - type: javascript
+      value: |
+        const traj = output.trajectory || [];
+        const idxs = traj.map((t, i) => (t.tool === 'recommend-flag' ? i : -1)).filter(i => i >= 0);
+        if (idxs.length !== 1) return { pass: false, score: 0, reason: `recommend-flag called ${idxs.length}x (must be exactly once)` };
+        const after = traj.slice(idxs[0] + 1).map(t => t.tool);
+        const pass = after.length === 0;
+        return { pass, score: pass ? 1 : 0, reason: pass ? 'exactly one call, as the final step' : `tool calls after verdict: ${after.join(', ')}` };
+      metric: verdict_contract
+      weight: 2
+    - type: javascript
+      value: |
+        const traj = output.trajectory || [];
+        const tools = output.tools_called || [];
+        const bannedTools = ['Edit', 'Write', 'MultiEdit', 'NotebookEdit'];
+        const wrote = tools.filter(t => bannedTools.includes(t));
+        // Mutating commands, plus a file-write redirect. The redirect arm uses a
+        // negative lookbehind so it does NOT match `=>`/`->` (arrow syntax an
+        // agent commonly greps for) or `2>&1`, and requires a real path-like
+        // target after `>` so quoted `>` inside a search pattern is ignored.
+        const mutRe = /(^|[;&|]|\s)(rm|mv|cp|sed\s+-i|tee|truncate|chmod|chown|mkdir|touch|git\s+(commit|push|add|checkout|apply|restore)|npm\s+(install|i|ci)|yarn\s+add|pnpm\s+(add|install))\b|(?<![=<>\-2])>>?\s*['"]?[\w./~]/;
+        const badBash = traj.filter(t => t.tool === 'Bash' && mutRe.test(((t.arguments || {}).command) || ''));
+        const pass = wrote.length === 0 && badBash.length === 0;
+        const detail = [...wrote, ...badBash.map(t => 'Bash:' + (((t.arguments || {}).command) || '').slice(0, 50))];
+        return { pass, score: pass ? 1 : 0, reason: pass ? 'read-only: no writes or mutating shell' : 'modified state via: ' + detail.join(' | ') };
+      metric: read_only_guard
+      weight: 2
+
 tests:
   # ==================================================================
   # POSITIVE 1 (agentic) — new user-facing path
