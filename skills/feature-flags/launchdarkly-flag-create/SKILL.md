@@ -23,6 +23,7 @@ This skill requires the remotely hosted LaunchDarkly MCP server to be configured
 **Optional MCP tools (enhance workflow):**
 - `list-flags`: browse existing flags to understand naming conventions and tags
 - `update-flag-settings`: update flag metadata (name, description, tags, temporary/permanent status)
+- `get-member-self`: resolve the calling user's LD member id and team memberships (useful when assigning a maintainer)
 
 ## Workflow
 
@@ -80,6 +81,14 @@ After creation:
 - The flag serves the `offVariation` to everyone until targeting is turned on.
 - Remind the user they'll need to use the [flag targeting skill](../launchdarkly-flag-targeting/SKILL.md) to toggle it on and optionally set up rollout rules.
 
+**Assigning a maintainer:**
+
+`create-flag` accepts `maintainerId` (an LD member id) or `maintainerTeamKey` (an LD team key) to set the flag's maintainer at creation time.
+
+- To resolve "who is the calling user," call `get-member-self` first — it returns the member's id and team memberships.
+- Prefer a team maintainer over an individual where reasonable: a team is a more durable owner than a single person. Don't force this, though, if the user has clearly asked to be made the individual maintainer themselves, or has named a specific person.
+- If `get-member-self` shows the calling member belongs to more than one team, don't guess which one to use — ask the user which team should be the maintainer, unless surrounding context (e.g. the user already named a team) makes it obvious.
+
 ### Step 4: Add Flag Evaluation to Code
 
 Now add the code to evaluate the flag, **matching the patterns you found in Step 1**.
@@ -112,10 +121,14 @@ If the user wants to change flag metadata (not targeting), use `update-flag-sett
 | Remove tags | `{kind: "removeTags", values: ["old-tag"]}` |
 | Mark as temporary | `{kind: "markTemporary"}` |
 | Mark as permanent | `{kind: "markPermanent"}` |
+| Change maintainer to a member | `{kind: "updateMaintainerMember", value: "<memberId>"}` |
+| Change maintainer to a team | `{kind: "updateMaintainerTeam", value: "<teamKey>"}` |
 
 Multiple instructions can be batched in a single call. These changes are project-wide, not environment-specific.
 
 **Important:** Metadata updates (above) are separate from targeting changes (toggle, rollout, rules). If the user wants to change who sees what, direct them to the [flag targeting skill](../launchdarkly-flag-targeting/SKILL.md).
+
+**Guardrail:** Don't reassign an existing flag's maintainer as a side effect of some other requested edit. Only send `updateMaintainerMember`/`updateMaintainerTeam` when the user has explicitly asked to change the maintainer.
 
 ## Important Context
 
