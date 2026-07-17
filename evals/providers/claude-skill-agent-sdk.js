@@ -23,6 +23,11 @@
  *                            (Read/Grep/Glob/Bash/Edit/Write/...). Default false.
  *   expose_mcp_tools       - Default true. Set false for skills that should never
  *                            call LaunchDarkly MCP tools (routing/advisory skills).
+ *   mcp_tool_allowlist     - Optional array of tool names. When set, expose ONLY
+ *                            these LaunchDarkly tools — e.g. read-only lookups
+ *                            (list and get tools) for an advisory/handoff skill
+ *                            that must never write, so it physically cannot
+ *                            mutate state. Null/unset exposes all tools.
  *   force_skill_invocation - Default false. When true, set initialPrompt to
  *                            `/<skill_slug>` to explicitly invoke the skill via
  *                            slash command. Use for routing/advisory skills whose
@@ -162,6 +167,11 @@ class ClaudeSkillAgentSdk {
     this.exposeMcpTools = config.expose_mcp_tools !== false;
     this.forceSkillInvocation = Boolean(config.force_skill_invocation);
     this.exposeAskQuestion = Boolean(config.expose_ask_question);
+    // When set, expose ONLY these LaunchDarkly tools (by name) — e.g. read-only
+    // tools for an advisory/handoff skill that must never write. Null = expose all.
+    this.mcpToolAllowlist = Array.isArray(config.mcp_tool_allowlist)
+      ? config.mcp_tool_allowlist
+      : null;
 
     const source = resolveSkillSource(this.skillSlug);
     if (!source) {
@@ -211,8 +221,11 @@ class ClaudeSkillAgentSdk {
     let currentTurn = 0;
     const mockState = createMockState();
 
+    const exposedToolDefs = this.mcpToolAllowlist
+      ? toolDefs.filter((def) => this.mcpToolAllowlist.includes(def.name))
+      : toolDefs;
     const mcpTools = this.exposeMcpTools
-      ? toolDefs.map((def) =>
+      ? exposedToolDefs.map((def) =>
           tool(
             def.name,
             def.description,
@@ -298,7 +311,7 @@ class ClaudeSkillAgentSdk {
 
     const allowedMcpToolNames = [];
     if (this.exposeMcpTools) {
-      for (const def of toolDefs) {
+      for (const def of exposedToolDefs) {
         allowedMcpToolNames.push(`mcp__launchdarkly-mocks__${def.name}`);
       }
     }
