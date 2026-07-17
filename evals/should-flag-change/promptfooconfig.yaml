@@ -6,7 +6,10 @@
 # The should-flag-change skill is an ADVISORY, READ-ONLY skill. Given a code
 # change (a <git_diff> block, optionally plus surrounding source), it decides
 # whether the change should ship behind a LaunchDarkly feature flag and ends by
-# calling the `recommend-flag` tool with { recommend, confidence, reasons }.
+# calling the `recommend-flag` tool with { recommend, verdict, confidence, reasons }.
+# `verdict` is the finer taxonomy signal — suggested / already-flagged / not-suited —
+# and the `verdict_taxonomy` assertions below check that already-flagged (protected by
+# an existing/ancestor gate) stays distinct from not-suited (nothing to flag).
 # It must NEVER create, toggle, or modify a flag.
 #
 # Two-tier evaluation, expressed as two labeled providers. Each fixture targets
@@ -389,6 +392,16 @@ tests:
         metric: stayed_advisory
         weight: 2
 
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const call = traj.find(t => t.tool === 'recommend-flag');
+          const a = (call && call.arguments) || {};
+          const pass = a.verdict === 'not-suited';
+          return { pass, score: pass ? 1 : 0, reason: `verdict=${a.verdict} (expected not-suited: pure refactor)` };
+        metric: verdict_taxonomy
+        weight: 2
+
       - type: llm-rubric
         value: |
           The change extracts inline currency formatting into a formatCurrency helper
@@ -473,6 +486,16 @@ tests:
         metric: risk_calibrated
         weight: 1
 
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const call = traj.find(t => t.tool === 'recommend-flag');
+          const a = (call && call.arguments) || {};
+          const pass = a.verdict === 'not-suited';
+          return { pass, score: pass ? 1 : 0, reason: `verdict=${a.verdict} (expected not-suited: docs+tests only)` };
+        metric: verdict_taxonomy
+        weight: 2
+
       - type: llm-rubric
         value: |
           The change touches only README.md (documentation) and a test file. No
@@ -530,8 +553,13 @@ tests:
           const a = call.arguments || {};
           const hasReasons = Array.isArray(a.reasons) && a.reasons.length > 0;
           const validConf = ['low','medium','high'].includes(a.confidence);
-          const pass = typeof a.recommend === 'boolean' && hasReasons && validConf;
-          return { pass, score: pass ? 1 : 0, reason: `recommend=${a.recommend} confidence=${a.confidence} reasons=${(a.reasons||[]).length}` };
+          // verdict is optional but, when present, must be one of the three enum values
+          // and must agree with the recommend boolean (suggested <-> true).
+          const verdictOk = a.verdict === undefined
+            || (['suggested','already-flagged','not-suited'].includes(a.verdict)
+                && (a.verdict === 'suggested') === (a.recommend === true));
+          const pass = typeof a.recommend === 'boolean' && hasReasons && validConf && verdictOk;
+          return { pass, score: pass ? 1 : 0, reason: `recommend=${a.recommend} verdict=${a.verdict} confidence=${a.confidence} reasons=${(a.reasons||[]).length}` };
         metric: emitted_structured_verdict
         weight: 2
 
@@ -622,6 +650,16 @@ tests:
         metric: stayed_advisory
         weight: 2
 
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const call = traj.find(t => t.tool === 'recommend-flag');
+          const a = (call && call.arguments) || {};
+          const pass = a.verdict === 'already-flagged';
+          return { pass, score: pass ? 1 : 0, reason: `verdict=${a.verdict} (expected already-flagged: gated in the diff)` };
+        metric: verdict_taxonomy
+        weight: 2
+
       - type: llm-rubric
         value: |
           The diff adds a new /reports/export endpoint, but it is ALREADY gated
@@ -689,6 +727,16 @@ tests:
           const pass = called.length === 0;
           return { pass, score: pass ? 1 : 0, reason: pass ? 'stayed advisory' : 'called mutating tools: ' + called.join(', ') };
         metric: stayed_advisory
+        weight: 2
+
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const call = traj.find(t => t.tool === 'recommend-flag');
+          const a = (call && call.arguments) || {};
+          const pass = a.verdict === 'suggested';
+          return { pass, score: pass ? 1 : 0, reason: `verdict=${a.verdict} (expected suggested: new ungated path)` };
+        metric: verdict_taxonomy
         weight: 2
 
       - type: llm-rubric
@@ -920,6 +968,16 @@ tests:
           const pass = called.length === 0;
           return { pass, score: pass ? 1 : 0, reason: pass ? 'stayed advisory' : 'called mutating tools: ' + called.join(', ') };
         metric: stayed_advisory
+        weight: 2
+
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const call = traj.find(t => t.tool === 'recommend-flag');
+          const a = (call && call.arguments) || {};
+          const pass = a.verdict === 'already-flagged';
+          return { pass, score: pass ? 1 : 0, reason: `verdict=${a.verdict} (expected already-flagged: off ancestor gate)` };
+        metric: verdict_taxonomy
         weight: 2
 
       - type: llm-rubric
