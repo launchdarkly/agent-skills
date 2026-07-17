@@ -30,7 +30,7 @@ Ad hoc, while working on a change:
 Should this change be behind a feature flag?
 ```
 
-In CI on a pull request, the skill is fed the PR's git diff and reads the repository to assess it, then emits a `recommend-flag` verdict (`{ recommend, confidence, reasons }`) that a check can parse.
+In CI on a pull request, the skill is fed the PR's git diff and reads the repository to assess it, then emits a `recommend-flag` verdict (`{ recommend, verdict, confidence, reasons }`) that a check can parse.
 
 ## Output
 
@@ -39,12 +39,15 @@ The skill ends by calling the `recommend-flag` tool:
 ```json
 {
   "recommend": true,
+  "verdict": "suggested",
   "confidence": "medium",
   "reasons": [
     "New public endpoint added in src/routes/export.ts — user-facing path with no existing gate"
   ]
 }
 ```
+
+`recommend` is the boolean a CI check keys on. `verdict` is the finer signal: `suggested` (a new flag is warranted), `already-flagged` (protected by an existing / ancestor flag — covered, not a new flag), or `not-suited` (genuinely nothing to flag). Keeping `already-flagged` distinct from `not-suited` is what lets a dashboard track real flag coverage.
 
 ## Structure
 
