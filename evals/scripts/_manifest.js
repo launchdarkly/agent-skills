@@ -11,13 +11,6 @@
  *   skillKey - identifier used in eval-scores.json and README badges
  *   skillDir - path from repo root to the skill source directory
  *   readme   - skill README path from repo root for badge rendering
- *   knownRed - (optional) test `description`s that are intentionally red: they
- *              encode a tracked capability gap in the default SUT and MUST stay
- *              red until the skill or the model closes it. aggregate.js excludes
- *              them from the CI gate (so an intentional red doesn't fail the job)
- *              while still reporting the honest score/badge. The assertion itself
- *              is never weakened. If a listed fixture starts passing, aggregate.js
- *              warns so the entry can be removed.
  */
 const SUITES = [
   {
@@ -67,14 +60,6 @@ const SUITES = [
     skillKey: "feature-flags/flag-release",
     skillDir: "skills/feature-flags/flag-release",
     readme: "skills/feature-flags/flag-release/README.md",
-    // Tracked capability gap: claude-sonnet-4-6 (default SUT) wrongly records a
-    // held production environment as `policy` (which auto-releases on merge),
-    // shipping before the hold date. claude-opus-4-8 gets it right, so the
-    // behavior is achievable and the assertion is correct as written. See the
-    // KNOWN-RED note in evals/flag-release/promptfooconfig.yaml.
-    knownRed: [
-      "Hold intent: records staging on merge but holds production, honoring the stated hold",
-    ],
   },
   {
     suite: "flag-and-release-change",

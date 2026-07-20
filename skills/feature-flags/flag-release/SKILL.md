@@ -54,15 +54,34 @@ Full release model — `simple` vs `policy`, precedence, previewing, prerequisit
 
 Only after confirmation:
 
-1. **Record the rollout — honoring intent.** Call `create-automated-rollout-config` with `projectKey`, `flagKey`, the per-environment `environments` array (each with its `releaseType`), and the PR reference. Details: [references/auto-release.md](references/auto-release.md).
+1. **Sort every target environment into exactly one bucket — RELEASE or HOLD.** Do this *before* you build the call. There is no third bucket, and `releaseType` does not create one.
 
-   **A held environment MUST be OMITTED from the `environments` array — do not pass it at all.** There is no "hold" release type: both `simple` and `policy` release the environment on merge (`simple` immediately, `policy` per its policy). So the *only* way to hold an environment is to leave it out of the array entirely, which leaves the flag OFF there. If intent is **hold** or a future **`notBefore`** for an environment, exclude that environment from the call and report it as held with the reason. Example — "staging on merge, hold production": pass `environments: [{ environmentKey: "staging", releaseType: "simple" }]` (production absent), and tell the user production is held. Fail closed: when an environment's intent is unclear, omit it rather than release it.
+   | Bucket | Meaning | What goes in the call |
+   |--------|---------|-----------------------|
+   | **RELEASE** | Goes live on merge — now, or per its policy | Add `{ environmentKey, releaseType }` to the `environments` array |
+   | **HOLD** | Not yet — waiting on a date, sign-off, segment, or parent flag | **Nothing.** Leave it out of `environments` entirely; name it as held in your report |
 
-   **Before you call the tool, check the `environments` array you built: does it contain any environment the user asked to hold? If so, remove that entry.** A held environment name must not appear anywhere in the argument.
+   `releaseType` (`simple` vs `policy`) only chooses *how* a RELEASE environment goes live — it never holds one. **Both release on merge:** `simple` serves `true` immediately; `policy` runs that environment's policy (immediate / progressive / guarded) automatically, with no human promotion step. "`policy` defers to the *policy*" — not to you, and not until a date. **Do not reach for `policy` to park a held environment: it ships that environment on merge, before any `notBefore`.** The only encoding of a hold is *absence from the array*.
 
-   If a **prerequisite** parent flag was agreed, wire it if the MCP surface supports it; otherwise report it as a manual step.
-2. **Verify.** The call returns `created`, `config_id`, and the normalized per-environment plan — record `config_id`. Report only what you verified; flag anything you couldn't confirm rather than asserting it.
-3. **Report** the per-environment release plan + `config_id`; what was **held** (and why) versus what releases on merge; and what happens on merge (e.g. "production resolves policy X → guarded rollout on merge; staging serves true immediately; production held until 2026-08-01 per intent").
+2. **Build `environments` from the RELEASE bucket only — then read the keys back.** The array must contain every RELEASE environment and no HOLD environment. Before you send the call, scan the `environmentKey`s in the array: if any environment you're holding appears there, delete that entry.
+
+   Worked example — *"release staging on merge, hold production until 2026-09-01"*: staging is RELEASE, production is HOLD.
+
+   ```json
+   {
+     "projectKey": "default",
+     "flagKey": "new-checkout-flow",
+     "environments": [{ "environmentKey": "staging", "releaseType": "simple" }],
+     "repoFullName": "acme/storefront",
+     "prNumber": 482
+   }
+   ```
+
+   `production` appears nowhere in the call. You report it held until 2026-09-01, with the reason (legal sign-off). Fail closed: if an environment's intent is unclear, it's HOLD, not RELEASE.
+
+3. **Record the rollout.** Call `create-automated-rollout-config` with `projectKey`, `flagKey`, the RELEASE-only `environments` array, and the PR reference. If a **prerequisite** parent flag was agreed, wire it if the MCP surface supports it; otherwise report it as a manual step. Details: [references/auto-release.md](references/auto-release.md).
+4. **Verify.** The call returns `created`, `config_id`, and the normalized per-environment plan — record `config_id`. Report only what you verified; flag anything you couldn't confirm rather than asserting it.
+5. **Report** the per-environment release plan + `config_id`; what was **held** (and why) versus what releases on merge; and what happens on merge (e.g. "production resolves policy X → guarded rollout on merge; staging serves true immediately; production held until 2026-08-01 per intent").
 
 ## Edge Cases
 
