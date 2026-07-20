@@ -19,7 +19,7 @@ the way the team has decided similar changes should roll out — no human toggli
 
 - **`policy`**: wait until the PR merges and the flag begins evaluating, then resolve that environment's configured release policy and perform the matching release — immediate, progressive, or guarded — automatically. Use it for production and any environment where you want a governed, monitored rollout with the safety net the team already defined.
 
-A typical plan: `staging → simple`, `production → policy`.
+A typical plan **when releasing both on merge**: `staging → simple`, `production → policy`. To *hold* an environment instead, you leave it out of the array entirely — see the two examples under "Registering the config" below.
 
 ## Preview before you propose
 
@@ -55,18 +55,38 @@ never cause one.
 
 ## Registering the config
 
-Call `create-automated-rollout-config` in the implement phase:
+Call `create-automated-rollout-config` in the implement phase. These two examples use the
+same flag and PR so you can see the *only* difference between releasing an environment and
+holding it — the held environment is simply **not in the array**.
+
+**Releasing both environments on merge** — staging immediately, production per its policy:
 
 ```json
 {
   "projectKey": "default",
-  "flagKey": "new-checkout-flow",
+  "flagKey": "enable-dark-mode",
   "environments": [
     { "environmentKey": "staging", "releaseType": "simple" },
     { "environmentKey": "production", "releaseType": "policy" }
   ],
-  "repoFullName": "acme/storefront",
-  "prNumber": 482
+  "repoFullName": "acme/webapp",
+  "prNumber": 1234
+}
+```
+
+**Same change, but production is held** (e.g. pending sign-off, or a `notBefore` date) — note
+production is **absent**; there is no `production` entry and no "hold" release type. That
+absence *is* the hold: the flag stays OFF in production until it's released separately.
+
+```json
+{
+  "projectKey": "default",
+  "flagKey": "enable-dark-mode",
+  "environments": [
+    { "environmentKey": "staging", "releaseType": "simple" }
+  ],
+  "repoFullName": "acme/webapp",
+  "prNumber": 1234
 }
 ```
 

@@ -511,6 +511,9 @@
     "flagKey": "{{flagKey}}",
     "winningPolicy": { "key": "guarded-default", "name": "Guarded rollout" },
     "winningReleaseMethod": "guarded",
+    "releaseTiming": "automatic-on-merge",
+    "requiresManualApproval": false,
+    "description": "With releaseType 'policy', this environment releases automatically when the PR merges: the guarded rollout starts on its own, progressively ramping traffic while monitoring the guardrail metrics, with no manual approval or promotion step. It does NOT wait for a person or a date.",
     "autoAttachedMetricKeys": ["error-rate", "latency-p95"],
     "autoAttachedMetricGroupKeys": []
   },
@@ -521,6 +524,8 @@
         "name": "Guarded rollout",
         "rank": 1,
         "releaseMethod": "guarded",
+        "releaseTiming": "automatic-on-merge",
+        "requiresManualApproval": false,
         "scope": { "environmentKeys": ["production"], "flagTagKeys": [] },
         "guardrailMetricKeys": ["error-rate", "latency-p95"]
       }
