@@ -100,20 +100,43 @@ function readResults(suite) {
 function summarize(suite, results, commit) {
   const tests = results?.results?.results || results?.results || [];
   const arr = Array.isArray(tests) ? tests : [];
+  const knownRed = new Set(suite.knownRed || []);
   const total = arr.length;
   const passed = arr.filter((t) => t.success).length;
   const score = total > 0 ? Math.round((passed / total) * 100) : 0;
-  const perTest = arr.map((t) => ({
-    description: t.description || t.vars?.user_request?.slice(0, 80) || "",
-    pass: t.success,
-    score: t.score ?? (t.success ? 1.0 : 0.0),
-  }));
+  // promptfoo stores the fixture's `description` under testCase, not at the top
+  // level; fall back to a slice of the prompt only when neither is present.
+  const describe = (t) =>
+    t.testCase?.description || t.description || t.vars?.user_request?.slice(0, 80) || "";
+  const perTest = arr.map((t) => {
+    const description = describe(t);
+    return {
+      description,
+      pass: t.success,
+      score: t.score ?? (t.success ? 1.0 : 0.0),
+      knownRed: knownRed.has(description),
+    };
+  });
+
+  // The gate ignores intentionally-red fixtures so a tracked capability gap
+  // doesn't fail CI — but the reported score/badge stays honest (below) so the
+  // red signal remains visible. A known-red fixture that starts passing is
+  // surfaced (unexpectedGreen) so its allowlist entry can be removed.
+  const gated = perTest.filter((t) => !t.knownRed);
+  const gatePassed = gated.filter((t) => t.pass).length;
+  const gateScore = gated.length > 0 ? Math.round((gatePassed / gated.length) * 100) : 100;
+  const unexpectedGreen = perTest
+    .filter((t) => t.knownRed && t.pass)
+    .map((t) => t.description);
 
   return {
     score,
     passed,
     total,
     status: score >= 75 ? "passing" : "failing",
+    gateScore,
+    knownRed: perTest.filter((t) => t.knownRed).map((t) => t.description),
+    unexpectedGreen,
     lastCommit: commit || null,
     lastRun: new Date().toISOString(),
     perTest,
@@ -154,20 +177,28 @@ function main() {
     skills[suite.skillKey] = summarize(suite, results, commit);
     const s = skills[suite.skillKey];
     const icon = s.status === "passing" ? "✓" : "✗";
-    console.log(`${icon} ${suite.skillKey}: ${s.passed}/${s.total} passed (${s.score}%)`);
+    const redNote = s.knownRed.length > 0 ? ` [${s.knownRed.length} known-red tolerated]` : "";
+    console.log(`${icon} ${suite.skillKey}: ${s.passed}/${s.total} passed (${s.score}%)${redNote}`);
+    for (const desc of s.unexpectedGreen) {
+      console.warn(`  ⚠ known-red fixture now PASSES: "${desc}" — remove it from knownRed in scripts/_manifest.js`);
+    }
   }
 
   const output = { schemaVersion: 1, updatedAt: new Date().toISOString(), skills };
   fs.writeFileSync(SCORES_PATH, JSON.stringify(output, null, 2) + "\n");
   console.log(`\nWrote ${SCORES_PATH}`);
 
+  // Gate on gateScore, which excludes intentionally-red fixtures. The reported
+  // score above stays honest; only unexpected (non-allowlisted) failures fail CI.
   const belowThreshold = suites
-    .filter((suite) => skills[suite.skillKey] && skills[suite.skillKey].score < 75)
+    .filter((suite) => skills[suite.skillKey] && skills[suite.skillKey].gateScore < 75)
     .map((suite) => suite.skillKey);
   if (belowThreshold.length > 0) {
-    console.error(`\naggregate.js: suites below 75% threshold: ${belowThreshold.join(", ")}`);
+    console.error(`\naggregate.js: suites below 75% threshold (excluding known-red): ${belowThreshold.join(", ")}`);
   }
   if (anyError || belowThreshold.length > 0) process.exit(1);
 }
 
-main();
+if (require.main === module) main();
+
+module.exports = { summarize, selectSuites };
