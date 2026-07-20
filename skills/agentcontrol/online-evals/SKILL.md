@@ -443,8 +443,8 @@ After attaching judges:
 
 ## References
 
-- [Online Evaluations](https://docs.launchdarkly.com/home/ai-configs/online-evaluations)
-- [Custom Judges](https://docs.launchdarkly.com/home/ai-configs/custom-judges)
+- [Online Evaluations](https://docs.launchdarkly.com/home/ai-configs/online-evaluations.md)
+- [Custom Judges](https://docs.launchdarkly.com/home/ai-configs/custom-judges.md)
 
 **Python SDK examples:**
 - [create_judge_example.py](https://github.com/launchdarkly/hello-python-ai/blob/main/features/create_judge/create_judge_example.py) - Evaluate input/output pairs directly via `create_judge` + `evaluate`

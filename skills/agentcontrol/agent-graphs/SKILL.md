@@ -133,8 +133,6 @@ Use `create-agent-graph` with:
 - Root config set correctly
 - All edges verified
 
-Find documentation for this process at https://launchdarkly.com/docs/home/agentcontrol/agent-graphs.md
-
 ## Edge Cases
 
 | Situation | Action |
@@ -150,3 +148,7 @@ Find documentation for this process at https://launchdarkly.com/docs/home/agentc
 - Don't forget handoff data when agents need context from predecessors
 - Don't create overly complex graphs — start simple and add nodes as needed
 - Don't delete a graph without understanding if it's actively used in agent workflows
+
+## Other Resources
+
+To learn more, read [Agent graphs](https://launchdarkly.com/docs/home/agentcontrol/agent-graphs.md).
