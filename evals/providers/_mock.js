@@ -36,6 +36,7 @@ function buildReplacements(input) {
     mode: safe.mode || "completion",
     toolDescription: safe.description || "A tool",
     projectKey: safe.projectKey || "my-project",
+    environmentKey: safe.environmentKey || safe.env || "production",
   };
 }
 
@@ -334,6 +335,17 @@ function renderMockResponse(template, input, toolName, state) {
   }
 
   if (toolName === "create-flag" || toolName === "create-feature-flag") {
+    // Fail-closed test hook: a fixture that sets projectKey "restricted" makes
+    // flag creation fail (permission denied), so an eval can assert the skill
+    // stops rather than proceeding to wire code or record a release.
+    if (input.projectKey === "restricted") {
+      return {
+        error: "forbidden",
+        status: 403,
+        message:
+          "You do not have permission to create flags in project 'restricted'.",
+      };
+    }
     const flag = walk(template, replacements);
     state.flags[input.key || input.flagKey] = flag;
     return flag;
