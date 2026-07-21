@@ -555,7 +555,7 @@
   },
   {
     "name": "create-automated-rollout-config",
-    "description": "Record an automated rollout config that ties a flag to a PR's merge and releases it per environment. Each environments entry is { environmentKey, releaseType } where releaseType is 'simple' (serve true immediately) or 'policy' (defer to the environment's release policy on merge). Provide the PR reference (repoFullName + prNumber, or prUrl). The guarding flag must already exist.",
+    "description": "Record an automated rollout config that ties a flag to a PR's merge and releases it per environment. Each environments entry is { environmentKey, releaseType }: 'simple' serves true on merge; 'policy' waits until merge and then performs the environment's release policy (immediate/progressive/guarded). Both release that environment on merge. This tool has NO field for holding, scheduling, or a future/notBefore date — to hold an environment, omit it from the environments array entirely (do not add a holdUntil/notBefore/hold field; unknown fields are rejected). Provide the PR reference (repoFullName + prNumber, or prUrl). The guarding flag must already exist.",
     "input_schema": {
       "type": "object",
       "properties": {
@@ -568,7 +568,7 @@
             "type": "object",
             "properties": {
               "environmentKey": { "type": "string", "description": "Environment key" },
-              "releaseType": { "type": "string", "enum": ["simple", "policy"], "description": "simple = serve true now; policy = defer to the env's release policy on merge" }
+              "releaseType": { "type": "string", "enum": ["simple", "policy"], "description": "simple = serve true on merge; policy = on merge, run the env's release policy (immediate/progressive/guarded). Both release the env on merge; neither holds it. To hold an env, omit it from this array." }
             },
             "required": ["environmentKey"]
           }
