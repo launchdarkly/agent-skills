@@ -147,3 +147,122 @@ tests:
           Score 1.0 if both. Deduct 0.5 per criterion missed.
         metric: rationale_quality
         weight: 3
+
+  # ==================================================================
+  # DECIDE GATE — the change is NOT flag-worthy (docs-only). The
+  # orchestrator's first step is the flag-worthiness decision; it must
+  # explain why no flag is needed and create/record NOTHING, even when
+  # the user says "flag and release it if warranted".
+  # ==================================================================
+  - description: "Decide gate: a non-flag-worthy (docs-only) change creates and records nothing"
+    providers: ["orchestrator"]
+    vars:
+      user_request: >
+        Here's a PR (acme/docs-site#88), checked out locally, project `default`,
+        environments `staging` and `production`. Decide whether it should ship behind
+        a flag and, if warranted, flag and release it.
+      codebase_context: >
+        A docs site. This PR only edits Markdown content — no application code, no
+        LaunchDarkly SDK call sites are touched. The diff is below.
+      git_diff: |
+        diff --git a/docs/getting-started.md b/docs/getting-started.md
+        index 2b1c3d4..9f8e7d6 100644
+        --- a/docs/getting-started.md
+        +++ b/docs/getting-started.md
+        @@ -3,7 +3,7 @@
+         ## Getting started
+
+        -Install the CLI with `npm i -g acme` and run `acme login`.
+        +Install the CLI with `npm i -g acme` and run `acme login` to authenticate.
+    assert:
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const mutating = ['create-flag','create-feature-flag','create-automated-rollout-config','update-feature-flag','update-flag-settings','toggle-flag','delete-flag'];
+          const called = mutating.filter(f => tools.includes(f));
+          const pass = called.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'created/recorded nothing for a non-flag-worthy change' : 'mutated: ' + called.join(', ') };
+        metric: no_flag_for_docs
+        weight: 4
+
+      - type: llm-rubric
+        value: |
+          The PR (acme/docs-site#88) is a docs-only change (Markdown copy edit, no
+          application code, no SDK call sites). The skill decides flag-worthiness first.
+          Evaluate the response:
+          1. Does it judge the change NOT flag-worthy (docs-only / no code path to guard)?
+          2. Does it stop WITHOUT creating a flag or recording a release?
+          Score 1.0 if both. Deduct 0.5 per criterion missed.
+        metric: rationale_quality
+        weight: 3
+
+  # ==================================================================
+  # SINGLE KILL-SWITCH, CREATED OFF — approved flag-worthy change. The
+  # create step must produce exactly ONE boolean kill-switch (no
+  # over-flagging, not multivariate) and must NOT turn it on by hand
+  # (created OFF is the point; the recorded release owns turning it on).
+  # Reaches the create step before any git push.
+  # ==================================================================
+  - description: "Create step: one boolean kill-switch, created OFF, not toggled on by hand"
+    providers: ["orchestrator"]
+    vars:
+      user_request: >
+        Approved to flag and release. The PR branch (acme/api#12) is checked out
+        locally, project `default`, environments `staging` and `production`, release
+        on merge. Go ahead: create the guarding flag and wire the new path behind it.
+      codebase_context: >
+        Node.js Express API using the LaunchDarkly Node server SDK (client.variation).
+        Routes live in src/routes/. The PR adds a new public POST /export endpoint.
+        The diff is below.
+      git_diff: |
+        diff --git a/src/routes/export.js b/src/routes/export.js
+        new file mode 100644
+        index 0000000..7de4a11
+        --- /dev/null
+        +++ b/src/routes/export.js
+        @@ -0,0 +1,10 @@
+        +const express = require('express');
+        +const router = express.Router();
+        +const { buildExport } = require('../services/exporter');
+        +
+        +router.post('/', async (req, res) => {
+        +  const file = await buildExport(req.user, req.body.format || 'csv');
+        +  res.type('text/csv').send(file);
+        +});
+        +
+        +module.exports = router;
+    assert:
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const creates = traj.filter(t => t.tool === 'create-flag' || t.tool === 'create-feature-flag');
+          if (creates.length === 0) return { pass: false, score: 0, reason: 'never created the guarding flag' };
+          const multivariate = creates.some(c => (c.arguments && c.arguments.kind) === 'multivariate');
+          const pass = creates.length === 1 && !multivariate;
+          return { pass, score: pass ? 1 : 0, reason: `create calls=${creates.length}, multivariate=${multivariate} (want exactly one boolean kill-switch)` };
+        metric: single_kill_switch
+        weight: 4
+
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const turnedOn = traj.some(t =>
+            (t.tool === 'toggle-flag' && t.arguments && t.arguments.on === true) ||
+            ((t.tool === 'update-feature-flag' || t.tool === 'update-flag' || t.tool === 'update-flag-settings') && t.arguments && t.arguments.on === true));
+          const pass = !turnedOn;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'left the flag OFF (release owns turning it on)' : 'turned the flag on by hand' };
+        metric: created_off
+        weight: 3
+
+      - type: llm-rubric
+        value: |
+          The change (new public POST /export endpoint) is approved to be flagged and
+          released.
+          Evaluate the response:
+          1. Does it create a single boolean kill-switch flag (not several flags, not
+             multivariate) around the new endpoint?
+          2. Is the flag created OFF, with the guard defaulting to the pre-change
+             behavior — not turned on by hand (the recorded release owns that)?
+          Score 1.0 if both. Deduct 0.5 per criterion missed.
+        metric: rationale_quality
+        weight: 2
