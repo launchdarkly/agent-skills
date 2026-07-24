@@ -199,9 +199,9 @@
       "name": "launchdarkly-experiment-hypothesis-builder",
       "description": "Help a user turn a rough idea into a strong, testable experiment hypothesis, or critique one they wrote. Detects which parts of the hypothesis are present, scaffolds an If/then/because sentence with holes for what's missing, and shows a fixed critique message. Use when a user is starting an experiment or sharpening a hypothesis. Does NOT resolve flags or metrics, build experiment config, or write to LaunchDarkly.",
       "path": "skills/experiments/launchdarkly-experiment-hypothesis-builder",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "license": "Apache-2.0",
-      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server. Pairs with launchdarkly-experiment-setup, which it hands off to."
+      "compatibility": "Read-only LaunchDarkly lookups only. Hands off to launchdarkly-experiment-setup for build."
     },
     {
       "name": "launchdarkly-experiment-setup",
