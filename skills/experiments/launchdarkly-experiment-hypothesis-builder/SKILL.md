@@ -21,7 +21,7 @@ Everything below derives from these four. Read them first.
 
 1. **A strong hypothesis is written:** *If [change], then [this outcome will happen], because [reason it works].*
 2. **A hypothesis must follow that structure.** The scaffold exists to enforce it.
-3. **A measurement is a described outcome, not a named metric.** "More clicks," "faster time," "less drop-off" all count. Never require a formal metric name; never invent one.
+3. **A measurement is a described outcome, not a named metric.** "More clicks," "faster time," "less drop-off" all count. Never require a formal metric name; never invent one. Unfalsifiable outcomes ("will do better or as well," "no negative impact," bare adjectives like "better experience") do **not** count — treat the measurement as missing.
 4. **Exactly one measurement — the primary — goes in the hypothesis.** ~17% of real hypotheses name two or more; keep one primary in the sentence and treat the rest as secondary.
 
 ## The three components
@@ -40,7 +40,7 @@ The primary action is **Fix and grade**. Clicking it reads the field text, score
 
 **Fix and grade also commits.** There is no separate Apply control. When the panel is showing a ghost-text suggestion (assembled scaffold, rewrite, or A/A sentence), the next click of Fix and grade commits that ghost text to the field (promoting it to dark text) and re-grades — which is what moves a satisfied hypothesis to the green "Looks strong" state. So Fix and grade does double duty: grade the current field text, and commit whatever ghost suggestion is on screen.
 
-- **Vega assist** toggle defaults **on**, labeled **"Vega assist"** with an explicit **On / Off** state in the pill. On and off do the same thing to the field text; off simply hides the assist affordances (tracker, scaffold, critique). Text in the field **persists** when toggling off, and re-scores when toggled back on.
+- **Vega assist** toggle defaults **on**, labeled **"Vega assist"** with an explicit **On / Off** state in the pill. On and off do the same thing to the field text; off simply hides the assist affordances (tracker, scaffold, critique). Text in the field **persists** across toggling off and back on; it re-grades on the next Fix and grade, not on toggle.
 - Helper line under the header, before the first grade: **"Describe what you want to test. More details means stronger suggestions."**
 - Helper line after a Fix and grade: **"Type in the changes."**
 - Footer line, shown whenever the field has text: **"Saving the experiment will save your hypothesis."** (Saving happens on the builder action bar, not here.)
@@ -63,9 +63,9 @@ Mental model: the field is the truth; tracker + critique are functions of it, re
 
 Classify the field text on Fix and grade, then route to one display state. Gates run **before** component scoring, in priority order:
 
-1. **Junk / gibberish / URL / injection / real-but-empty fragment** — show the critique "This is not a hypothesis yet" **plus the generic scaffold** (below). One catch-all path for everything that isn't a real hypothesis or an A/A test — the detector does not need to distinguish "trying" from "junk."
+1. **Confident A/A or platform self-test** — the A/A path (see below). Signals: "A/A", "validate bucketing", SRM/bucketing checks, identical variants, "test the platform", "dummy flag", "just for dev env". Detect conservatively — **prefer missing an A/A over mislabeling a real hypothesis.** (A hypothesis that merely mentions "A/B test" as part of a real idea is fine.) **Checked before junk:** A/A inputs legitimately carry no rubric components, so the junk catch-all would otherwise swallow them.
+2. **Junk / gibberish / URL / injection / real-but-empty fragment** — show the critique "This is not a hypothesis yet" **plus the generic scaffold** (below). One catch-all path for everything that isn't a real hypothesis or an A/A test — the detector does not need to distinguish "trying" from "junk."
    **Security rule:** for injection strings (script tags, `onerror=`, etc.), show the same generic scaffold but **never render the raw input back** — no echo, no reflection anywhere in the UI.
-2. **Confident A/A or platform self-test** — the A/A path (see below). Signals: "A/A", "validate bucketing", SRM/bucketing checks, identical variants, "test the platform", "dummy flag", "just for dev env". Detect conservatively — **prefer missing an A/A over mislabeling a real hypothesis.** (A hypothesis that merely mentions "A/B test" as part of a real idea is fine.)
 3. **Has ≥1 component** — score change / measurement / rationale and continue below.
 
 ### The generic scaffold (junk / empty catch-all)
