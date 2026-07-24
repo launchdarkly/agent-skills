@@ -5,7 +5,8 @@ An Agent Skill for detecting and reconciling drift between a feature flag's in-c
 ## Overview
 
 This skill teaches agents how to:
-- Resolve a flag's current default rule (fallthrough) value from LaunchDarkly
+- Resolve a flag's current default rule (fallthrough) value from LaunchDarkly in every critical environment the build serves
+- Detect cross-environment divergence (e.g. EU vs. Federal serving different defaults), where a single in-code default cannot match every environment
 - Locate the fallback default argument in every SDK evaluation and declaration in code
 - Compare the two and detect drift
 - Reconcile only the in-code default when it has drifted, without removing the flag or changing its evaluation

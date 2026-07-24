@@ -7,16 +7,22 @@ Use this template when opening a pull request that reconciles an in-code SDK fal
 
 ### Summary
 - **Flag**: `{flag-key}`
-- **Source environment**: `{environment}`
+- **Critical environments checked**: `{env-a}` -> `{value}`, `{env-b}` -> `{value}` (all agree on `{new value}`)
 - **Old in-code default**: `{old value}`
 - **New in-code default**: `{new value}` (matches current default rule / fallthrough)
 - **Scope**: Only the SDK fallback default changed. The flag and its evaluation are preserved.
 
 ### Why
-The flag's default rule (fallthrough) in `{environment}` serves `{new value}`, but the
-hardcoded fallback in code returned `{old value}` when LaunchDarkly is unreachable.
-This drift meant an outage would serve a different value than normal operation. This PR
-reconciles the fallback so the outage value matches the default rule.
+The flag's default rule (fallthrough) serves `{new value}` across every critical
+environment this build runs against, but the hardcoded fallback in code returned
+`{old value}` when LaunchDarkly is unreachable. This drift meant an outage would serve a
+different value than normal operation. This PR reconciles the fallback so the outage value
+matches the default rule.
+
+> If the critical environments **disagree** on the fallthrough (e.g. `eu-production` serves
+> `true` but `federal` serves `false`), do not open a reconciliation PR: a single in-code
+> default cannot match all of them. Surface the per-environment values and confirm which
+> environment is authoritative, or resolve the divergence in LaunchDarkly first.
 
 ### Changes
 - Files modified: `{list files}`
@@ -29,7 +35,8 @@ reconciles the fallback so the outage value matches the default rule.
 - The flag itself (not removed, not archived)
 
 ### Reviewer checklist
-- [ ] New default matches the fallthrough value from `get-flag` for `{environment}`
+- [ ] Fallthrough was resolved from `get-flag` in **every** critical environment, and they agree
+- [ ] New default matches that agreed fallthrough value
 - [ ] Only the default argument changed (no logic/branching edits)
 - [ ] Default type matches the flag's variation type
 - [ ] Generated files (if any) were regenerated, not hand-edited
@@ -43,15 +50,15 @@ reconciles the fallback so the outage value matches the default rule.
 
 ### Summary
 - **Flag**: `new-checkout-flow`
-- **Source environment**: `production`
+- **Critical environments checked**: `production` -> `true`, `eu-production` -> `true` (all agree on `true`)
 - **Old in-code default**: `false`
 - **New in-code default**: `true` (matches current default rule / fallthrough)
 - **Scope**: Only the SDK fallback default changed. The flag and its evaluation are preserved.
 
 ### Why
-The default rule in `production` now serves `true`, but the code fallback returned `false`
-during outages. This PR reconciles the fallback to `true` so behavior is consistent when
-LaunchDarkly is unreachable.
+The default rule now serves `true` in every critical environment (`production` and
+`eu-production`), but the code fallback returned `false` during outages. This PR reconciles
+the fallback to `true` so behavior is consistent when LaunchDarkly is unreachable.
 
 ### Changes
 - Files modified: `CheckoutService.ts`
@@ -64,7 +71,8 @@ LaunchDarkly is unreachable.
 - The flag itself
 
 ### Reviewer checklist
-- [x] New default matches the fallthrough value from `get-flag` for `production`
+- [x] Fallthrough was resolved from `get-flag` in `production` and `eu-production`, and they agree on `true`
+- [x] New default matches that agreed fallthrough value
 - [x] Only the default argument changed (no logic/branching edits)
 - [x] Default type matches the flag's variation type
 - [x] No generated files involved
