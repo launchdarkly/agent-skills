@@ -215,6 +215,18 @@ The `create-ai-config-variation` tool validates this format and rejects invalid 
 - Don't drop to raw `curl` + `jq` for verification. Use `get-ai-config` (MCP) — it returns a typed object and avoids brittle `jq` filters that break on response-shape variation.
 - Don't consider the workflow complete until the user has been told to run `configs-targeting`. A created variation that isn't promoted to fallthrough returns `enabled=False` to every consumer.
 
+## More resources
+
+To learn more about creating a config in the LaunchDarkly UI, read [Create configs](https://launchdarkly.com/docs/home/agentcontrol/create.md)
+
+To learn more about configuring the SDK, read:
+
+* [.NET AI SDK reference](https://launchdarkly.com/docs/sdk/ai/dotnet.md)
+* [Go AI SDK reference](https://launchdarkly.com/docs/sdk/ai/go.md)
+* [Node.js (server-side) SDK AI reference](https://launchdarkly.com/docs/sdk/ai/node-js.md)
+* [Python AI SDK reference](https://launchdarkly.com/docs/sdk/ai/python.md)
+* [Ruby AI SDK reference](https://launchdarkly.com/docs/sdk/ai/ruby.md)
+
 ## Related Skills
 
 - `tools` -- Create tools before attaching

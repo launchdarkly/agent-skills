@@ -499,9 +499,9 @@ After configuring targeting:
 - `online-evals` - Attach judges
 - `segments` - Create segments for targeting
 
-## References
+## Other Resources
 
-- [Target with AgentControl](https://docs.launchdarkly.com/home/ai-configs/target)
-- [Targeting Rules](https://docs.launchdarkly.com/home/flags/target-rules)
-- [JSON Targeting](https://docs.launchdarkly.com/home/flags/json-targeting)
-- [Guarded Rollouts](https://docs.launchdarkly.com/home/releases/guarded-rollouts)
+- [Target with AgentControl](https://docs.launchdarkly.com/home/ai-configs/target.md)
+- [Targeting Rules](https://docs.launchdarkly.com/home/flags/target-rules.md)
+- [JSON Targeting](https://docs.launchdarkly.com/home/flags/json-targeting.md)
+- [Guarded Rollouts](https://docs.launchdarkly.com/home/releases/guarded-rollouts.md)
