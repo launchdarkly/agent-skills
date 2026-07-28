@@ -320,6 +320,25 @@
       ]
     },
     {
+      "name": "launchdarkly-flag-drift",
+      "description": "Detect and reconcile drift between a feature flag's in-code SDK fallback default and its LaunchDarkly default rule (fallthrough). Use when a flag's default rule changed, when the user asks to detect flag drift, check whether a hardcoded default still matches LaunchDarkly, sync an in-code default, or open a PR reconciling a fallback value, without removing the flag or its evaluation.",
+      "path": "skills/feature-flags/launchdarkly-flag-drift",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server",
+      "tags": [
+        "launchdarkly",
+        "feature-flags",
+        "feature-management",
+        "flag-drift",
+        "default-drift",
+        "sdk",
+        "reconciliation",
+        "devops",
+        "mcp"
+      ]
+    },
+    {
       "name": "launchdarkly-flag-targeting",
       "description": "Control LaunchDarkly feature flag targeting including toggling flags on/off, percentage rollouts, targeting rules, individual targets, and copying flag configurations between environments. Use when the user wants to change who sees a flag, roll out to a percentage, add targeting rules, or promote config between environments.",
       "path": "skills/feature-flags/launchdarkly-flag-targeting",
