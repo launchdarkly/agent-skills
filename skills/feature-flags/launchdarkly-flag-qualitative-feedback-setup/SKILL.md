@@ -74,10 +74,10 @@ Before gathering requirements, verify that this project can support qualitative 
 Search for LaunchDarkly SDK imports:
 - `launchdarkly-js-client-sdk` — vanilla JS/TS client SDK (v3.x)
 - `@launchdarkly/js-client-sdk` — vanilla JS/TS client SDK (v4.x, renamed scoped package)
-- `@launchdarkly/react-client-sdk` — React SDK (provides hooks and providers)
-- `launchdarkly-react-client-sdk` — older React SDK package name
+- `@launchdarkly/react-sdk` — React Web SDK (current; provides hooks and providers)
+- `launchdarkly-react-client-sdk` — older React Web SDK package name (renamed to `@launchdarkly/react-sdk`)
 
-Also search for SDK initialization (`initialize(` for v3.x, or `createClient(`/`start(` for v4.x, plus `<LDProvider`, `asyncWithLDProvider`). If not found, ask the user where LDClient is initialized or accessible.
+Also search for SDK initialization (`initialize(` for v3.x, or `createClient(`/`start(` for v4.x, plus React provider signals `<LDProvider`, `asyncWithLDProvider`, or `createLDReactProvider`). If not found, ask the user where LDClient is initialized or accessible.
 
 - If **no LD SDK is found at all** → inform the user that qualitative feedback requires a LaunchDarkly client-side SDK to be installed and initialized → **STOP. Do not proceed.**
 - If found → continue to Check 2.
@@ -112,7 +112,7 @@ After the checks above pass, gather the remaining context:
 1. **Find the SDK initialization.** Search for:
    - `initialize(` from `launchdarkly-js-client-sdk` (v3.x)
    - `createClient(` / `start(` from `@launchdarkly/js-client-sdk` (v4.x)
-   - `<LDProvider` or `asyncWithLDProvider` from the React SDK
+   - `<LDProvider`, `asyncWithLDProvider`, or `createLDReactProvider` from the React SDK
    - How the `LDClient` instance is accessed (direct reference, React context, custom hook, etc.)
 
 2. **Check for observability.** Search for `@launchdarkly/observability` and `@launchdarkly/session-replay`. If present, feedback can be linked to session replays.
@@ -298,7 +298,7 @@ After the user confirms everything works, mention:
 | Server-side SDK only, no client SDK | **STOP** — handled by Check 2 |
 | SDK version < 3.0 | **STOP** — handled by Check 3 |
 | Existing `sendFeedback` function found | Reuse it, skip Step 5 — handled by Check 4 |
-| React SDK (`@launchdarkly/react-client-sdk`) | Access client via `useLDClient()` hook instead of a direct reference |
+| React SDK (`@launchdarkly/react-sdk` / `launchdarkly-react-client-sdk`) | Access client via `useLDClient()` hook instead of a direct reference |
 | Flag doesn't have client-side availability | User must enable it in the flag's Advanced Controls |
 | Observability not installed | Skip the `o11y_session_id` field; session replay won't be available |
 | No design system detected | Use the template component with minimal inline styles as a starting point |
@@ -335,7 +335,7 @@ All templates are TypeScript — for JavaScript projects, adapt by removing type
 These show how the decision tree plays out for common scenarios.
 
 **Happy path — React + TypeScript, new flag, thumbs popover:**
-Step 0 → welcome. Step 1 → finds `@launchdarkly/react-client-sdk` v3.6, React + Tailwind, no existing feedback. Step 2 → user picks a new flag `checkout-redesign`, prompt "How do you feel about the new checkout?", thumbs style, placed below the order summary. Step 3 → creates flag via `create-flag`. Step 4 → user approves. Step 5 → creates `sendFeedback.ts` in `lib/ld/`. Step 6 → creates `FeedbackPopover.tsx` adapted to Tailwind, wires it into `CheckoutPage.tsx` with `useLDClient()`. Step 7 → build passes, event fires.
+Step 0 → welcome. Step 1 → finds `@launchdarkly/react-sdk`, React + Tailwind, no existing feedback. Step 2 → user picks a new flag `checkout-redesign`, prompt "How do you feel about the new checkout?", thumbs style, placed below the order summary. Step 3 → creates flag via `create-flag`. Step 4 → user approves. Step 5 → creates `sendFeedback.ts` in `lib/ld/`. Step 6 → creates `FeedbackPopover.tsx` adapted to Tailwind, wires it into `CheckoutPage.tsx` with `useLDClient()`. Step 7 → build passes, event fires.
 
 **Existing sendFeedback — reuse and skip:**
 Step 1 → Check 4 finds `src/utils/sendFeedback.ts` already calling `client.track('$ld:feedback', ...)`. Records the import path. Step 2 → gathers requirements normally. Steps 3–4 → as usual. Step 5 → **skipped** (reuses existing function). Step 6 → builds widget, imports `sendFeedback` from the existing path. Step 7 → build passes, event fires.

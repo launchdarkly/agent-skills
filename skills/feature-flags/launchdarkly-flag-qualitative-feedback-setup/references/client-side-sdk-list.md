@@ -6,8 +6,8 @@ These SDK package names indicate a **client-side** SDK that supports qualitative
 |---|---|
 | `launchdarkly-js-client-sdk` | Vanilla JS/TS (v3.x) |
 | `@launchdarkly/js-client-sdk` | Vanilla JS/TS (v4.x, renamed scoped package) |
-| `@launchdarkly/react-client-sdk` | React (current) |
-| `launchdarkly-react-client-sdk` | React (older package name) |
+| `@launchdarkly/react-sdk` | React Web (current) |
+| `launchdarkly-react-client-sdk` | React Web (older package name) |
 | `launchdarkly-react-native-client-sdk` | React Native (older) |
 | `@launchdarkly/react-native-client-sdk` | React Native (current) |
 | `launchdarkly-flutter-client-sdk` | Flutter |

@@ -320,6 +320,25 @@
       ]
     },
     {
+      "name": "launchdarkly-flag-drift",
+      "description": "Detect and reconcile drift between a feature flag's in-code SDK fallback default and its LaunchDarkly default rule (fallthrough). Use when a flag's default rule changed, when the user asks to detect flag drift, check whether a hardcoded default still matches LaunchDarkly, sync an in-code default, or open a PR reconciling a fallback value, without removing the flag or its evaluation.",
+      "path": "skills/feature-flags/launchdarkly-flag-drift",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server",
+      "tags": [
+        "launchdarkly",
+        "feature-flags",
+        "feature-management",
+        "flag-drift",
+        "default-drift",
+        "sdk",
+        "reconciliation",
+        "devops",
+        "mcp"
+      ]
+    },
+    {
       "name": "launchdarkly-flag-qualitative-feedback-setup",
       "description": "Integrate LaunchDarkly qualitative user feedback into a JavaScript/TypeScript codebase. Guides framework and design system detection, builds the sendFeedback utility and feedback widget matching existing project patterns. Use when the user wants to add a Give Feedback widget, collect user sentiment tied to feature flags, set up feedback collection, or wire up the $ld:feedback tracking event.",
       "path": "skills/feature-flags/launchdarkly-flag-qualitative-feedback-setup",
@@ -336,25 +355,6 @@
         "sdk",
         "javascript",
         "react",
-        "mcp"
-      ]
-    },
-    {
-      "name": "launchdarkly-flag-drift",
-      "description": "Detect and reconcile drift between a feature flag's in-code SDK fallback default and its LaunchDarkly default rule (fallthrough). Use when a flag's default rule changed, when the user asks to detect flag drift, check whether a hardcoded default still matches LaunchDarkly, sync an in-code default, or open a PR reconciling a fallback value, without removing the flag or its evaluation.",
-      "path": "skills/feature-flags/launchdarkly-flag-drift",
-      "version": "0.1.0",
-      "license": "Apache-2.0",
-      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server",
-      "tags": [
-        "launchdarkly",
-        "feature-flags",
-        "feature-management",
-        "flag-drift",
-        "default-drift",
-        "sdk",
-        "reconciliation",
-        "devops",
         "mcp"
       ]
     },
