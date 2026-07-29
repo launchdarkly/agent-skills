@@ -32,6 +32,8 @@ The skeleton's three slots are the rubric, shown to the user as the **Change / M
 - **Measurement** — what you expect users to do differently, in plain words (rule 3). The sentence slot reads as an outcome ("this outcome will happen"); the tracker names the component Measurement. Same thing. **Counting:** near-synonyms describing one outcome count as one ("more clicks / higher CTR" = one); two genuinely distinct outcomes count as multiple ("bid more" and "bid for higher GMV" = multiple). Keep distinct-but-close outcomes separate; don't merge them.
 - **Rationale** — the mechanism: *why* the change causes that result. Not a restatement.
 
+**Semantic validity.** A slot counts only if its content is genuinely that component, not merely sitting in the If/then/because grammar. "apple pie" is not a change (it names a thing, not an edit). "elephant" is not a measurement (not an outcome). "purple" is not a rationale (not a mechanism). The three must be causally connected: the change could plausibly move the measurement, and the rationale explains that link. If/then/because filled with non-sequiturs is not a strong hypothesis; treat those slots as absent and route to junk. Grammar alone never earns a component.
+
 ## One input, one button
 
 There is a **single input** — the hypothesis field. The panel header reads **"Hypothesis"**; the field itself is where the user types, with ghost text **"Describe what you want to test."** There is no separate describe box and no second on-ramp; the field is the only entry point.
@@ -175,6 +177,27 @@ Layout: the **rubric row sits above the button row**. The button row (after the 
 - **Clear** — the **only** control that erases the field.
 
 Saving the hypothesis to the experiment is **not** a control here — that's the **Save** button on the builder's action bar, outside this panel.
+
+## Structured output mode (headless)
+
+When the caller requests JSON only (the experiment builder's headless entry point, e.g. a system prompt that says "reply with one JSON object and nothing else"), skip the conversational flow and the handoff below. Reply once, with exactly this JSON and nothing else: no prose, no markdown fences.
+
+```json
+{
+  "schema_version": 1,
+  "route": "scaffold",
+  "components": { "change": true, "measurement": false, "rationale": false },
+  "hypothesis": "If we change the homepage button from green to black, then {{measurement:what do you expect users to do more or less of?}}, because {{rationale:why would black cause that?}}",
+  "measurements": []
+}
+```
+
+- `route` — one of `scaffold | rewrite | junk | aa`, from Step 0.
+- `components` — presence booleans judged on the input after the semantic-validity check (not on the scaffold you return). For `junk` all three are false; for `rewrite` and `aa` all three are true. A 3/3 hypothesis already in canonical order is `route: scaffold` with all three true and no holes (the strong "looks ready" state), not `rewrite`.
+- `hypothesis` — the sentence for the field, with `{{component:hint}}` holes for missing slots (component is `change`, `measurement`, or `rationale`; hint is a short question). No holes for `rewrite`/`aa`. Never use `{{ }}` for anything except holes.
+- `measurements` — every measurement stated in the input as `{ "text": "...", "primary": true|false }`, with exactly one primary when non-empty; empty when the input states none.
+
+This is the same machine contract the o11y `experiment-hypothesis` skill emits. Keep the two identical so both callers grade the same way.
 
 ## Handoff, then STOP
 
