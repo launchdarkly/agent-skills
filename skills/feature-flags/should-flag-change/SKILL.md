@@ -5,7 +5,7 @@ license: Apache-2.0
 compatibility: "Advisory and read-only. Works on all platforms. Does NOT require the LaunchDarkly MCP server. Reads code with standard file tools (Read/Grep/Glob) and returns a structured verdict via the `recommend-flag` tool."
 metadata:
   author: launchdarkly
-  version: "0.2.0-experimental"
+  version: "0.3.0-experimental"
 ---
 
 # Should This Change Be Behind a Flag?
@@ -52,10 +52,24 @@ Read the `<git_diff>` block (or the diff/description the developer provided). Es
 
 ### Step 2: Explore the surrounding code
 
+**Discover the repo's flag context first.** Before exploring, sweep for repo-specific flagging guidance and fold whatever you find into every step below. Gather from all of these — context may be split across more than one — using `Glob`/`Grep`/`Read`:
+
+1. **A dedicated LaunchDarkly file** — `Glob` for `**/*launchdarkly*.md`, `.launchdarkly/**/*.md`, `**/*flag*context*.md`, and (back-compat) `.agents/skills/should-flag-change/repo-context.md`.
+2. **A repo skill about flagging** — `Glob` for `**/skills/*flag*/SKILL.md`, `**/.claude/skills/*flag*/SKILL.md`, `**/.agents/skills/*flag*/`, `.cursor/rules/*flag*.mdc`.
+3. **`AGENTS.md` / `CLAUDE.md`** (repo root and nested) — `Read` it. These files are small and, in interactive use, already in context. Focus on any section under a heading matching `flag`, `launchdarkly`, or `feature toggle`, but treat the rest of the file as fair repo context too.
+
+This context supplies repo-specific *decision inputs* that make the generic framework concrete: the team's release **posture** (Step 3 tie-breaker), this repo's **flag-SDK grep signatures** (items 2–3 below — prefer them over the generic terms), **generated/excluded paths** (treat as `not-suited`), the **candidate environment set** (the user-observability test), how to **resolve ancestor flag state**, and any **flag shape / naming** convention.
+
+Three rules on what you find:
+
+- **Precedence on conflict:** dedicated file > flagging skill > `AGENTS.md`/`CLAUDE.md` section. Name the source(s) you used in your verdict `reasons` so the call is auditable.
+- **Inputs, never override.** Discovered context can *tighten* the call (posture, SDK signatures, exclusions, environments, local always/never-flag rules) but MUST NOT weaken the safety spine. The user-observability test and the false-negative-over-false-positive principle win over any repo rule. A repo "never flag `/internal`" rule does not apply to a change on `/internal` that reaches real users — judge it on the rubric and say why you overrode the rule.
+- **Absent is normal.** If nothing is found, proceed with the generic guidance below — silently, not as an error.
+
 Before deciding, use `Read`, `Grep`, and `Glob` to answer the questions the diff alone can't:
 
 1. **Call sites and blast radius.** Grep for the changed function/endpoint. How many callers? Is it on a hot or critical path?
-2. **Existing flag conventions.** Does this codebase already gate similar changes behind flags? Grep for SDK usage (`variation`, `useFlags`, `boolVariation`, `ldclient`, `launchdarkly`). A change that mirrors an already-flagged pattern is a strong signal.
+2. **Existing flag conventions.** Does this codebase already gate similar changes behind flags? Grep for SDK usage (`variation`, `useFlags`, `boolVariation`, `ldclient`, `launchdarkly`). A change that mirrors an already-flagged pattern is a strong signal. If the discovered repo context lists this repo's own flag-SDK signatures, prefer those over the generic terms.
 3. **Ancestor gate — is it already behind a flag?** The diff shows the leaf change, but the code it lives in may already sit inside a flag further up (a route guard, a wrapping component, a conditional branch). Walk up from the changed lines to the nearest enclosing flag check. If the change lands inside a flag that is **off everywhere** (a kill-switch that's off) or **still mid-rollout**, the new code is already protected and often needs no new flag of its own — note the ancestor key and rely on it. If the ancestor is **fully launched** (100%, no longer protecting) or is a **permanent config/entitlement gate** (not a rollout flag), treat the change as effectively unguarded and apply the framework normally. If you can't resolve the ancestor's rollout state from what's in front of you, say so and lower confidence.
 4. **Migration state.** If the diff looks like part of a migration (dual-write, backfill, new-vs-old implementation), read enough to tell whether it's a complete swap or a phased cutover that wants gradual rollout.
 5. **Safety of the change.** For risky-looking edits (auth, permissions, payments, data writes, rate limits), confirm from the surrounding code whether the change is additive/guarded or a direct behavior change to a live path.
@@ -109,7 +123,7 @@ The user-observability test and the false-negative-over-false-positive principle
 - **Conservative (default, human-in-the-loop):** an extra flag costs review, registry churn, and cleanup debt, so a genuinely balanced change → lean `recommend: false` and route it to tests/review.
 - **Low-overhead (automated release and automated flag cleanup are in place):** the cost of an extra flag is near zero while a missed flag ships unguarded to users, so a genuinely balanced **customer-visible** change → lean `recommend: true`.
 
-Absent any signal about the team's setup, assume the conservative posture. This tie-breaker only applies to the last-mile balanced call; it never overrides the user-observability test or a clear risk/user-facing signal.
+Absent any signal about the team's setup, assume the conservative posture. If the discovered repo context states a default posture, use that instead of assuming. This tie-breaker only applies to the last-mile balanced call; it never overrides the user-observability test or a clear risk/user-facing signal.
 
 ### Step 4: Emit the verdict
 
