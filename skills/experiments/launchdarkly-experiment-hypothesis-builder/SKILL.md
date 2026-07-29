@@ -193,7 +193,7 @@ When the caller requests JSON only (the experiment builder's headless entry poin
 ```
 
 - `route` — one of `scaffold | rewrite | junk | aa`, from Step 0.
-- `components` — presence booleans judged on the input after the semantic-validity check (not on the scaffold you return). For `junk` all three are false; for `rewrite` and `aa` all three are true. A 3/3 hypothesis already in canonical order is `route: scaffold` with all three true and no holes (the strong "looks ready" state), not `rewrite`.
+- `components` — presence booleans judged on the input after the semantic-validity check (not on the scaffold you return). For `junk` and `aa` all three are false; for `rewrite` all three are true. A 3/3 hypothesis already in canonical order is `route: scaffold` with all three true and no holes (the strong "looks ready" state), not `rewrite`.
 - `hypothesis` — the sentence for the field, with `{{component:hint}}` holes for missing slots (component is `change`, `measurement`, or `rationale`; hint is a short question). No holes for `rewrite`/`aa`. Never use `{{ }}` for anything except holes.
 - `measurements` — every measurement stated in the input as `{ "text": "...", "primary": true|false }`, with exactly one primary when non-empty; empty when the input states none.
 
