@@ -18,6 +18,7 @@ Agent Skills are modular, text-based playbooks that teach an agent how to perfor
 | `feature-flags/launchdarkly-flag-create` | Create new feature flags in a way that fits existing codebase patterns |
 | `feature-flags/launchdarkly-flag-targeting` | Control targeting, rollouts, rules, and cross-environment config |
 | `feature-flags/launchdarkly-flag-cleanup` | Safely remove flags from code using LaunchDarkly as the source of truth |
+| `feature-flags/launchdarkly-flag-drift` | Detect and reconcile drift between an in-code SDK fallback default and the LaunchDarkly default rule |
 | `feature-flags/launchdarkly-guarded-rollout` | Configure guarded rollouts with progressive traffic, metric monitoring, and rollback |
 | `feature-flags/flag-release` | Record a flag's automated release for a PR, honoring release intent and per-environment release policies |
 | `feature-flags/flag-and-release-change` | End-to-end PR orchestrator: decide → create + wire the flag → record its release (composes the skills above) |

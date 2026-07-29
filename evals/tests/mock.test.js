@@ -380,6 +380,24 @@ test("get-flag falls back to template substitution for unknown flag", () => {
   assert.equal(result.key, "unknown-flag");
 });
 
+test("get-flag resolves the template fallthrough (variation 1) for a non-federal env", () => {
+  const state = createMockState();
+  const result = renderMockResponse(TEMPLATES["get-flag"], {
+    flagKey: "billing-v2",
+    environmentKey: "production",
+  }, "get-flag", state);
+  assert.equal(result.environment.fallthrough.variation, 1); // -> false
+});
+
+test("get-flag returns the opposite fallthrough (variation 0) for a federal env", () => {
+  const state = createMockState();
+  const result = renderMockResponse(TEMPLATES["get-flag"], {
+    flagKey: "billing-v2",
+    environmentKey: "federal",
+  }, "get-flag", state);
+  assert.equal(result.environment.fallthrough.variation, 0); // -> true (diverges)
+});
+
 // ---------------------------------------------------------------------------
 // stateless template rendering ({{placeholder}} substitution)
 // ---------------------------------------------------------------------------
