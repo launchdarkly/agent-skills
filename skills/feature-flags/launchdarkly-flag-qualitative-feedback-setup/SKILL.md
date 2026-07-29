@@ -72,11 +72,12 @@ Before gathering requirements, verify that this project can support qualitative 
 #### Check 1/4: Is the LD SDK present?
 
 Search for LaunchDarkly SDK imports:
-- `launchdarkly-js-client-sdk` — vanilla JS/TS client SDK
+- `launchdarkly-js-client-sdk` — vanilla JS/TS client SDK (v3.x)
+- `@launchdarkly/js-client-sdk` — vanilla JS/TS client SDK (v4.x, renamed scoped package)
 - `@launchdarkly/react-client-sdk` — React SDK (provides hooks and providers)
 - `launchdarkly-react-client-sdk` — older React SDK package name
 
-Also search for SDK initialization (`initialize(`, `<LDProvider`, `asyncWithLDProvider`). If not found, ask the user where LDClient is initialized or accessible.
+Also search for SDK initialization (`initialize(` for v3.x, or `createClient(`/`start(` for v4.x, plus `<LDProvider`, `asyncWithLDProvider`). If not found, ask the user where LDClient is initialized or accessible.
 
 - If **no LD SDK is found at all** → inform the user that qualitative feedback requires a LaunchDarkly client-side SDK to be installed and initialized → **STOP. Do not proceed.**
 - If found → continue to Check 2.
@@ -109,7 +110,8 @@ Search for `$ld:feedback`, `sendFeedback`, `FeedbackPopover`, or `Give feedback`
 After the checks above pass, gather the remaining context:
 
 1. **Find the SDK initialization.** Search for:
-   - `initialize(` from `launchdarkly-js-client-sdk`
+   - `initialize(` from `launchdarkly-js-client-sdk` (v3.x)
+   - `createClient(` / `start(` from `@launchdarkly/js-client-sdk` (v4.x)
    - `<LDProvider` or `asyncWithLDProvider` from the React SDK
    - How the `LDClient` instance is accessed (direct reference, React context, custom hook, etc.)
 
@@ -201,6 +203,7 @@ client.flush();
 ```
 
 **Key decisions:**
+- Match the `LDClient` type import to the project's SDK version: `launchdarkly-js-client-sdk` for v3.x, `@launchdarkly/js-client-sdk` for v4.x. The templates import from `launchdarkly-js-client-sdk` — update it if the project is on v4. (The `client.track` / `client.flush` calls are the same across both.)
 - If `@launchdarkly/session-replay` is in the project, include the session ID via `LDRecord.getSession()?.sessionSecureID`. If not, remove the session replay import and `o11y_session_id` logic from the template.
 - Place the utility where the project keeps its LD-related code (alongside existing flag helpers, in a `lib/` or `utils/` directory, etc.)
 - Export the `LDFeedbackSentiment` type if using TypeScript
