@@ -6,7 +6,7 @@ These SDK package names indicate a **server-side** SDK. Qualitative feedback **c
 |---|---|
 | `@launchdarkly/node-server-sdk` | Node.js (current) |
 | `launchdarkly-node-server-sdk` | Node.js (older) |
-| `launchdarkly-py-server-sdk` | Python |
+| `launchdarkly-server-sdk` | Python (PyPI) |
 | Go SDK | Go |
 | Java SDK | Java |
 | Ruby SDK | Ruby |

@@ -10,7 +10,7 @@ These SDK package names indicate a **client-side** SDK that supports qualitative
 | `launchdarkly-react-client-sdk` | React Web (older package name) |
 | `launchdarkly-react-native-client-sdk` | React Native (older) |
 | `@launchdarkly/react-native-client-sdk` | React Native (current) |
-| `launchdarkly-flutter-client-sdk` | Flutter |
+| `launchdarkly_flutter_client_sdk` | Flutter (pub.dev, snake_case) |
 | `launchdarkly-node-client-sdk` | Node.js (client-side) |
 | `.NET` client SDK | .NET (client) |
 | `Android` SDK | Android |
