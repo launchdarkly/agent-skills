@@ -1196,12 +1196,15 @@ tests:
 
       - type: javascript
         value: |
+          // Require the agent to have CONSUMED the context source (a Read/Grep
+          // of AGENTS.md), not merely globbed for it — an empty Glob must not
+          // satisfy this check.
           const traj = output.trajectory || [];
           const vIdx = traj.findIndex(t => t.tool === 'recommend-flag');
           const scope = traj.slice(0, vIdx < 0 ? traj.length : vIdx);
-          const touched = scope.some(t => ['Read','Grep','Glob'].includes(t.tool) &&
-            /AGENTS\.md|CLAUDE\.md|\.launchdarkly\/|flagging|flag.*context/i.test(JSON.stringify(t.arguments||{})));
-          return { pass: touched, score: touched?1:0, reason: touched?'read the repo-context source':'never read any repo-context source' };
+          const consumed = scope.some(t => ['Read','Grep'].includes(t.tool) &&
+            /AGENTS\.md/i.test(JSON.stringify(t.arguments||{})));
+          return { pass: consumed, score: consumed?1:0, reason: consumed?'read the repo-context source (AGENTS.md)':'never read the repo-context source' };
         metric: discovered_context
         weight: 2
 
@@ -1378,7 +1381,7 @@ tests:
           const vIdx = traj.findIndex(t => t.tool === 'recommend-flag');
           const scope = traj.slice(0, vIdx < 0 ? traj.length : vIdx);
           const readLD = scope.some(t => ['Read','Grep'].includes(t.tool) &&
-            /launchdarkly/i.test(JSON.stringify(t.arguments||{})));
+            /launchdarkly\.md/i.test(JSON.stringify(t.arguments||{})));
           return { pass: readLD, score: readLD?1:0, reason: readLD?'read the dedicated LaunchDarkly file':'never read the dedicated LaunchDarkly file' };
         metric: discovered_context
         weight: 2
@@ -1521,12 +1524,16 @@ tests:
 
       - type: javascript
         value: |
+          // Require the agent to have CONSUMED the context source (a Read/Grep
+          // of .launchdarkly/flagging.md), not merely globbed for it. Match the
+          // concrete filename so a generic SDK grep that includes the term
+          // "launchdarkly" cannot false-pass this check.
           const traj = output.trajectory || [];
           const vIdx = traj.findIndex(t => t.tool === 'recommend-flag');
           const scope = traj.slice(0, vIdx < 0 ? traj.length : vIdx);
-          const touched = scope.some(t => ['Read','Grep','Glob'].includes(t.tool) &&
-            /AGENTS\.md|CLAUDE\.md|\.launchdarkly\/|flagging|flag.*context/i.test(JSON.stringify(t.arguments||{})));
-          return { pass: touched, score: touched?1:0, reason: touched?'read the repo-context source':'never read any repo-context source' };
+          const consumed = scope.some(t => ['Read','Grep'].includes(t.tool) &&
+            /flagging\.md/i.test(JSON.stringify(t.arguments||{})));
+          return { pass: consumed, score: consumed?1:0, reason: consumed?'read the repo-context source (.launchdarkly/flagging.md)':'never read the repo-context source' };
         metric: discovered_context
         weight: 2
 
@@ -1686,12 +1693,16 @@ tests:
 
       - type: javascript
         value: |
+          // Require the agent to have CONSUMED the context source (a Read/Grep
+          // of .launchdarkly/flagging.md), not merely globbed for it. Match the
+          // concrete filename so a generic SDK grep that includes the term
+          // "launchdarkly" cannot false-pass this check.
           const traj = output.trajectory || [];
           const vIdx = traj.findIndex(t => t.tool === 'recommend-flag');
           const scope = traj.slice(0, vIdx < 0 ? traj.length : vIdx);
-          const touched = scope.some(t => ['Read','Grep','Glob'].includes(t.tool) &&
-            /AGENTS\.md|CLAUDE\.md|\.launchdarkly\/|flagging|flag.*context/i.test(JSON.stringify(t.arguments||{})));
-          return { pass: touched, score: touched?1:0, reason: touched?'read the repo-context source':'never read any repo-context source' };
+          const consumed = scope.some(t => ['Read','Grep'].includes(t.tool) &&
+            /flagging\.md/i.test(JSON.stringify(t.arguments||{})));
+          return { pass: consumed, score: consumed?1:0, reason: consumed?'read the repo-context source (.launchdarkly/flagging.md)':'never read the repo-context source' };
         metric: discovered_context
         weight: 2
 
@@ -1982,7 +1993,7 @@ tests:
           const vIdx = traj.findIndex(t => t.tool === 'recommend-flag');
           const scope = traj.slice(0, vIdx < 0 ? traj.length : vIdx);
           const readLD = scope.some(t => ['Read','Grep'].includes(t.tool) &&
-            /launchdarkly/i.test(JSON.stringify(t.arguments||{})));
+            /launchdarkly\.md/i.test(JSON.stringify(t.arguments||{})));
           return { pass: readLD, score: readLD?1:0, reason: readLD?'read the dedicated LaunchDarkly file':'never read the dedicated LaunchDarkly file' };
         metric: discovered_context
         weight: 2
