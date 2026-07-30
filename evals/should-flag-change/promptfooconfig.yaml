@@ -1230,9 +1230,9 @@ tests:
   # from `@acme/flags`. The GENERIC grep terms (variation, useFlags,
   # boolVariation, launchdarkly) find NOTHING, so without the context
   # file the agent would conclude the repo doesn't flag anything. The
-  # discovered `.launchdarkly/flagging.md` teaches the house signature;
-  # the agent then greps for it, finds the sibling billing route gated
-  # that way, and flags the new ungated invoices route.
+  # discovered `launchdarkly.md` teaches the house signature; the agent
+  # then greps for it, finds the sibling billing route gated that way, and
+  # flags the new ungated invoices route.
   # ------------------------------------------------------------------
   - description: "Discovery/house SDK wrapper: learns the repo's flag signature from context and flags an ungated route the generic grep would miss"
     providers: ["agentic"]
@@ -1370,12 +1370,16 @@ tests:
 
       - type: javascript
         value: |
+          // The house signature is taught by the dedicated launchdarkly.md, so
+          // require the agent to have actually CONSUMED that file (a Read/Grep
+          // whose args reference a launchdarkly-named path) — an empty Glob of
+          // the standard patterns must not satisfy this check.
           const traj = output.trajectory || [];
           const vIdx = traj.findIndex(t => t.tool === 'recommend-flag');
           const scope = traj.slice(0, vIdx < 0 ? traj.length : vIdx);
-          const touched = scope.some(t => ['Read','Grep','Glob'].includes(t.tool) &&
-            /AGENTS\.md|CLAUDE\.md|\.launchdarkly\/|flagging|flag.*context/i.test(JSON.stringify(t.arguments||{})));
-          return { pass: touched, score: touched?1:0, reason: touched?'read the repo-context source':'never read any repo-context source' };
+          const readLD = scope.some(t => ['Read','Grep'].includes(t.tool) &&
+            /launchdarkly/i.test(JSON.stringify(t.arguments||{})));
+          return { pass: readLD, score: readLD?1:0, reason: readLD?'read the dedicated LaunchDarkly file':'never read the dedicated LaunchDarkly file' };
         metric: discovered_context
         weight: 2
 
@@ -1718,7 +1722,11 @@ tests:
   # ------------------------------------------------------------------
   # DISCOVERY 5 (agentic) — no-context control
   # A repo with NO flagging guidance anywhere (no AGENTS.md/CLAUDE.md, no
-  # .launchdarkly/, no flagging skill). The change is a clear-cut new
+  # .launchdarkly/, no repo flagging skill). The harness always installs the
+  # should-flag-change skill itself under .claude/skills/, which the `*flag*`
+  # discovery globs would match — but Step 2 tells the agent to exclude its
+  # own skill directory, so there is still no discoverable repo context. The
+  # change is a clear-cut new
   # ungated public endpoint, so the GENERIC framework alone yields
   # recommend: true. The point of this control is graceful fallback: the
   # agent must proceed generically and MUST NOT hallucinate a discovered
