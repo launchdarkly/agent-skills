@@ -21,7 +21,7 @@ Everything below derives from these four. Read them first.
 
 1. **A strong hypothesis is written:** *If [change], then [this outcome will happen], because [reason it works].*
 2. **A hypothesis must follow that structure.** The scaffold exists to enforce it.
-3. **A measurement is a described outcome, not a named metric.** "More clicks," "faster time," "less drop-off" all count. Never require a formal metric name; never invent one. Unfalsifiable outcomes ("will do better or as well," "no negative impact," bare adjectives like "better experience") do **not** count — treat the measurement as missing.
+3. **A measurement is a described outcome, not a named metric.** "More clicks," "faster time," "less drop-off" all count. Never require a formal metric name; never invent one. Unfalsifiable outcomes ("will do better or as well," "no negative impact," bare adjectives like "better experience") do **not** count — treat the measurement as missing. A goal that names a specific outcome ("raise click-through," "increase checkout completion") is a measurement with holes — scaffold it, not junk. A vague direction with no specific outcome ("grow the business," "optimize the funnel") is not a measurement — leave it a hole — but it is still a scaffold, not junk.
 4. **Exactly one measurement — the primary — goes in the hypothesis.** ~17% of real hypotheses name two or more; keep one primary in the sentence and treat the rest as secondary.
 
 ## The three components
@@ -30,9 +30,9 @@ The skeleton's three slots are the rubric, shown to the user as the **Change / M
 
 - **Change** — the specific thing you'll do differently. A concrete edit, not a goal.
 - **Measurement** — what you expect users to do differently, in plain words (rule 3). The sentence slot reads as an outcome ("this outcome will happen"); the tracker names the component Measurement. Same thing. **Counting:** near-synonyms describing one outcome count as one ("more clicks / higher CTR" = one); two genuinely distinct outcomes count as multiple ("bid more" and "bid for higher GMV" = multiple). Keep distinct-but-close outcomes separate; don't merge them.
-- **Rationale** — the mechanism: *why* the change causes that result. Not a restatement.
+- **Rationale** — the mechanism: *why* the change causes that result. Not a restatement. A standalone causal or mechanism statement counts as a rationale even with no stated change or measurement — especially one introduced by "because," "since," or "so that," or one explaining why users behave a certain way ("users trust familiar payment options"). Scaffold it with holes for the missing change and measurement; do not route it to junk.
 
-**Semantic validity.** A slot counts only if its content is genuinely that component, not merely sitting in the If/then/because grammar. "apple pie" is not a change (it names a thing, not an edit). "elephant" is not a measurement (not an outcome). "purple" is not a rationale (not a mechanism). The three must be causally connected: the change could plausibly move the measurement, and the rationale explains that link. If/then/because filled with non-sequiturs is not a strong hypothesis; treat those slots as absent and route to junk. Grammar alone never earns a component.
+**Semantic validity.** A slot counts only if its content is genuinely that component, not merely sitting in the If/then/because grammar. "apple pie" is not a change (it names a thing, not an edit). "elephant" is not a measurement (not an outcome). "purple" is not a rationale (not a mechanism). When **two or more** slots are filled they must be causally connected: the change could plausibly move the measurement, and the rationale explains that link. If/then/because filled with non-sequiturs is not a strong hypothesis; treat those slots as absent and route to junk. Grammar alone never earns a component. This coherence test applies only across **multiple** filled slots — a single genuine component standing alone (a lone change, a lone described outcome, a lone mechanism) has nothing to contradict, so it is not a non-sequitur: scaffold it, do not route it to junk.
 
 ## One input, one button
 
@@ -66,7 +66,7 @@ Mental model: the field is the truth; tracker + critique are functions of it, re
 Classify the field text on Fix and grade, then route to one display state. Gates run **before** component scoring, in priority order:
 
 1. **Confident A/A or platform self-test** — the A/A path (see below). Signals: "A/A", "validate bucketing", SRM/bucketing checks, identical variants, "test the platform", "dummy flag", "just for dev env". Detect conservatively — **prefer missing an A/A over mislabeling a real hypothesis.** (A hypothesis that merely mentions "A/B test" as part of a real idea is fine.) **Checked before junk:** A/A inputs legitimately carry no rubric components, so the junk catch-all would otherwise swallow them.
-2. **Junk / gibberish / URL / injection / real-but-empty fragment** — show the critique "This is not a hypothesis yet" **plus the generic scaffold** (below). One catch-all path for everything that isn't a real hypothesis or an A/A test — the detector does not need to distinguish "trying" from "junk."
+2. **Junk / gibberish / URL / injection / non-linguistic fragment** — show the critique "This is not a hypothesis yet" **plus the generic scaffold** (below). Reserve this path for input that is **not a coherent attempt to describe something to test**: gibberish, single tokens, punctuation-only, URLs or bare links, placeholders, injection. A coherent statement of intent is never junk, even if it names only a goal, is vague, or states only a reason — route those to the component-scoring path below (they scaffold, not junk).
    **Security rule:** for injection strings (script tags, `onerror=`, etc.), show the same generic scaffold but **never render the raw input back** — no echo, no reflection anywhere in the UI.
 3. **Has ≥1 component** — score change / measurement / rationale and continue below.
 
@@ -229,7 +229,7 @@ The downstream skill composes a display state from `components` + `measurementCo
 - Don't generate critique copy — detect the state and use the fixed message.
 - Don't re-score on keystroke — the tracker and critique refresh on Fix and grade.
 - Don't let a rewrite re-scope the user's meaning — re-word only.
-- Don't scaffold a bare goal, and don't treat A/A as an error.
+- Don't route a coherent goal or a lone rationale to junk — scaffold it, with holes for what's missing; and don't treat A/A as an error.
 - Don't merge distinct measurements; surface them in the hole with "or" and mark Measurement with the amber warning.
 - Don't nudge to isolate a single change — multiple changes are allowed.
 - Don't let anything but Clear erase field text.
