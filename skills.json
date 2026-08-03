@@ -339,6 +339,26 @@
       ]
     },
     {
+      "name": "launchdarkly-flag-qualitative-feedback-setup",
+      "description": "Integrate LaunchDarkly qualitative user feedback into a JavaScript/TypeScript codebase. Guides framework and design system detection, builds the sendFeedback utility and feedback widget matching existing project patterns. Use when the user wants to add a Give Feedback widget, collect user sentiment tied to feature flags, set up feedback collection, or wire up the $ld:feedback tracking event.",
+      "path": "skills/feature-flags/launchdarkly-flag-qualitative-feedback-setup",
+      "version": "1.0.0-experimental",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server",
+      "tags": [
+        "launchdarkly",
+        "feature-flags",
+        "feedback",
+        "qualitative-feedback",
+        "user-feedback",
+        "sentiment",
+        "sdk",
+        "javascript",
+        "react",
+        "mcp"
+      ]
+    },
+    {
       "name": "launchdarkly-flag-targeting",
       "description": "Control LaunchDarkly feature flag targeting including toggling flags on/off, percentage rollouts, targeting rules, individual targets, and copying flag configurations between environments. Use when the user wants to change who sees a flag, roll out to a percentage, add targeting rules, or promote config between environments.",
       "path": "skills/feature-flags/launchdarkly-flag-targeting",
