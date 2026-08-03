@@ -7,7 +7,6 @@
 description: "End-to-end evaluation of the launchdarkly-experiment-hypothesis-builder skill"
 
 prompts:
-  # A function prompt, not the raw SKILL.md — see prompt.js for why.
   - id: file://./prompt.js
     label: launchdarkly-experiment-hypothesis-builder
 
