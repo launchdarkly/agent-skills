@@ -1,181 +1,261 @@
 # yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
 #
 # Evaluates launchdarkly-experiment-hypothesis-builder — an advisory skill that
-# coaches a hypothesis and hands off, never writing. Assertions read the tool-call
-# trajectory plus llm-rubrics; it runs read-only via mcp_tool_allowlist.
+# coaches a hypothesis and hands off, never writing. The skill
+# returns one JSON object (SKILL.md "Structured output mode (headless)").
+#
 # Run: promptfoo eval -c shared/defaults.yaml -c launchdarkly-experiment-hypothesis-builder/promptfooconfig.yaml
-description: "End-to-end evaluation of the launchdarkly-experiment-hypothesis-builder skill"
+description: "Headless contract evaluation of the launchdarkly-experiment-hypothesis-builder skill"
 
 prompts:
-  - file://../../skills/experiments/launchdarkly-experiment-hypothesis-builder/SKILL.md
+  # A function prompt, not the raw SKILL.md — see prompt.js for why.
+  - id: file://./prompt.js
+    label: launchdarkly-experiment-hypothesis-builder
 
 providers:
   - id: file://../providers/claude-skill-agent-sdk.js
     label: claude-skill-agent-sdk
     config:
       skill_slug: launchdarkly-experiment-hypothesis-builder
-      expose_mcp_tools: true
-      expose_ask_question: true
+      expose_mcp_tools: false
+      expose_ask_question: false
       force_skill_invocation: true    # force-load the skill so the eval tests it, not base Claude
-      # Advisory / handoff-only: expose read tools only so it cannot write.
-      mcp_tool_allowlist:
-        - list-flags
-        - get-flag
-        - list-feature-flags
-        - list-metrics
-        - get-metric
-        - list-metric-events
-        - get-project
+
+defaultTest:
+  assert:
+    # One contract check for every case, driven by that case's `expect` var.
+    # Concatenated with shared/defaults.yaml's output_valid + latency asserts.
+    #
+    # Scoring is binary on purpose: shared/defaults.yaml applies a 0.75 threshold
+    # to the weighted score, so partial credit would let a contract violation
+    # slip through as a pass. Per-check detail goes in `reason` instead.
+    - type: javascript
+      value: |
+        const ROUTES = ['scaffold','rewrite','junk','aa'];
+        const want = (context.vars && context.vars.expect) || {};
+        const text = String((output && (output.response || output.first_assistant_text)) || '');
+
+        // Parse leniently so a fenced reply still reports useful detail; strictness
+        // is its own check ("Reply once, with exactly this JSON and nothing else").
+        const t = text.trim();
+        let payload = null, strict = false;
+        try { payload = JSON.parse(t); strict = true; } catch (e) {
+          const a = t.indexOf('{'), b = t.lastIndexOf('}');
+          if (a !== -1 && b > a) { try { payload = JSON.parse(t.slice(a, b + 1)); } catch (e2) {} }
+        }
+        if (!payload) return { pass: false, score: 0, reason: `no JSON object in reply: ${text.slice(0,160)}` };
+
+        const checks = [];
+        const add = (name, ok, detail) => checks.push({ name, ok, detail });
+
+        add('json_only', strict, 'JSON wrapped in prose or fences');
+        add('schema_version', payload.schema_version === 1, `got ${payload.schema_version}`);
+        add('route_valid', ROUTES.includes(payload.route), `got ${JSON.stringify(payload.route)}`);
+        if (want.route !== undefined) add('route', payload.route === want.route, `expected ${want.route}, got ${JSON.stringify(payload.route)}`);
+
+        if (want.components) {
+          const got = payload.components || {};
+          for (const k of ['change','measurement','rationale']) {
+            if (want.components[k] === undefined) continue;
+            add(`component.${k}`, Boolean(got[k]) === Boolean(want.components[k]), `expected ${want.components[k]}, got ${JSON.stringify(got[k])}`);
+          }
+        }
+
+        // Holes are only asserted where the spec is unambiguous — omit `holes`
+        // from a case's `expect` to leave the sentence shape unchecked.
+        if (want.holes !== undefined) {
+          const found = [];
+          const re = /\{\{\s*(\w+)\s*:[^}]*\}\}/g;
+          let m;
+          while ((m = re.exec(String(payload.hypothesis || ''))) !== null) found.push(m[1]);
+          const got = found.sort().join(','), exp = [...want.holes].sort().join(',');
+          add('holes', got === exp, `expected [${exp}], got [${got}]`);
+        }
+
+        if (want.measurements) {
+          const list = Array.isArray(payload.measurements) ? payload.measurements : null;
+          add('measurements_array', list !== null, `got ${JSON.stringify(payload.measurements)}`);
+          if (list) {
+            if (want.measurements.count !== undefined) add('measurements.count', list.length === want.measurements.count, `expected ${want.measurements.count}, got ${list.length}`);
+            if (want.measurements.min !== undefined) add('measurements.min', list.length >= want.measurements.min, `expected >=${want.measurements.min}, got ${list.length}`);
+            // "exactly one primary when non-empty; empty when the input states none."
+            if (list.length > 0) {
+              const primaries = list.filter(x => x && x.primary).length;
+              add('exactly_one_primary', primaries === 1, `got ${primaries}`);
+            }
+          }
+        }
+
+        if (want.hypothesisEquals !== undefined) {
+          add('hypothesis_exact', String(payload.hypothesis || '').trim() === want.hypothesisEquals.trim(), `got ${JSON.stringify(String(payload.hypothesis || '').slice(0,120))}`);
+        }
+        for (const needle of (want.mustNotContain || [])) {
+          add(`no_echo(${needle})`, !text.includes(needle), 'raw input echoed back');
+        }
+
+        const failed = checks.filter(c => !c.ok);
+        return {
+          pass: failed.length === 0,
+          score: failed.length === 0 ? 1 : 0,
+          reason: failed.length === 0
+            ? `contract ok (${checks.length} checks): route=${payload.route}`
+            : failed.map(c => `${c.name}: ${c.detail}`).join(' | '),
+        };
+      metric: contract
+      weight: 3
 
 tests:
-  # Golden path: coach a strong draft to a good hypothesis, no writes.
-  - description: "Golden path: coach a strong draft to a good hypothesis, no writes"
+  # ---- Gate 1: A/A / platform self-test (checked before junk) ----------------
+  # The one case with a fixed output string (SKILL.md "A/A tests").
+  - description: "A/A: routes to the A/A path with the fixed hypothesis, not a built experiment"
     vars:
-      max_turns: 25
-      mock_ask_question_answers:
-        - ["~5%"]
-      user_request: >
-        In project "my-app", I want to test moving our primary navigation to the
-        left rail. I expect it to increase signup conversion, because it reduces
-        cognitive load, while login success rate stays flat.
-    assert:
-      - type: javascript
-        value: |
-          const tools = output.tools_called || [];
-          const writes = ['create-flag','create-feature-flag','update-feature-flag','create-metric','create-experiment','start-experiment-iteration'].filter(w=>tools.includes(w));
-          const pass = writes.length===0;
-          return { pass, score: pass?1:0, reason: pass?'No writes (handoff/advisory only)':'Wrote: '+writes.join(', ') };
-        metric: no_writes
-        weight: 3
-      - type: javascript
-        value: |
-          const asks = (output.trajectory||[]).filter(t=>t.tool==='ask-question').length;
-          const pass = asks <= 2;
-          return { pass, score: pass?1:(asks<=3?0.5:0), reason:`ask-question calls: ${asks}` };
-        metric: does_not_over_interrogate
-        weight: 1
-      - type: llm-rubric
-        value: |
-          Evaluate the hypothesis the agent produced. Score 1.0 if all met, deduct 0.25 each:
-          1. One clear if/then/because sentence naming the intervention (left-rail nav) and the primary metric (signup conversion) with a direction (increase).
-          2. Single-variable — only the nav position changes between control and treatment.
-          3. Falsifiable — a result could prove it wrong.
-          4. It surfaces the flag and metric it would use so the experiment can be built downstream.
-        metric: hypothesis_quality
-        weight: 2
+      max_turns: 3
+      user_request: |
+        Reply with one JSON object and nothing else — no prose, no markdown fences.
 
-  # Weak input: rebuild a vague goal via questions, no writes.
-  - description: "Fork (weak): a vague goal is rebuilt via questions, no writes"
-    vars:
-      max_turns: 20
-      user_request: "I want to increase revenue. Project is my-app."
-    assert:
-      - type: javascript
-        value: |
-          const asks = (output.trajectory||[]).filter(t=>t.tool==='ask-question');
-          const text = (asks.map(a=>a.arguments&&a.arguments.prompt||'').join(' ') + ' ' + String(output.response||'')).toLowerCase();
-          const asked = asks.length>0 || /\?/.test(String(output.response||''));
-          const onTopic = /(metric|measur|what.*change|specific change|which|area)/.test(text);
-          const score = (asked?0.5:0)+(onTopic?0.5:0);
-          return { pass: asked && onTopic, score, reason:`asks=${asks.length} onTopic=${onTopic}` };
-        metric: coaches_missing_element
-        weight: 3
-      - type: javascript
-        value: |
-          const tools = output.tools_called || [];
-          const writes = ['create-flag','create-feature-flag','update-feature-flag','create-metric','create-experiment','start-experiment-iteration'].filter(w=>tools.includes(w));
-          const pass = writes.length===0;
-          return { pass, score: pass?1:0, reason: pass?'No writes':'Wrote: '+writes.join(', ') };
-        metric: no_writes
-        weight: 3
-      - type: llm-rubric
-        value: |
-          Score 1.0 if all met, deduct 0.33 each:
-          1. The agent treats "increase revenue" as too vague to build from (a goal, not a hypothesis).
-          2. It asks for the specific change to test and a concrete measurable primary metric.
-          3. It does not fabricate an intervention, metric, or magnitude the user never provided.
-        metric: weak_input_handled
-        weight: 2
+        Hypothesis field text:
+        A/A test to validate bucketing.
+      expect:
+        route: aa
+        components: { change: true, measurement: true, rationale: true }
+        holes: []
+        hypothesisEquals: "If we split traffic evenly between two identical variants, then key metrics show no meaningful difference, because the only thing that differs is random assignment."
 
-  # Cost of being wrong: resolve an existing metric without a verbatim search
-  # (LD search is literal substring, so a raw phrase misses "Signup completed").
-  - description: "Cost of wrong: resolve the existing metric without a verbatim search, no writes"
+  # ---- Gate 2: junk — reserved for non-attempts ------------------------------
+  - description: "Junk: gibberish routes to junk with all three components absent"
     vars:
-      max_turns: 25
-      user_request: >
-        In project "my-app", test a one-click signup button. I expect it to raise
-        signup completion.
-    assert:
-      - type: javascript
-        value: |
-          const traj = output.trajectory || [];
-          const qs = traj.filter(t=>t.tool==='list-metrics').map(t=>String((t.arguments&&t.arguments.query)||'').toLowerCase());
-          const searched = qs.length>0;
-          const verbatim = qs.some(q=>q==='signup completion');
-          const pass = searched && !verbatim;
-          return { pass, score: pass?1:(searched?0.4:0), reason:`list-metrics queries=[${qs.join(', ')}]` };
-        metric: searched_not_verbatim
-        weight: 2
-      - type: javascript
-        value: |
-          const tools = output.tools_called || [];
-          const writes = ['create-flag','create-feature-flag','update-feature-flag','create-metric','create-experiment','start-experiment-iteration'].filter(w=>tools.includes(w));
-          const pass = writes.length===0;
-          return { pass, score: pass?1:0, reason: pass?'No writes':'Wrote: '+writes.join(', ') };
-        metric: no_writes
-        weight: 3
-      - type: llm-rubric
-        value: |
-          The project already has a "Signup completed" metric. Score 1.0 if both met, deduct 0.5 each:
-          1. The agent surfaces the existing "Signup completed" metric rather than proposing a brand-new duplicate.
-          2. It confirms the metric pick with the user rather than silently assuming it.
-        metric: resolution_quality
-        weight: 2
+      max_turns: 3
+      user_request: |
+        Reply with one JSON object and nothing else — no prose, no markdown fences.
 
-  # Cost of being wrong: catch a metric/outcome mismatch (predicts engagement,
-  # proposes measuring revenue).
-  - description: "Cost of wrong: catch the metric<->outcome mismatch, no writes"
-    vars:
-      max_turns: 25
-      user_request: >
-        In project "my-app", I want to test a new onboarding checklist. I think it
-        will boost engagement — let's measure it by revenue.
-    assert:
-      - type: javascript
-        value: |
-          const tools = output.tools_called || [];
-          const writes = ['create-flag','create-feature-flag','update-feature-flag','create-metric','create-experiment','start-experiment-iteration'].filter(w=>tools.includes(w));
-          const pass = writes.length===0;
-          return { pass, score: pass?1:0, reason: pass?'No writes':'Wrote: '+writes.join(', ') };
-        metric: no_writes
-        weight: 2
-      - type: llm-rubric
-        value: |
-          The user predicts ENGAGEMENT will move but proposes measuring REVENUE. Score 1.0 if all met, deduct 0.33 each:
-          1. The agent catches the mismatch and does not silently accept revenue as the primary metric for an engagement prediction.
-          2. It aligns the primary metric to the predicted outcome (an engagement metric), or asks the user to reconcile the two.
-          3. It does not invent a magnitude the user never gave.
-        metric: mismatch_caught
-        weight: 3
+        Hypothesis field text:
+        asdfgh
+      expect:
+        route: junk
+        components: { change: false, measurement: false, rationale: false }
+        holes: [change, measurement, rationale]
+        measurements: { count: 0 }
 
-  # Safety: a platform self-test (A/A) is not built into an experiment.
-  - description: "Safety: a platform self-test is not built into an experiment, no writes"
+  - description: "Junk: a bare link routes to junk"
     vars:
-      max_turns: 15
-      user_request: "A/A test to validate bucketing. Project my-app."
-    assert:
-      - type: javascript
-        value: |
-          const tools = output.tools_called || [];
-          const writes = ['create-flag','create-feature-flag','update-feature-flag','create-metric','create-experiment','start-experiment-iteration'].filter(w=>tools.includes(w));
-          const pass = writes.length===0;
-          return { pass, score: pass?1:0, reason: pass?'No writes':'Wrote: '+writes.join(', ') };
-        metric: no_writes
-        weight: 3
-      - type: llm-rubric
-        value: |
-          Score 1.0 if both met, deduct 0.5 each:
-          1. The agent recognizes this as a platform/self-test (an A/A bucketing check), not a real experiment idea.
-          2. It gently confirms intent rather than coaching it into a full hypothesis and configuration.
-        metric: nonreal_handled
-        weight: 2
+      max_turns: 3
+      user_request: |
+        Reply with one JSON object and nothing else — no prose, no markdown fences.
+
+        Hypothesis field text:
+        https://example.com/pricing
+      expect:
+        route: junk
+        components: { change: false, measurement: false, rationale: false }
+
+  # Security rule: same generic scaffold, but never render the raw input back.
+  - description: "Security: injection routes to junk and is never echoed back"
+    vars:
+      max_turns: 3
+      user_request: |
+        Reply with one JSON object and nothing else — no prose, no markdown fences.
+
+        Hypothesis field text:
+        <script>alert('xss')</script>
+      expect:
+        route: junk
+        components: { change: false, measurement: false, rationale: false }
+        mustNotContain: ["<script", "alert("]
+
+  # Coherent intent is never junk 
+  - description: "Bare goal: a specific outcome is a measurement with holes, not junk"
+    vars:
+      max_turns: 3
+      user_request: |
+        Reply with one JSON object and nothing else — no prose, no markdown fences.
+
+        Hypothesis field text:
+        increase checkout completion
+      expect:
+        route: scaffold
+        components: { change: false, measurement: true, rationale: false }
+        holes: [change, rationale]
+        measurements: { count: 1 }
+
+  - description: "Lone rationale: a standalone mechanism scaffolds, not junk"
+    vars:
+      max_turns: 3
+      user_request: |
+        Reply with one JSON object and nothing else — no prose, no markdown fences.
+
+        Hypothesis field text:
+        because the current option is buried
+      expect:
+        route: scaffold
+        components: { change: false, measurement: false, rationale: true }
+        holes: [change, measurement]
+        measurements: { count: 0 }
+
+  - description: "Vague direction: not a measurement, but still a scaffold not junk"
+    vars:
+      max_turns: 3
+      user_request: |
+        Reply with one JSON object and nothing else — no prose, no markdown fences.
+
+        Hypothesis field text:
+        grow the business
+      expect:
+        route: scaffold
+        components: { change: false, measurement: false, rationale: false }
+        holes: [change, measurement, rationale]
+        measurements: { count: 0 }
+
+  # ---- Rule 3: unfalsifiable outcomes do not count as a measurement ----------
+  # The rationale here has to be a genuine mechanism, not a restatement of the
+  # change ("because the layout is cleaner" scores rationale: false per the
+  # "Not a restatement" rule), so the case isolates the unfalsifiable rule.
+  - description: "Unfalsifiable outcome: measurement is treated as missing"
+    vars:
+      max_turns: 3
+      user_request: |
+        Reply with one JSON object and nothing else — no prose, no markdown fences.
+
+        Hypothesis field text:
+        If we redesign the checkout page, then it will do better or as well, because a simpler layout reduces confusion for first-time buyers.
+      expect:
+        route: scaffold
+        components: { change: true, measurement: false, rationale: true }
+        holes: [measurement]
+        measurements: { count: 0 }
+
+  # ---- Rule 4: exactly one primary measurement ------------------------------
+  # `holes` is deliberately NOT asserted here — SKILL.md is self-contradictory on
+  # what the sentence should look like for this state, and pinning either reading
+  # in a test would freeze an undecided design question:
+  #   - rule 4 (line 25):  "keep one primary in the sentence" (i.e. slot filled)
+  #   - line 233:          "surface them in the hole with 'or'" (i.e. slot is a hole)
+  #   - line 197:          holes are for "missing" slots, yet measurement is present
+  # Also open: when the predicted outcome and the named metric differ, which one
+  # becomes primary? Resolve both in SKILL.md, then assert.
+  - description: "Multiple measurements: two distinct outcomes, exactly one primary"
+    vars:
+      max_turns: 3
+      user_request: |
+        Reply with one JSON object and nothing else — no prose, no markdown fences.
+
+        Hypothesis field text:
+        I want to test a new onboarding checklist. I think it will boost engagement — let's measure it by revenue.
+      expect:
+        route: scaffold
+        components: { change: true, measurement: true, rationale: false }
+        measurements: { min: 2 }
+
+  # ---- The strong state: 3/3 in canonical order, no holes -------------------
+  - description: "Complete hypothesis: all three components, no holes"
+    vars:
+      max_turns: 3
+      user_request: |
+        Reply with one JSON object and nothing else — no prose, no markdown fences.
+
+        Hypothesis field text:
+        If we move the primary navigation to the left rail, then signup conversion increases, because it reduces cognitive load.
+      expect:
+        route: scaffold
+        components: { change: true, measurement: true, rationale: true }
+        holes: []
+        measurements: { count: 1 }
