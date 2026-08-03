@@ -1,5 +1,5 @@
 ---
-name: launchdarkly-experiment-hypothesis-assistant
+name: launchdarkly-experiment-hypothesis-builder
 description: "Help a user turn a rough idea into a strong, testable experiment hypothesis, or critique one they wrote. Detects which parts of the hypothesis are present, scaffolds an If/then/because sentence with holes for what's missing, and shows a fixed critique message. Use when a user is starting an experiment or sharpening a hypothesis. Does NOT resolve flags or metrics, build experiment config, or write to LaunchDarkly."
 compatibility: Read-only LaunchDarkly lookups only. Hands off to launchdarkly-experiment-setup for build.
 license: Apache-2.0
@@ -205,7 +205,7 @@ When the user is satisfied, emit this and stop. Resolve nothing against the cata
 
 ```json
 {
-  "handoffFrom": "launchdarkly-experiment-hypothesis-assistant",
+  "handoffFrom": "launchdarkly-experiment-hypothesis-builder",
   "hypothesis": "polished single sentence",
   "change": "what changes, in plain words (may be more than one)",
   "primaryMeasurement": "the described outcome, in the user's words",
