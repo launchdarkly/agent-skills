@@ -7,9 +7,10 @@
 # change (a <git_diff> block, optionally plus surrounding source), it decides
 # whether the change should ship behind a LaunchDarkly feature flag and ends by
 # calling the `recommend-flag` tool with { recommend, verdict, confidence, reasons }.
-# `verdict` is the finer taxonomy signal — suggested / already-flagged / not-suited —
-# and the `verdict_taxonomy` assertions below check that already-flagged (protected by
-# an existing/ancestor gate) stays distinct from not-suited (nothing to flag).
+# `verdict` is the finer taxonomy signal — suggested / reuse-existing / already-flagged /
+# not-suited — and the `verdict_taxonomy` assertions below check that reuse-existing (gate
+# behind an existing flag that already covers this feature) and already-flagged (protected
+# by an existing/ancestor gate) stay distinct from not-suited (nothing to flag).
 # It must NEVER create, toggle, or modify a flag.
 #
 # Two-tier evaluation, expressed as two labeled providers. Each fixture targets
@@ -553,11 +554,13 @@ tests:
           const a = call.arguments || {};
           const hasReasons = Array.isArray(a.reasons) && a.reasons.length > 0;
           const validConf = ['low','medium','high'].includes(a.confidence);
-          // verdict is optional but, when present, must be one of the three enum values
-          // and must agree with the recommend boolean (suggested <-> true).
+          // verdict is optional but, when present, must be one of the enum values and
+          // must agree with the recommend boolean: the flag-warranted verdicts
+          // (suggested = a new flag, reuse-existing = reuse an existing one) map to
+          // recommend true; already-flagged / not-suited map to recommend false.
           const verdictOk = a.verdict === undefined
-            || (['suggested','already-flagged','not-suited'].includes(a.verdict)
-                && (a.verdict === 'suggested') === (a.recommend === true));
+            || (['suggested','reuse-existing','already-flagged','not-suited'].includes(a.verdict)
+                && (['suggested','reuse-existing'].includes(a.verdict)) === (a.recommend === true));
           const pass = typeof a.recommend === 'boolean' && hasReasons && validConf && verdictOk;
           return { pass, score: pass ? 1 : 0, reason: `recommend=${a.recommend} verdict=${a.verdict} confidence=${a.confidence} reasons=${(a.reasons||[]).length}` };
         metric: emitted_structured_verdict
@@ -2045,3 +2048,156 @@ tests:
           Deduct 0.34 per criterion missed.
         metric: context_attributed
         weight: 2
+
+  # ==================================================================
+  # REUSE EXISTING FLAG (agentic) — EMSR-1927 regression, from gonfalon
+  # PR #68384. A new surface (a RoleBuilder approval-bypass disclaimer)
+  # is added UNGUARDED, but it belongs to the adaptive-triggers feature,
+  # which is not yet released and is already gated by the existing
+  # `enable-adaptive-triggers-for-flags` flag — a sibling hunk (the
+  # backend ignoreApprovals change) plus nearby code (the add-trigger
+  # modal shell) and the dogfood-flags module all show it. The agent
+  # should explore, recognize the change is part of that already-flagged
+  # feature, and recommend REUSING the existing key rather than proposing
+  # a brand-new flag (the original factory miss this ticket fixes).
+  # ==================================================================
+  - description: "Reuse existing flag: new surface on an already-gated, unreleased feature — reuse the existing key, don't propose a new flag"
+    providers: ["agentic"]
+    vars:
+      user_request: >
+        This PR is up for review. Should the change be behind a LaunchDarkly
+        feature flag? Read the diff and the surrounding code, then give your
+        recommendation.
+      git_diff: |
+        diff --git a/internal/adaptive_triggers/composer/transformation.go b/internal/adaptive_triggers/composer/transformation.go
+        index 1a2b3c4..5d6e7f8 100644
+        --- a/internal/adaptive_triggers/composer/transformation.go
+        +++ b/internal/adaptive_triggers/composer/transformation.go
+        @@ -117,6 +117,9 @@ func buildComposerActionTasks(task TriggerTask) []ActionTask {
+                 ActionConfig: ActionConfig{
+                   Params: map[string]any{
+        +            // Adaptive triggers pre-authorize the change at creation time, so it
+        +            // applies without going through approvals when Composer executes.
+        +            "ignoreApprovals": true,
+                   },
+                 },
+        diff --git a/static/components/RoleBuilder/StatementBuilderBody.tsx b/static/components/RoleBuilder/StatementBuilderBody.tsx
+        index 2c1d3e4..7a8b9c0 100644
+        --- a/static/components/RoleBuilder/StatementBuilderBody.tsx
+        +++ b/static/components/RoleBuilder/StatementBuilderBody.tsx
+        @@ -38,9 +38,11 @@ export function StatementBuilderBody({ statement }: Props) {
+           const allowsTriggerActions =
+             statement.effect === 'allow' &&
+             (statement.actions.includes('createTriggers') || statement.actions.includes('updateTriggers'));
+        +  const showTriggerApprovalBypassDisclaimer = allowsTriggerActions;
+           return (
+             <div className="statement-builder-body">
+        +      {showTriggerApprovalBypassDisclaimer && <TriggerApprovalBypassDisclaimer />}
+               {/* existing statement rows */}
+             </div>
+           );
+         }
+      mock_files:
+        "packages/dogfood-flags/src/dogfood-flags.ts": |
+          import { createFlagFunction } from './create-flag-function';
+
+          // Adaptive Triggers — not yet launched; every flag defaults OFF.
+          export const enableAdaptiveTriggersBe = createFlagFunction('enable-adaptive-triggers-be', false);
+          export const enableAdaptiveTriggersForFlags = createFlagFunction('enable-adaptive-triggers-for-flags', false);
+          export const enableAdaptiveTriggersForAiConfigs = createFlagFunction('enable-adaptive-triggers-for-ai-configs', false);
+        "packages/flag-targeting/src/adaptive-triggers/AddTriggerModalShell.tsx": |
+          import { enableAdaptiveTriggersForFlags } from '@gonfalon/dogfood-flags';
+          import { TriggerApprovalBypassDisclaimer } from './TriggerApprovalBypassDisclaimer';
+
+          // The whole adaptive-triggers modal is gated by the existing feature flag;
+          // it renders nothing until enable-adaptive-triggers-for-flags is on.
+          export function AddTriggerModalShell(props: Props) {
+            if (!enableAdaptiveTriggersForFlags()) {
+              return null;
+            }
+            return (
+              <Modal>
+                <TriggerApprovalBypassDisclaimer />
+                {/* trigger form */}
+              </Modal>
+            );
+          }
+        "static/components/RoleBuilder/StatementBuilderBody.tsx": |
+          import { TriggerApprovalBypassDisclaimer } from '@gonfalon/flag-targeting/adaptive-triggers/TriggerApprovalBypassDisclaimer';
+
+          // RoleBuilder statement editor. The approval-bypass disclaimer added here is
+          // NOT itself behind a feature flag — it is gated only by the RBAC action check.
+          export function StatementBuilderBody({ statement }: Props) {
+            const allowsTriggerActions =
+              statement.effect === 'allow' &&
+              (statement.actions.includes('createTriggers') || statement.actions.includes('updateTriggers'));
+            const showTriggerApprovalBypassDisclaimer = allowsTriggerActions;
+            return (
+              <div className="statement-builder-body">
+                {showTriggerApprovalBypassDisclaimer && <TriggerApprovalBypassDisclaimer />}
+                {/* existing statement rows */}
+              </div>
+            );
+          }
+    assert:
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const call = traj.find(t => t.tool === 'recommend-flag');
+          if (!call) return { pass: false, score: 0, reason: 'No recommend-flag verdict emitted' };
+          const a = call.arguments || {};
+          const pass = a.recommend === true;
+          return { pass, score: pass ? 1 : 0, reason: `recommend=${a.recommend} confidence=${a.confidence}` };
+        metric: verdict_match
+        weight: 4
+
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const vIdx = traj.findIndex(t => t.tool === 'recommend-flag');
+          const scope = traj.slice(0, vIdx < 0 ? traj.length : vIdx);
+          const reads = scope.filter(t => ['Read','Grep','Glob'].includes(t.tool));
+          const pass = reads.length > 0;
+          return { pass, score: pass ? 1 : 0, reason: `explore calls before verdict: ${reads.length}` };
+        metric: explored_before_deciding
+        weight: 2
+
+      - type: javascript
+        value: |
+          const tools = output.tools_called || [];
+          const forbidden = ['create-flag','create-feature-flag','update-flag-settings','update-feature-flag','toggle-flag','delete-flag'];
+          const called = forbidden.filter(f => tools.includes(f));
+          const pass = called.length === 0;
+          return { pass, score: pass ? 1 : 0, reason: pass ? 'stayed advisory' : 'called mutating tools: ' + called.join(', ') };
+        metric: stayed_advisory
+        weight: 2
+
+      - type: javascript
+        value: |
+          const traj = output.trajectory || [];
+          const call = traj.find(t => t.tool === 'recommend-flag');
+          const a = (call && call.arguments) || {};
+          const key = (a.reuse_flag_key || '') + ' ' + (Array.isArray(a.reasons) ? a.reasons.join(' ') : '');
+          const pass = a.verdict === 'reuse-existing' && /enable-adaptive-triggers-for-flags/.test(key);
+          return { pass, score: pass ? 1 : 0, reason: `verdict=${a.verdict} reuse_flag_key=${a.reuse_flag_key}` };
+        metric: verdict_taxonomy
+        weight: 3
+
+      - type: llm-rubric
+        value: |
+          The diff adds a NEW, unguarded surface — a TriggerApprovalBypassDisclaimer in
+          the RoleBuilder StatementBuilderBody — plus a backend `ignoreApprovals` change
+          in the adaptive_triggers package. That feature (adaptive triggers) is NOT yet
+          launched and is already gated by the existing `enable-adaptive-triggers-for-flags`
+          flag: the AddTriggerModalShell renders the same disclaimer only when
+          enableAdaptiveTriggersForFlags() is on, and dogfood-flags.ts shows the key
+          defaulting off. The correct call is to REUSE that existing flag, not create a new one.
+          Score 1.0 only if ALL hold:
+          1. It recommended a flag (recommend: true) with verdict `reuse-existing`.
+          2. It named `enable-adaptive-triggers-for-flags` as the flag to reuse (in
+             reuse_flag_key and/or reasons), citing the sibling modal / dogfood-flags evidence
+             it found — and did NOT propose a brand-new flag as the primary recommendation.
+          3. It stayed advisory (no flag created or modified).
+          Deduct 0.34 per criterion missed. Score 0 if it proposes a new flag instead of reuse.
+        metric: rationale_quality
+        weight: 3

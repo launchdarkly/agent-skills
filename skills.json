@@ -476,7 +476,7 @@
       "name": "should-flag-change",
       "description": "Decide whether a given code change should be placed behind a LaunchDarkly feature flag. Use when a developer asks whether a change should be behind a flag, when reviewing a diff or pull request, or when running in CI on a PR. Reads the diff and surrounding code, then emits a structured advisory recommendation. Read-only: it never creates or modifies flags.",
       "path": "skills/feature-flags/should-flag-change",
-      "version": "0.3.0-experimental",
+      "version": "0.4.0-experimental",
       "license": "Apache-2.0",
       "compatibility": "Advisory and read-only. Works on all platforms. Does NOT require the LaunchDarkly MCP server. Reads code with standard file tools (Read/Grep/Glob) and returns a structured verdict via the `recommend-flag` tool.",
       "tags": [

@@ -5,7 +5,7 @@ license: Apache-2.0
 compatibility: "Advisory and read-only. Works on all platforms. Does NOT require the LaunchDarkly MCP server. Reads code with standard file tools (Read/Grep/Glob) and returns a structured verdict via the `recommend-flag` tool."
 metadata:
   author: launchdarkly
-  version: "0.3.0-experimental"
+  version: "0.4.0-experimental"
 ---
 
 # Should This Change Be Behind a Flag?
@@ -71,9 +71,10 @@ Before deciding, use `Read`, `Grep`, and `Glob` to answer the questions the diff
 1. **Call sites and blast radius.** Grep for the changed function/endpoint. How many callers? Is it on a hot or critical path?
 2. **Existing flag conventions.** Does this codebase already gate similar changes behind flags? Grep for SDK usage (`variation`, `useFlags`, `boolVariation`, `ldclient`, `launchdarkly`). A change that mirrors an already-flagged pattern is a strong signal. If the discovered repo context lists this repo's own flag-SDK signatures, prefer those over the generic terms.
 3. **Ancestor gate — is it already behind a flag?** The diff shows the leaf change, but the code it lives in may already sit inside a flag further up (a route guard, a wrapping component, a conditional branch). Walk up from the changed lines to the nearest enclosing flag check. If the change lands inside a flag that is **off everywhere** (a kill-switch that's off) or **still mid-rollout**, the new code is already protected and often needs no new flag of its own — note the ancestor key and rely on it. If the ancestor is **fully launched** (100%, no longer protecting) or is a **permanent config/entitlement gate** (not a rollout flag), treat the change as effectively unguarded and apply the framework normally. If you can't resolve the ancestor's rollout state from what's in front of you, say so and lower confidence.
-4. **Migration state.** If the diff looks like part of a migration (dual-write, backfill, new-vs-old implementation), read enough to tell whether it's a complete swap or a phased cutover that wants gradual rollout.
-5. **Safety of the change.** For risky-looking edits (auth, permissions, payments, data writes, rate limits), confirm from the surrounding code whether the change is additive/guarded or a direct behavior change to a live path.
-6. **Dependencies on other features.** Check whether the new path calls into a capability that itself looks flag-gated or not yet released. If this change must not go live before that parent capability, note the dependency in your reasons — it's a reason to flag (so the two releases can be coupled via a prerequisite).
+4. **Existing flag to reuse — is this part of an already-flagged feature?** Distinct from the ancestor gate (item 3): even when the changed lines have *no* enclosing flag, the change may add to a larger, not-yet-released feature that other code *already* gates behind an existing flag. Before concluding a **new** flag is needed, hunt for one to **reuse** — scan **sibling hunks in this same diff** for flag evaluations (`enableX()`, `variation(...)`, `useFlags`, `boolVariation`, dogfood-flag imports, or this repo's discovered SDK signatures); grep the **adjacent / enclosing feature code** (the module, parent component, route, or subservice the change lives in) for the flag that gates the surrounding feature; and grep the repo's **flag definitions** (`flag_defs`/`dogfood-flags`) for a key naming this feature. A diff that adds an unguarded surface in one file while a sibling hunk or nearby file guards the same feature behind a flag is almost certainly one feature. If a flag (a) gates this same unreleased feature and (b) safely covers this change's risk, prefer **reusing** it — emit `verdict: reuse-existing` with `reuse_flag_key`. Propose a **new** flag only when no existing flag fits, or the change is a genuinely separable release with its own rollout or ownership — and say which in your reasons.
+5. **Migration state.** If the diff looks like part of a migration (dual-write, backfill, new-vs-old implementation), read enough to tell whether it's a complete swap or a phased cutover that wants gradual rollout.
+6. **Safety of the change.** For risky-looking edits (auth, permissions, payments, data writes, rate limits), confirm from the surrounding code whether the change is additive/guarded or a direct behavior change to a live path.
+7. **Dependencies on other features.** Check whether the new path calls into a capability that itself looks flag-gated or not yet released. If this change must not go live before that parent capability, note the dependency in your reasons — it's a reason to flag (so the two releases can be coupled via a prerequisite).
 
 Skip exploration only when the change is unambiguous on its face (e.g. a docs-only or test-only diff) — and say so in your reasons.
 
@@ -132,7 +133,8 @@ End by calling the **`recommend-flag`** tool exactly once, with your structured 
 ```
 recommend-flag({
   recommend: boolean,            // true = should be behind a flag
-  verdict: "suggested" | "already-flagged" | "not-suited",  // the specific outcome; see below
+  verdict: "suggested" | "reuse-existing" | "already-flagged" | "not-suited",  // the specific outcome; see below
+  reuse_flag_key: "string",      // set ONLY with verdict "reuse-existing": the existing flag key to gate this change behind
   confidence: "low" | "medium" | "high",
   risk: "low" | "medium" | "high",  // optional: blast radius / severity of the change itself
   reasons: [                     // concise, evidence-based; each cites a file/behavior
@@ -146,7 +148,7 @@ Rules for the verdict:
 
 - **Call the tool exactly once, as the final step.** Do not call it before you've explored.
 - **`reasons` must be specific and evidence-based.** Reference the files, symbols, or behaviors you actually observed. Avoid generic statements like "this is risky."
-- **Set `verdict` to the specific outcome — keep `already-flagged` distinct from `not-suited`.** `recommend: true` always pairs with `verdict: "suggested"`. `recommend: false` splits into two outcomes that must not be collapsed into one "no flag" bucket:
+- **Set `verdict` to the specific outcome — keep `reuse-existing`, `already-flagged`, and `not-suited` distinct.** `recommend: true` pairs with `verdict: "suggested"` (propose a *new* flag) or `verdict: "reuse-existing"` when an existing flag already gates this same unreleased feature and should be **reused** instead — set `reuse_flag_key` to that key and cite the sibling hunk / adjacent file that evaluates it in `reasons`. `recommend: false` splits into two outcomes that must not be collapsed into one "no flag" bucket:
   - `already-flagged` — the change is *already protected*: it ships behind a flag check in the diff, or it lives inside an off / mid-rollout ancestor gate. There **is** a flag; it just isn't a *new* one. Name the flag key (and, for an ancestor, its rollout state) in `reasons`.
   - `not-suited` — there is *genuinely nothing to flag*: a pure refactor, docs/comments, tests, dependency bump, or build/CI/tooling change with no user-observable behavior change.
 
@@ -164,6 +166,7 @@ If the `recommend-flag` tool is not available in your environment, emit the exac
 | Diff is empty or only whitespace | `recommend: false`, `verdict: not-suited`, `confidence: high`, reason noting no behavioral change |
 | Diff mixes a refactor with a real behavior change | Judge on the behavior change; recommend a flag if that part warrants it (`verdict: suggested`), and say which part drove the verdict |
 | Change is already behind a flag — in the diff, or an ancestor gate that's off/mid-rollout | `recommend: false`, `verdict: already-flagged`; name the flag key and, for an ancestor, its rollout state. If the ancestor is fully launched or a permanent config gate, it isn't protecting this change — judge normally (likely `verdict: suggested`). |
+| Change adds a new surface to a feature that other hunks / nearby code already gate behind an existing flag | `recommend: true`, `verdict: reuse-existing`; set `reuse_flag_key` and cite the hunk/file that evaluates it. Propose a *new* flag instead only if this change is a separable release with its own rollout/ownership. |
 | You can't read the surrounding code (no repo access, ad hoc snippet) | Decide from the diff alone; lower `confidence` and say exploration was unavailable |
 | The change is a hotfix / revert | Usually `recommend: false` unless it re-introduces a risky path; explain |
 
@@ -175,4 +178,5 @@ If the `recommend-flag` tool is not available in your environment, emit the exac
 - **Don't be vague.** "Might be risky" is not a reason; "changes the auth fallthrough in `middleware/auth.ts:42` which every route depends on" is.
 - **Don't skip the `recommend-flag` call.** Prose without the structured verdict is not a usable result.
 - **Don't collapse `already-flagged` into `not-suited`.** A change protected by an ancestor gate is *covered*, not *nothing to flag* — record the two distinctly.
+- **Don't propose a *new* flag when an existing one already gates this feature.** If a sibling hunk or nearby code evaluates a flag that safely covers the change, reuse it (`verdict: reuse-existing`, `reuse_flag_key`) rather than creating a duplicate.
 - **Don't over-flag trivial changes.** Recommending a flag for a README edit erodes trust in the recommendation.
