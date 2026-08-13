@@ -165,11 +165,11 @@
     },
     {
       "name": "launchdarkly-experiment-hypothesis-builder",
-      "description": "Help a user craft a strong, testable LaunchDarkly experiment hypothesis and extract the structured fields (intervention, primary metric + direction, expected effect, guardrails, audience) needed to auto-scaffold the rest of the experiment. Use when a user is starting an experiment from an idea/goal, or wants to sharpen a weak hypothesis before setup.",
+      "description": "Scores an experiment hypothesis draft against the Change / Measurement / Rationale rubric and scaffolds an If/then/because sentence with fill-in holes for what is missing, returning structured JSON for the experiment setup UI in gonfalon. Detects junk input, A/A tests, and multiple measurements. Use when the request comes from the experiment builder's hypothesis assist (the `experiment_hypothesis_builder_assist` entry point). Never generates critique copy and never writes to LaunchDarkly.",
       "path": "skills/experiments/launchdarkly-experiment-hypothesis-builder",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "license": "Apache-2.0",
-      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server. Pairs with launchdarkly-experiment-setup, which it hands off to."
+      "compatibility": "Requires no tools. Returns JSON only, for the experiment builder's hypothesis assist entry point."
     },
     {
       "name": "launchdarkly-experiment-setup",
