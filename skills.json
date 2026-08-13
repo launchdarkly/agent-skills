@@ -93,6 +93,14 @@
       "license": "Apache-2.0"
     },
     {
+      "name": "alert-investigation",
+      "description": "Investigates a triggered observability alert and returns a structured diagnosis with likely cause, scope, and next steps.",
+      "path": "skills/observability/alert-investigation",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
+    },
+    {
       "name": "apply",
       "description": "Apply LaunchDarkly SDK onboarding: install dependency (or dual-SDK pair), configure env and secrets with consent, add init at entrypoint(s), verify compile. Nested under sdk-install; next is run.",
       "path": "skills/onboarding/sdk-install/apply",
@@ -140,6 +148,22 @@
       "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
     },
     {
+      "name": "create-fix-pr",
+      "description": "Investigates a root cause and files a minimal fix PR for a reported bug or observability finding.",
+      "path": "skills/observability/create-fix-pr",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires git and the GitHub CLI (gh); pairs with the investigate skill"
+    },
+    {
+      "name": "create-graph",
+      "description": "Creates observability dashboards and graphs from logs, traces, errors, sessions, metrics, and events data by previewing charts inline and saving them to a dashboard.",
+      "path": "skills/observability/create-graph",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
+    },
+    {
       "name": "custom-metrics",
       "description": "Create, track, retrieve, update, and delete custom business metrics for configs. Covers full lifecycle: define metric kinds via API, emit events via SDK, and query results.",
       "path": "skills/agentcontrol/custom-metrics",
@@ -162,6 +186,55 @@
       "version": "0.1.0",
       "license": "Apache-2.0",
       "compatibility": "Requires SDK installed (parent Step 5) and LaunchDarkly project access"
+    },
+    {
+      "name": "flag-and-release-change",
+      "description": "Drive a pull request's change end to end: decide it's flag-worthy, create the guarding flag, wire the new code path behind it on the PR branch, and record an automated release so the change ships safely when the PR merges. A portable orchestrator that composes should-flag-change, launchdarkly-flag-create, and flag-release. Keywords: flag a PR, wrap change in a flag, dark launch, kill switch, auto-release, automated rollout, end-to-end flag workflow.",
+      "path": "skills/feature-flags/flag-and-release-change",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server and a git CLI with access to the PR's repository",
+      "tags": [
+        "launchdarkly",
+        "feature-flags",
+        "feature-management",
+        "flag-creation",
+        "pull-request",
+        "auto-release",
+        "automated-rollout",
+        "release-policy",
+        "dark-launch",
+        "mcp"
+      ]
+    },
+    {
+      "name": "flag-release",
+      "description": "Record an automated rollout for an existing LaunchDarkly flag that guards a pull request's change, so the change releases safely when the PR merges. Honors a stated release intent (release now / hold / notBefore / segment / prerequisite) and defers per-environment to the project's release policies. Use as the release step once the guarding flag exists and its code is wired. Keywords: record release, automated rollout, release policy, guarded rollout, staged rollout, simple vs policy, release intent, hold release, dark launch.",
+      "path": "skills/feature-flags/flag-release",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server. Operates on a flag that already exists; does not create flags or edit code.",
+      "tags": [
+        "launchdarkly",
+        "feature-flags",
+        "feature-management",
+        "pull-request",
+        "auto-release",
+        "automated-rollout",
+        "release-policy",
+        "release-intent",
+        "guarded-rollout",
+        "dark-launch",
+        "mcp"
+      ]
+    },
+    {
+      "name": "investigate",
+      "description": "Analyzes observability data \u2014 logs, traces, errors, sessions, and metrics \u2014 to find root cause and actionable evidence. Use when the user reports a bug, an unexpected behavior, or asks about patterns across application data.",
+      "path": "skills/observability/investigate",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
     },
     {
       "name": "launchdarkly-experiment-setup",
@@ -212,7 +285,7 @@
       "name": "launchdarkly-flag-create",
       "description": "Create and configure LaunchDarkly feature flags in a way that fits the existing codebase. Use when the user wants to create a new flag, wrap code in a flag, add a feature toggle, or set up an experiment. Guides exploration of existing patterns before creating.",
       "path": "skills/feature-flags/launchdarkly-flag-create",
-      "version": "1.0.0-experimental",
+      "version": "1.1.0-experimental",
       "license": "Apache-2.0",
       "compatibility": "Requires the remotely hosted LaunchDarkly MCP server",
       "tags": [
@@ -247,10 +320,49 @@
       ]
     },
     {
+      "name": "launchdarkly-flag-drift",
+      "description": "Detect and reconcile drift between a feature flag's in-code SDK fallback default and its LaunchDarkly default rule (fallthrough). Use when a flag's default rule changed, when the user asks to detect flag drift, check whether a hardcoded default still matches LaunchDarkly, sync an in-code default, or open a PR reconciling a fallback value, without removing the flag or its evaluation.",
+      "path": "skills/feature-flags/launchdarkly-flag-drift",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server",
+      "tags": [
+        "launchdarkly",
+        "feature-flags",
+        "feature-management",
+        "flag-drift",
+        "default-drift",
+        "sdk",
+        "reconciliation",
+        "devops",
+        "mcp"
+      ]
+    },
+    {
+      "name": "launchdarkly-flag-qualitative-feedback-setup",
+      "description": "Integrate LaunchDarkly qualitative user feedback into a JavaScript/TypeScript codebase. Guides framework and design system detection, builds the sendFeedback utility and feedback widget matching existing project patterns. Use when the user wants to add a Give Feedback widget, collect user sentiment tied to feature flags, set up feedback collection, or wire up the $ld:feedback tracking event.",
+      "path": "skills/feature-flags/launchdarkly-flag-qualitative-feedback-setup",
+      "version": "1.0.0-experimental",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server",
+      "tags": [
+        "launchdarkly",
+        "feature-flags",
+        "feedback",
+        "qualitative-feedback",
+        "user-feedback",
+        "sentiment",
+        "sdk",
+        "javascript",
+        "react",
+        "mcp"
+      ]
+    },
+    {
       "name": "launchdarkly-flag-targeting",
       "description": "Control LaunchDarkly feature flag targeting including toggling flags on/off, percentage rollouts, targeting rules, individual targets, and copying flag configurations between environments. Use when the user wants to change who sees a flag, roll out to a percentage, add targeting rules, or promote config between environments.",
       "path": "skills/feature-flags/launchdarkly-flag-targeting",
-      "version": "1.0.0-experimental",
+      "version": "1.1.0-experimental",
       "license": "Apache-2.0",
       "compatibility": "Requires the remotely hosted LaunchDarkly MCP server",
       "tags": [
@@ -359,6 +471,24 @@
       "version": "0.2.0",
       "license": "Apache-2.0",
       "compatibility": "Requires a supported language/framework in the project. SDK credentials are required by [Apply](apply/SKILL.md), not for [Detect](detect/SKILL.md) / [Plan](plan/SKILL.md) alone (see parent onboarding **Prerequisites**)."
+    },
+    {
+      "name": "should-flag-change",
+      "description": "Decide whether a given code change should be placed behind a LaunchDarkly feature flag. Use when a developer asks whether a change should be behind a flag, when reviewing a diff or pull request, or when running in CI on a PR. Reads the diff and surrounding code, then emits a structured advisory recommendation. Read-only: it never creates or modifies flags.",
+      "path": "skills/feature-flags/should-flag-change",
+      "version": "0.4.0-experimental",
+      "license": "Apache-2.0",
+      "compatibility": "Advisory and read-only. Works on all platforms. Does NOT require the LaunchDarkly MCP server. Reads code with standard file tools (Read/Grep/Glob) and returns a structured verdict via the `recommend-flag` tool.",
+      "tags": [
+        "launchdarkly",
+        "feature-flags",
+        "feature-management",
+        "code-review",
+        "pull-request",
+        "ci",
+        "advisory",
+        "risk-assessment"
+      ]
     },
     {
       "name": "snippets",

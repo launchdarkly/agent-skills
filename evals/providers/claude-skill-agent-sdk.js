@@ -34,6 +34,12 @@
  * Test-level vars:
  *   user_request                - the user turn the agent sees
  *   codebase_context            - optional snippets appended in a <codebase_context> tag
+ *   git_diff                    - optional unified diff appended in a <git_diff> tag,
+ *                                 e.g. the diff of a PR the agent is asked to assess.
+ *                                 May be wrapped in `{% raw %}...{% endraw %}` so a
+ *                                 diff containing `{{ }}` (JSX/Go templates) survives
+ *                                 promptfoo's Nunjucks var rendering; the wrapper is
+ *                                 stripped here (see stripRawWrapper).
  *   max_turns                   - per-test override, clamped to 1..30 (default 15)
  *   mock_ask_question_answers   - optional array of `selected` arrays returned by
  *                                 successive `ask-question` calls
@@ -130,6 +136,18 @@ function scaffoldMockFiles(cwd, mockFiles) {
   }
 }
 
+/**
+ * Strip a leading `{% raw %}` and trailing `{% endraw %}` (with any surrounding
+ * whitespace) from a var value. Fixtures use this wrapper so diff/snippet
+ * content containing `{{ ... }}` survives promptfoo's Nunjucks var rendering
+ * without a "Template render error". A no-op when no wrapper is present.
+ */
+function stripRawWrapper(value) {
+  if (typeof value !== "string") return value;
+  const m = value.match(/^\s*\{%\s*raw\s*%\}\n?([\s\S]*?)\n?\{%\s*endraw\s*%\}\s*$/);
+  return m ? m[1] : value;
+}
+
 function clampMaxTurns(raw) {
   const n = Number(raw);
   if (!Number.isFinite(n) || n <= 0) return DEFAULT_MAX_TURNS;
@@ -184,7 +202,14 @@ class ClaudeSkillAgentSdk {
 
     const userRequest =
       context?.vars?.user_request || "Help me with LaunchDarkly";
-    const codebaseContext = context?.vars?.codebase_context || "";
+    // A diff/snippet var may be wrapped in a Nunjucks `{% raw %}...{% endraw %}`
+    // block. promptfoo renders string vars through Nunjucks before the provider
+    // runs, and raw source containing `{{ ... }}` (JSX props, Go templates, etc.)
+    // otherwise crashes that render with "expected variable end". Fixtures wrap
+    // such content in a raw block to pass it through literally; we strip the
+    // wrapper here before the agent sees it.
+    const codebaseContext = stripRawWrapper(context?.vars?.codebase_context || "");
+    const gitDiff = stripRawWrapper(context?.vars?.git_diff || "");
     const maxTurns = clampMaxTurns(context?.vars?.max_turns);
     const askQuestionAnswers = Array.isArray(
       context?.vars?.mock_ask_question_answers,
@@ -196,6 +221,9 @@ class ClaudeSkillAgentSdk {
     let userMessage = userRequest;
     if (codebaseContext) {
       userMessage += `\n\n<codebase_context>\n${codebaseContext}\n</codebase_context>`;
+    }
+    if (gitDiff) {
+      userMessage += `\n\n<git_diff>\n${gitDiff}\n</git_diff>`;
     }
 
     const { cwd, isolatedConfig } = createInvocationCwd(
@@ -540,3 +568,5 @@ class ClaudeSkillAgentSdk {
 }
 
 module.exports = ClaudeSkillAgentSdk;
+// Exposed for unit tests; the promptfoo loader uses the class default export.
+module.exports.stripRawWrapper = stripRawWrapper;

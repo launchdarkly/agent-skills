@@ -36,6 +36,7 @@ function buildReplacements(input) {
     mode: safe.mode || "completion",
     toolDescription: safe.description || "A tool",
     projectKey: safe.projectKey || "my-project",
+    environmentKey: safe.environmentKey || safe.env || "production",
   };
 }
 
@@ -194,6 +195,24 @@ function renderMockResponse(template, input, toolName, state) {
   if (toolName === "get-flag" || toolName === "get-feature-flag") {
     const key = input.flagKey || input.key;
     if (key && state.flags[key]) return state.flags[key];
+
+    // Cross-environment divergence hook: a `federal`-style environment serves
+    // the opposite default (variation 0 / `true`) from every other environment
+    // (which resolve to variation 1 / `false` via the static template). This
+    // lets the flag-drift eval exercise the case where a single in-code default
+    // cannot match every critical environment. No other suite queries a
+    // `federal` environment, so their behavior is unchanged.
+    const env = input.environmentKey || input.env;
+    if (typeof env === "string" && /federal/i.test(env)) {
+      const rendered = walk(template, replacements);
+      if (rendered && rendered.environment) {
+        rendered.environment = {
+          ...rendered.environment,
+          fallthrough: { variation: 0 },
+        };
+      }
+      return rendered;
+    }
   }
 
   // ---------- stateful writes ----------
@@ -334,6 +353,17 @@ function renderMockResponse(template, input, toolName, state) {
   }
 
   if (toolName === "create-flag" || toolName === "create-feature-flag") {
+    // Fail-closed test hook: a fixture that sets projectKey "restricted" makes
+    // flag creation fail (permission denied), so an eval can assert the skill
+    // stops rather than proceeding to wire code or record a release.
+    if (input.projectKey === "restricted") {
+      return {
+        error: "forbidden",
+        status: 403,
+        message:
+          "You do not have permission to create flags in project 'restricted'.",
+      };
+    }
     const flag = walk(template, replacements);
     state.flags[input.key || input.flagKey] = flag;
     return flag;
