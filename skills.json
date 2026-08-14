@@ -165,11 +165,11 @@
     },
     {
       "name": "launchdarkly-experiment-hypothesis-builder",
-      "description": "Scores an experiment hypothesis draft against the Change / Measurement / Rationale rubric and scaffolds an If/then/because sentence with fill-in holes for what is missing, returning structured JSON for the experiment setup UI in gonfalon. Detects junk input, A/A tests, and multiple measurements. Use when the request comes from the experiment builder's hypothesis assist (the `experiment_hypothesis_builder_assist` entry point). Never generates critique copy and never writes to LaunchDarkly.",
+      "description": "Scores an experiment hypothesis draft against the Change / Measurement / Rationale rubric and scaffolds an If/then/because sentence with fill-in holes for what is missing, returning structured JSON for the experiment setup UI. Resolves existing flag and metric keys via read-only lookups, and detects junk input, A/A tests, and multiple measurements. Use when the request comes from the experiment builder's hypothesis assist (the `experiment_hypothesis_builder_assist` entry point). Never generates critique copy and never writes to LaunchDarkly.",
       "path": "skills/experiments/launchdarkly-experiment-hypothesis-builder",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "license": "Apache-2.0",
-      "compatibility": "Requires no tools. Returns JSON only, for the experiment builder's hypothesis assist entry point."
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server for read-only lookups. Returns JSON only as its final message; never writes to LaunchDarkly."
     },
     {
       "name": "launchdarkly-experiment-setup",
