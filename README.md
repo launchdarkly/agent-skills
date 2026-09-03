@@ -73,10 +73,9 @@ Once installed, skills are available as `/launchdarkly:<skill-name>` across all 
 
 | Skill | Description |
 |-------|-------------|
-| `onboarding` | End-to-end LaunchDarkly setup: kickoff roadmap, MCP, SDK install, first flag |
+| `onboarding` | End-to-end LaunchDarkly setup: quiet scripted flow, SDK install, first flag with a live reveal, MCP offered afterwards |
 | `onboarding/mcp-configure` | Configure the LaunchDarkly hosted MCP server (OAuth, no API keys needed) |
 | `onboarding/sdk-install` | Install and initialize the correct SDK via detect, plan, and apply sub-steps |
-| `onboarding/first-flag` | Create a boolean flag, evaluate it, toggle on/off for end-to-end proof |
 
 ## Install as a Cursor Plugin
 
