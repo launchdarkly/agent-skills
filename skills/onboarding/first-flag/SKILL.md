@@ -1,8 +1,8 @@
 ---
 name: first-flag
-description: "Create a boolean first flag, add evaluation, toggle on/off for end-to-end proof. Parent onboarding Step 6; uses MCP, API, or ldcli; optional flag-create skill."
+description: "Create a boolean first flag, add evaluation, toggle on/off for end-to-end proof. Parent onboarding Step 4; uses MCP, API, or ldcli; optional flag-create skill."
 license: Apache-2.0
-compatibility: Requires SDK installed (parent Step 5) and LaunchDarkly project access
+compatibility: Requires SDK installed (parent Step 3) and LaunchDarkly project access
 metadata:
   author: launchdarkly
   version: "0.1.0"
@@ -12,7 +12,7 @@ metadata:
 
 The SDK is connected. Now help the user create their first feature flag and see it work end-to-end.
 
-This skill is nested under [LaunchDarkly onboarding](../SKILL.md); the parent **Step 6** is **first flag**. **Prior:** [Apply code changes](../sdk-install/apply/SKILL.md).
+This skill is nested under [LaunchDarkly onboarding](../SKILL.md); the parent **Step 4** is **first flag**. **Prior:** [Apply code changes](../sdk-install/apply/SKILL.md).
 
 **Optional -- Flag Create skill already installed:** If the **`launchdarkly-flag-create`** skill from [github.com/launchdarkly/ai-tooling](https://github.com/launchdarkly/ai-tooling) is available in the session (install with `npx skills add launchdarkly/ai-tooling --skill launchdarkly-flag-create -y --agent <agent>`), you may use it for **creating the flag** and **choosing evaluation code** that matches the repo. You must still complete **default off -> verify OFF -> toggle on -> verify ON** (Steps 3-5 below). **Do not** require that skill: this page stays the full fallback when it is missing or MCP-only flows conflict with the user's setup.
 
@@ -379,4 +379,4 @@ For non-auth errors (flag creation failures, SDK key mismatches, flags returning
 
 ---
 
-**Upon completion, continue with:** [Onboarding summary](../references/1.8-summary.md) and [Editor rules and skills](../references/1.9-editor-rules.md) (default follow-through in the parent onboarding skill -- **not** MCP setup, which is Step 4). For MCP install or troubleshooting, use [mcp-configure](../mcp-configure/SKILL.md) and [MCP Config Templates](../mcp-configure/references/mcp-config-templates.md).
+**Upon completion, return to the parent onboarding skill for the reveal and wrap-up.** [Onboarding summary](../references/1.8-summary.md) and [Editor rules and skills](../references/1.9-editor-rules.md) are optional reference only: the parent skill does not write a summary or rules file. MCP is offered after the flag works. For MCP install or troubleshooting, use [mcp-configure](../mcp-configure/SKILL.md) and [MCP Config Templates](../mcp-configure/references/mcp-config-templates.md).

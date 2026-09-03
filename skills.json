@@ -181,11 +181,11 @@
     },
     {
       "name": "first-flag",
-      "description": "Create a boolean first flag, add evaluation, toggle on/off for end-to-end proof. Parent onboarding Step 6; uses MCP, API, or ldcli; optional flag-create skill.",
+      "description": "Create a boolean first flag, add evaluation, toggle on/off for end-to-end proof. Parent onboarding Step 4; uses MCP, API, or ldcli; optional flag-create skill.",
       "path": "skills/onboarding/first-flag",
       "version": "0.1.0",
       "license": "Apache-2.0",
-      "compatibility": "Requires SDK installed (parent Step 5) and LaunchDarkly project access"
+      "compatibility": "Requires SDK installed (parent Step 3) and LaunchDarkly project access"
     },
     {
       "name": "flag-and-release-change",
@@ -410,7 +410,7 @@
     },
     {
       "name": "mcp-configure",
-      "description": "Configure the LaunchDarkly hosted MCP server during onboarding. Use when the parent LaunchDarkly onboarding skill reaches Step 4 (MCP). Supports Cursor, Claude Code, Windsurf, GitHub Copilot, and other MCP-compatible agents. OAuth authentication; no API keys for the hosted server.",
+      "description": "Configure the LaunchDarkly hosted MCP server during onboarding. Use when the parent LaunchDarkly onboarding skill reaches the MCP offer, after the first flag works. Supports Cursor, Claude Code, Windsurf, GitHub Copilot, and other MCP-compatible agents. OAuth authentication; no API keys for the hosted server.",
       "path": "skills/onboarding/mcp-configure",
       "version": "0.1.0",
       "license": "Apache-2.0",
@@ -426,11 +426,11 @@
     },
     {
       "name": "onboarding",
-      "description": "Onboard a project to LaunchDarkly: kickoff roadmap, resumable log, explore repo, MCP, companion flag skills, nested SDK install (detect/plan/apply), first flag. Use when adding LaunchDarkly, setting up or integrating feature flags in a project, SDK integration, or 'onboard me'.",
+      "description": "Scripted onboarding for LaunchDarkly: quiet execution, fixed sequence, SDK install, first flag with a live reveal, MCP offered afterwards. Enforces step completion before advancing and redirects drift. Use when adding LaunchDarkly, setting up or integrating feature flags in a project, SDK integration, or 'onboard me'.",
       "path": "skills/onboarding",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "license": "Apache-2.0",
-      "compatibility": "Requires an MCP-capable coding agent, `npx` on PATH for optional skill installs, and a LaunchDarkly account. SDK keys, client-side IDs, mobile keys, and API tokens are only needed when the step that uses them runs (see Prerequisites).",
+      "compatibility": "Requires an MCP-capable coding agent and `npx` on PATH for optional skill installs. SDK keys, client-side IDs, and mobile keys are only needed when the SDK key step runs.",
       "tags": [
         "launchdarkly",
         "feature-flags",
@@ -466,7 +466,7 @@
     },
     {
       "name": "sdk-install",
-      "description": "Install and initialize the correct LaunchDarkly SDK during onboarding by running nested skills in order: detect, plan, apply. Parent onboarding Step 6 is first flag.",
+      "description": "Install and initialize the correct LaunchDarkly SDK during onboarding by running nested skills in order: detect, plan, apply. Parent onboarding Step 4 is first flag.",
       "path": "skills/onboarding/sdk-install",
       "version": "0.2.0",
       "license": "Apache-2.0",
