@@ -9,7 +9,7 @@ The skill runs a fixed sequence and keeps the conversation quiet between decisio
 1. **Safe workspace** — create the `launchdarkly-onboarding` branch and leave every change uncommitted for the user to review.
 2. **Explore** — classify the workspace from dependency manifests and entrypoints. A multi-package workspace is always ambiguous, so the skill asks which package to integrate instead of guessing. An empty workspace gets an offer to scaffold a small demo app.
 3. **Install the SDK** — hand off to [`sdk-install`](sdk-install/SKILL.md) (detect, plan, apply), or use the fast path when the app was just scaffolded. The SDK key comes from MCP when it is already configured, otherwise from a direct dashboard link.
-4. **First flag** — create the flag, add a flag-gated banner to the app, start the dev server, and hand the reveal to the user so they see the banner change when the flag turns on. [`first-flag`](first-flag/SKILL.md) holds the fallbacks (`ldcli`, REST, auth failures).
+4. **First flag** — create the flag, add a flag-gated banner to the app, start the dev server, and hand the reveal to the user so they see the banner change when the flag turns on.
 5. **MCP (optional)** — offered only after the flag works, via [`mcp-configure`](mcp-configure/SKILL.md).
 
 Notable behaviors:
@@ -43,7 +43,6 @@ Ask the agent to onboard the project:
 | Skill | Purpose |
 |-------|---------|
 | [`sdk-install`](sdk-install/SKILL.md) | Detect the stack, plan the integration, apply the code changes |
-| [`first-flag`](first-flag/SKILL.md) | Create the flag, wire evaluation, prove it end to end |
 | [`mcp-configure`](mcp-configure/SKILL.md) | Configure the hosted LaunchDarkly MCP server |
 
 ## Evaluations

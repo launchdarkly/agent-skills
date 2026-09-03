@@ -10,7 +10,7 @@ metadata:
 
 # LaunchDarkly SDK Install (onboarding)
 
-Installs and initializes the right LaunchDarkly SDK for the user’s project by following **three nested skills in order**. **Do not** skip ahead to feature flags here—the parent [LaunchDarkly onboarding](../SKILL.md) continues with **Step 4: First flag** using [Create first feature flag](../first-flag/SKILL.md).
+Installs and initializes the right LaunchDarkly SDK for the user’s project by following **three nested skills in order**. **Do not** skip ahead to feature flags here—the parent [LaunchDarkly onboarding](../SKILL.md) continues with **Step 4: First flag**.
 
 ## Prerequisites
 
@@ -43,7 +43,7 @@ Shared references for all steps: [SDK recipes](../references/sdk/recipes.md), [S
 
 Continue with the parent skill:
 
-- **Step 6:** [Create first feature flag](../first-flag/SKILL.md)
+- **Step 4:** [First flag](../SKILL.md#step-4-first-flag)
 
 Do not add standalone “sample flag” evaluation in this skill unless the user explicitly needs a throwaway check; the parent flow creates the first flag in order.
 

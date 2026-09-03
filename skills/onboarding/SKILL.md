@@ -259,8 +259,6 @@ Create the flag, wire it into the app, and let the user watch it turn on.
 
 Do not print the page or the banner text in chat. Point the user to their browser: the banner at `<url>` flips live with the server still running. That is the flag working.
 
-[first-flag](first-flag/SKILL.md) holds the long-form detail for this step: credential handling, `ldcli` and REST fallbacks when MCP is unavailable, evaluation snippets per language, and the blocking stop on auth errors (401/403). Consult it when a create or toggle call fails, not to add turns to the happy path.
-
 ### Wrap-up
 
 Keep it to a few lines:
@@ -304,7 +302,7 @@ Never silently dump code with no tradeoff, and never rigidly refuse. If they ins
 
 | Repo | Skills | Purpose |
 |------|--------|---------|
-| `launchdarkly/ai-tooling` | `onboarding`, `sdk-install`, `mcp-configure`, `first-flag` | Setup |
+| `launchdarkly/ai-tooling` | `onboarding`, `sdk-install`, `mcp-configure` | Setup |
 | `launchdarkly/ai-tooling` | `launchdarkly-flag-create` and related | Flag management |
 
 ---
@@ -323,5 +321,4 @@ Never silently dump code with no tradeoff, and never rigidly refuse. If they ins
 
 - [mcp-configure](mcp-configure/SKILL.md) and [MCP Config Templates](mcp-configure/references/mcp-config-templates.md) — Step 2
 - [sdk-install](sdk-install/SKILL.md) — Step 3 (detect, plan, apply)
-- [first-flag](first-flag/SKILL.md) — Step 4 fallbacks and credential handling
 - [SDK recipes](references/sdk/recipes.md) and [SDK snippets](references/sdk/snippets/) — per-SDK install and init detail
