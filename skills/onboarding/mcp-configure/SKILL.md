@@ -71,7 +71,7 @@ After writing the config, some agents need extra steps. **Do not** send users th
 **Cursor:**
 
 1. Open MCP in Cursor using the [Cursor MCP doc link and in-app shortcuts](references/mcp-ui-links.md#clients) (e.g. Settings search via `command:` link when clickable).
-2. Toggle on **LaunchDarkly feature management** (or the name from your config).
+2. Toggle on **LaunchDarkly** (or the name from your config).
 3. Click **Connect** to authorize with the LaunchDarkly account.
 
 **VS Code (when applicable):**
@@ -138,7 +138,6 @@ Restart is no longer required for Cursor or Claude Code after enabling an MCP se
   - If **yes**: remove the deprecated entry, ensure the unified `mcp/launchdarkly` server is present (do not duplicate if it's already there), and continue.
   - If **no**: leave the config untouched and continue with onboarding — the deprecated server may still work for now.
 
-- **User has the legacy `mcp/fm` server:** No migration needed — `mcp/fm` mirrors the unified server and continues to work. Do not suggest removing it.
 - **User has the old npx-based local server:** Migrate them to the hosted server. Remove the old `npx @launchdarkly/mcp-server` entry and any `LD_ACCESS_TOKEN` env vars. Replace with the hosted server config.
 - **Agent not in known list:** Provide the generic pattern: the user needs to add an MCP server entry pointing to `https://mcp.launchdarkly.com/mcp/launchdarkly` using whatever format their agent expects.
 - **User opts out of MCP during onboarding:** Document that choice and continue; do not block SDK work.
