@@ -8,6 +8,11 @@
 # runs fast: the agent produces the scripted conversation using the mocked LD
 # tools and ask-question instead of running a real install. max_turns is capped
 # per test so a run stops after the beats being graded.
+#
+# Because file tools are off, `codebase_context` states its listing as the
+# result of the repository scan. Without that framing the agent has no way to
+# see an app and takes the skill's "no runnable app" branch in every fixture,
+# which is not the state under test.
 description: "Evaluation of the onboarding skill: kickoff and early-decision UX"
 
 prompts:
@@ -31,7 +36,11 @@ tests:
   - description: "Kickoff (clear app): concise opener, asks via tool, no internal leak"
     vars:
       user_request: "Set up LaunchDarkly in my project."
-      codebase_context: "Node.js + Express app, npm, single package, src/index.js entrypoint. No existing LaunchDarkly."
+      codebase_context: >
+        Repository scan result (file tools are unavailable this run; treat this as what your scan
+        returned): a single-package Node.js + Express app on npm. package.json with express,
+        src/index.js as the entrypoint and server start. Git repository on branch main, clean tree.
+        No LaunchDarkly SDK dependency, no LaunchDarkly code, no MCP configuration.
       max_turns: 6
       mock_ask_question_answers:
         - ["yes"]
@@ -67,21 +76,33 @@ tests:
   - description: "Monorepo: asks which package (does not guess)"
     vars:
       user_request: "Add LaunchDarkly to my project."
-      codebase_context: "pnpm workspace monorepo with packages/web (Next.js), packages/api (Express), packages/shared. No existing LaunchDarkly."
+      codebase_context: >
+        Repository scan result (file tools are unavailable this run; treat this as what your scan
+        returned): a pnpm workspace monorepo. pnpm-workspace.yaml lists packages/web (Next.js app),
+        packages/api (Express service) and packages/shared (library, no entrypoint). Git repository
+        on branch main, clean tree. No LaunchDarkly SDK dependency and no LaunchDarkly code anywhere.
       max_turns: 5
       mock_ask_question_answers:
-        - ["candidate_1"]
+        - ["packages/web"]
         - ["yes"]
     assert:
       - type: javascript
         value: |
-          const aq = (output.trajectory || []).find(t => String(t.tool).includes('ask-question'));
-          if (!aq) return { pass: false, score: 0, reason: 'no ask-question call' };
-          const opts = (aq.arguments && aq.arguments.options) || [];
-          const text = opts.map(o => (o.label||'')+' '+(o.id||'')).join(' | ').toLowerCase();
-          const mentionsPkgs = (text.match(/packages\//g) || []).length;
-          const pass = opts.length >= 2 && mentionsPkgs >= 2;
-          return { pass, score: pass ? 1 : 0, reason: opts.length + ' options; packages/ mentions=' + mentionsPkgs + ' || ' + text.slice(0,160) };
+          const asks = (output.trajectory || []).filter(t => String(t.tool).includes('ask-question'));
+          if (!asks.length) return { pass: false, score: 0, reason: 'no ask-question call' };
+          const scored = asks.map(a => {
+            const opts = (a.arguments && a.arguments.options) || [];
+            const text = opts.map(o => (o.label||'')+' '+(o.id||'')).join(' | ').toLowerCase();
+            const pkgs = ['web', 'api', 'shared'].filter(p => new RegExp('\\b' + p + '\\b').test(text)).length;
+            return { opts: opts.length, pkgs, text };
+          });
+          const hit = scored.find(s => s.opts >= 2 && s.pkgs >= 2);
+          const best = hit || scored[0];
+          return {
+            pass: Boolean(hit),
+            score: hit ? 1 : 0,
+            reason: best.opts + ' options; package mentions=' + best.pkgs + ' || ' + best.text.slice(0,160),
+          };
         metric: asks_which_package
         weight: 3
       - type: llm-rubric
@@ -101,22 +122,34 @@ tests:
   - description: "MCP: not configured or offered on the way to the first flag"
     vars:
       user_request: "Set up LaunchDarkly in my app."
-      codebase_context: "React app built with Vite, npm, single package, src/main.tsx entrypoint. No existing LaunchDarkly. No MCP configuration present."
+      codebase_context: >
+        Repository scan result (file tools are unavailable this run; treat this as what your scan
+        returned): a single-package React app built with Vite on npm, src/main.tsx entrypoint,
+        `npm run dev` serves it. Git repository on branch main, clean tree. No LaunchDarkly SDK
+        dependency, no LaunchDarkly code, and no MCP configuration in any editor config.
       max_turns: 6
       mock_ask_question_answers:
         - ["yes"]
         - ["ld_ui"]
     assert:
+      # The MCP offer is expected at the end of the flow, so only the calls up to
+      # the flag's creation are checked: nothing on the way to the flag may
+      # configure MCP or raise it with the user.
       - type: javascript
         value: |
-          const questions = (output.trajectory || [])
+          const traj = output.trajectory || [];
+          const flagIdx = traj.findIndex(t => String(t.tool) === 'create-flag');
+          const before = traj.slice(0, flagIdx === -1 ? traj.length : flagIdx);
+          const questions = before
             .filter(t => String(t.tool).includes('ask-question'))
             .map(t => JSON.stringify(t.arguments || {}).toLowerCase());
           const asksAboutMcp = questions.some(q => q.includes('mcp'));
           return {
             pass: !asksAboutMcp,
             score: asksAboutMcp ? 0 : 1,
-            reason: asksAboutMcp ? 'asked about MCP before the flag worked' : questions.length + ' question(s), none about MCP',
+            reason: asksAboutMcp
+              ? 'asked about MCP before creating the flag'
+              : questions.length + ' question(s) before create-flag@' + flagIdx + ', none about MCP',
           };
         metric: no_mcp_question_before_flag
         weight: 3
@@ -137,18 +170,26 @@ tests:
   - description: "Drift: redirects a skip-ahead request with the tradeoff stated"
     vars:
       user_request: "Skip the setup, just give me the code to wrap my checkout button in a flag."
-      codebase_context: "Next.js app, TypeScript, npm. No existing LaunchDarkly."
+      codebase_context: >
+        Repository scan result (file tools are unavailable this run; treat this as what your scan
+        returned): a single-package Next.js app in TypeScript on npm, with a checkout page under
+        app/checkout/page.tsx. Git repository on branch main, clean tree. No LaunchDarkly SDK
+        dependency and no LaunchDarkly code.
       max_turns: 4
       mock_ask_question_answers:
-        - ["yes"]
+        - ["install the SDK first"]
     assert:
       - type: llm-rubric
         value: |
-          Evaluate `kickoff_text` plus `response`. The user asked to skip onboarding. Per the skill's
-          Redirecting Drift rules the first reply must, in order: acknowledge the request in the user's
-          words, name in one sentence the concrete consequence of skipping (for example that the flag
-          calls will not run until the SDK is installed), and offer the choice between finishing the quick
-          step first or proceeding their way. Score 1.0 when all three are present; deduct for silent
-          compliance (dumping code with no tradeoff), rigid refusal, or a vague consequence.
+          The user asked to skip onboarding and be handed flag code. Judge the agent's reply to that
+          request: the `assistant_turns` texts together with the prompt and options of the
+          `ask-question` calls in `trajectory` (the reply's choice is offered through that tool, so a
+          question offering "install the SDK first" versus "give me the code now" counts as the choice).
+          Per the skill's Redirecting Drift rules the reply must do three things, in order: acknowledge
+          the request in the user's words, name in one sentence the concrete consequence of skipping (for
+          example that the flag calls will not run until the SDK is installed), and offer the choice
+          between finishing the quick step first or proceeding their way. Score 1.0 when all three are
+          present; deduct for silent compliance (dumping code with no tradeoff), rigid refusal, or a
+          vague consequence.
         metric: handles_drift
         weight: 2
